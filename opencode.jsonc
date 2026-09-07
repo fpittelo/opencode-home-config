@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "openrouter/moonshotai/kimi-code-2.7",
+  "small_model": "openrouter/google/gemini-3.7-flash",
+  "enabled_providers": [
+    "openrouter",
+    "google"
+  ],
+  "provider": {
+    "openrouter": {
+      "name": "OpenRouter",
+      "options": {
+        "apiKey": "{env:OPENROUTER_HOME_API_KEY}"
+      },
+      "models": {
+        "google/gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
+        "google/gemini-3.7-flash": { "name": "Gemini 3.7 Flash" },
+        "moonshotai/kimi-code-2.7": { "name": "Kimi Code 2.7" },
+        "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
+        "z-ai/glm-5.2": { "name": "GLM 5.2" },
+        "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" }
+      }
+    },
+    "google": {
+      "name": "Google",
+      "options": {
+        "apiKey": "{env:GOOGLE_API_KEY}"
+      },
+      "models": {
+        "gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
+        "gemini-3.7-flash": { "name": "Gemini 3.7 Flash" }
+      }
+    }
+  },
+  "mcp": {
+    "GITHUB": {
+      "type": "local",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server:latest"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "enabled": true
+    },
+    "COACH DEV": {
+      "type": "local",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "-e", "INTERVALS_API_KEY",
+        "-e", "INTERVALS_ATHLETE_ID",
+        "-e", "MCP_TRANSPORT",
+        "ghcr.io/fpittelo/coach:dev"
+      ],
+      "environment": {
+        "INTERVALS_API_KEY": "{env:INTERVALS_API_KEY}",
+        "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
+        "MCP_TRANSPORT": "stdio"
+      },
+      "enabled": true
+    },
+    "COACH QA": {
+      "type": "local",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "-e", "INTERVALS_API_KEY",
+        "-e", "INTERVALS_ATHLETE_ID",
+        "-e", "MCP_TRANSPORT",
+        "ghcr.io/fpittelo/coach:qa"
+      ],
+      "environment": {
+        "INTERVALS_API_KEY": "{env:INTERVALS_API_KEY}",
+        "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
+        "MCP_TRANSPORT": "stdio"
+      },
+      "enabled": true
+    },
+    "COACH MAIN": {
+      "type": "local",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "-e", "INTERVALS_API_KEY",
+        "-e", "INTERVALS_ATHLETE_ID",
+        "-e", "MCP_TRANSPORT",
+        "ghcr.io/fpittelo/coach:latest"
+      ],
+      "environment": {
+        "INTERVALS_API_KEY": "{env:INTERVALS_API_KEY}",
+        "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
+        "MCP_TRANSPORT": "stdio"
+      },
+      "enabled": true
+    }
+  }
+}
