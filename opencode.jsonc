@@ -3,8 +3,7 @@
   "model": "openrouter/moonshotai/kimi-code-2.7",
   "small_model": "openrouter/google/gemini-3.7-flash",
   "enabled_providers": [
-    "openrouter",
-    "google"
+    "openrouter"
   ],
   "provider": {
     "openrouter": {
@@ -19,16 +18,6 @@
         "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
         "z-ai/glm-5.2": { "name": "GLM 5.2" },
         "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" }
-      }
-    },
-    "google": {
-      "name": "Google",
-      "options": {
-        "apiKey": "{env:GOOGLE_API_KEY}"
-      },
-      "models": {
-        "gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
-        "gemini-3.7-flash": { "name": "Gemini 3.7 Flash" }
       }
     }
   },

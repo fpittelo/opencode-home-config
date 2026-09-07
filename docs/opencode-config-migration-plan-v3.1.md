@@ -128,8 +128,7 @@ opencode-home-config/
   "model": "openrouter/moonshotai/kimi-code-2.7",
   "small_model": "openrouter/google/gemini-3.7-flash",
   "enabled_providers": [
-    "openrouter",
-    "google"
+    "openrouter"
   ],
   "provider": {
     "openrouter": {
@@ -144,16 +143,6 @@ opencode-home-config/
         "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
         "z-ai/glm-5.2": { "name": "GLM 5.2" },
         "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" }
-      }
-    },
-    "google": {
-      "name": "Google",
-      "options": {
-        "apiKey": "{env:GOOGLE_API_KEY}"
-      },
-      "models": {
-        "gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
-        "gemini-3.7-flash": { "name": "Gemini 3.7 Flash" }
       }
     }
   },
@@ -449,7 +438,6 @@ SECRETS_FILE="$DEST/.secrets.env"
 if [ ! -f "$SECRETS_FILE" ]; then
     cat << 'EOF' > "$SECRETS_FILE"
 export OPENROUTER_HOME_API_KEY=""
-export GOOGLE_API_KEY=""
 export GITHUB_PERSONAL_ACCESS_TOKEN=""
 export INTERVALS_API_KEY=""
 export INTERVALS_ATHLETE_ID=""
@@ -472,7 +460,7 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user is-system-running >/
     set -a
     # shellcheck disable=SC1090
     source "$SECRETS_FILE"
-    systemctl --user import-environment OPENROUTER_HOME_API_KEY GOOGLE_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
+    systemctl --user import-environment OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
     set +a
 fi
 
