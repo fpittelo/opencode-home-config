@@ -1,0 +1,19 @@
+# Secrets
+.secrets.env
+*.env
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Node (legacy cruft from old config)
+node_modules/
+package-lock.json

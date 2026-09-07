@@ -1,0 +1,78 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [dev, qa, main]
+  pull_request:
+    branches: [dev, qa, main]
+
+jobs:
+  validate-config:
+    name: JSONC Validation & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate opencode.jsonc (JSONC with comment stripping)
+        run: |
+          python3 -c "
+          import json, sys
+          def strip_jsonc(text):
+              result = []
+              i = 0
+              in_string = False
+              escape = False
+              while i < len(text):
+                  c = text[i]
+                  if in_string:
+                      result.append(c)
+                      if escape:
+                          escape = False
+                      elif c == '\\\\':
+                          escape = True
+                      elif c == '\"':
+                          in_string = False
+                  else:
+                      if c == '\"':
+                          in_string = True
+                          result.append(c)
+                      elif c == '/' and i + 1 < len(text) and text[i+1] == '/':
+                          while i < len(text) and text[i] != '\n':
+                              i += 1
+                          continue
+                      else:
+                          result.append(c)
+                  i += 1
+              return ''.join(result)
+          with open('opencode.jsonc') as f:
+              content = f.read()
+          try:
+              json.loads(strip_jsonc(content))
+              print('opencode.jsonc is valid JSONC')
+          except json.JSONDecodeError as e:
+              print(f'Invalid JSONC: {e}', file=sys.stderr)
+              sys.exit(1)
+          "
+      - name: Check install.sh syntax
+        run: bash -n install.sh
+      - name: Verify all agent files exist
+        run: |
+          for agent in architect coach code-reviewer cyber-security developer devops scrum-master; do
+            test -f "agents/$agent.md" || { echo "Missing agents/$agent.md"; exit 1; }
+          done
+      - name: Verify all skill directories exist
+        run: |
+          for skill in coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+            test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
+          done
+
+  secret-scan:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
