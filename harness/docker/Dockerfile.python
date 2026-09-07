@@ -1,0 +1,99 @@
+# syntax=docker/dockerfile:1.7
+# Harness Runner — Python 3.12 toolchain
+# Multi-stage, non-root, minimal image for closed-loop verification of HOME Python projects.
+#
+# Build:
+#   docker build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:dev harness/docker
+#
+# Run (local WSL2 / Docker Desktop example):
+#   docker run --rm \
+#     --read-only \
+#     --user 1000:1000 \
+#     --memory=4g --memory-swap=4g \
+#     --cpus=2.0 \
+#     --network=none \
+#     --tmpfs /tmp:noexec,nosuid,size=1g \
+#     -v "$PWD:/workspace:rw" \
+#     -v harness-uv-cache:/home/harness/.cache/uv \
+#     -v harness-pip-cache:/home/harness/.cache/pip \
+#     -w /workspace \
+#     ghcr.io/fpittelo/harness-runner-python:dev \
+#     bash -c "uv sync --frozen && uv run pytest -W error --cov=."
+
+ARG PYTHON_VERSION=3.12
+ARG DEBIAN_VERSION=bookworm
+
+# -----------------------------------------------------------------------------
+# Stage 1: Tool installation
+# -----------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS tools
+
+# Pin versions for reproducible harness behaviour.
+ARG UV_VERSION=0.4.15
+ARG RUFF_VERSION=0.6.9
+ARG BLACK_VERSION=24.8.0
+ARG ISORT_VERSION=5.13.2
+ARG MYPY_VERSION=1.11.2
+ARG PYTEST_VERSION=8.3.3
+ARG PYTEST_COV_VERSION=5.0.0
+
+# Install only what is required to fetch and install the toolchain.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (Astral's Python package manager).
+# The official installer places the binary under $CARGO_HOME/bin (default /root/.cargo/bin).
+ADD --chmod=755 https://astral.sh/uv/${UV_VERSION}/install.sh /tmp/uv-installer.sh
+RUN sh /tmp/uv-installer.sh && rm /tmp/uv-installer.sh
+
+# Install lint/test tools globally using uv with BuildKit cache mount.
+ENV UV_SYSTEM_PYTHON=1
+RUN --mount=type=cache,target=/root/.cache/uv \
+    /root/.cargo/bin/uv pip install --system \
+    ruff==${RUFF_VERSION} \
+    black==${BLACK_VERSION} \
+    isort==${ISORT_VERSION} \
+    mypy==${MYPY_VERSION} \
+    pytest==${PYTEST_VERSION} \
+    pytest-cov==${PYTEST_COV_VERSION}
+
+# -----------------------------------------------------------------------------
+# Stage 2: Runtime image
+# -----------------------------------------------------------------------------
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
+
+# Install runtime dependencies: git for harness repo operations, ca-certificates for TLS.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root harness user (UID/GID 1000).
+RUN groupadd --gid 1000 harness && \
+    useradd --uid 1000 --gid harness --shell /bin/bash --create-home harness
+
+# Copy installed Python packages and CLI entrypoints from the tools stage.
+COPY --from=tools /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=tools /usr/local/bin/ruff /usr/local/bin/ruff
+COPY --from=tools /usr/local/bin/black /usr/local/bin/black
+COPY --from=tools /usr/local/bin/isort /usr/local/bin/isort
+COPY --from=tools /usr/local/bin/mypy /usr/local/bin/mypy
+COPY --from=tools /usr/local/bin/pytest /usr/local/bin/pytest
+COPY --from=tools /root/.cargo/bin/uv /usr/local/bin/uv
+
+USER harness
+WORKDIR /workspace
+
+# Prevent .pyc files and force unbuffered stdout/stderr for deterministic logs.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_CACHE_DIR=/home/harness/.cache/uv \
+    PIP_CACHE_DIR=/home/harness/.cache/pip \
+    PATH="/home/harness/.local/bin:${PATH}"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python --version || exit 1
+
+CMD ["python", "--version"]
