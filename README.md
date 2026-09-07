@@ -43,6 +43,20 @@ chmod +x install.sh && ./install.sh
 
 Then populate `~/.config/opencode/.secrets.env` with your API keys (file is created with `chmod 600`).
 
+## Recommended Directory Structure on VIDAR
+
+```
+~/projects/
+├── opencode-home-config/          ← this repo (HOME config, global default)
+├── opencode-work-config/           ← EPFL work config (GitLab, via VPN)
+├── HOME/                           ← personal projects (HOME profile)
+│   └── my-personal-project/
+└── WORK/                           ← EPFL work projects (WORK profile)
+    └── my-epfl-service/
+```
+
+See the [Migration Plan v3.1](docs/opencode-config-migration-plan-v3.1.md), Section 5 for details on how the WORK profile is activated inside `~/projects/WORK/` projects.
+
 ## Security
 
 - **Zero hardcoded secrets:** All credentials use `{env:VAR}` interpolation.
