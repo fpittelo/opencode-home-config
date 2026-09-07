@@ -650,12 +650,30 @@ Because mirrored mode unifies the loopback adapter:
 
 ## 5. Working with EPFL Workspaces on VIDAR (Zero Switching)
 
+### Recommended Directory Structure on VIDAR
+
+```
+~/projects/
+├── opencode-home-config/          ← HOME config repo (GitHub) — global default
+├── opencode-work-config/           ← WORK config repo (GitLab, via VPN)
+├── HOME/                           ← personal projects (HOME profile)
+│   ├── my-personal-project/
+│   └── ...
+└── WORK/                           ← EPFL work projects (WORK profile)
+    ├── my-epfl-service/
+    └── ...
+```
+
+- **`~/projects/HOME/`** — All personal projects. When you `cd` into any of these and run `opencode`, you get the HOME profile (GITHUB, COACH MCPs).
+- **`~/projects/WORK/`** — All EPFL work projects. After the one-time `.opencode/` symlink setup (Pattern A below), `cd` into any of these and run `opencode` → you get the WORK profile (GITLAB, ADOIT MCPs; GITHUB/COACH suppressed).
+- **`opencode-home-config/` and `opencode-work-config/`** — These are the config repos themselves. They live directly under `~/projects/` (not under `HOME/` or `WORK/`), because they are tooling, not project workspaces.
+
 When working on EPFL projects from home on `VIDAR`, two flexible zero-switch options are available:
 
 ### Pattern A: Project-Scoped Workspace Symlink
-Inside any cloned EPFL repository:
+Inside any cloned EPFL repository (under `~/projects/WORK/`):
 ```bash
-cd ~/projects/work/my-epfl-service
+cd ~/projects/WORK/my-epfl-service
 mkdir -p .opencode
 ln -sf ~/projects/opencode-work-config/opencode.jsonc .opencode/opencode.jsonc
 ln -sfn ~/projects/opencode-work-config/agents .opencode/agents
