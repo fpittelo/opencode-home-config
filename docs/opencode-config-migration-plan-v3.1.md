@@ -125,7 +125,7 @@ opencode-home-config/
 ```jsonc
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openrouter/moonshotai/kimi-code-2.7",
+  "model": "openrouter/moonshotai/kimi-k2.7-code",
   "small_model": "openrouter/google/gemini-3.7-flash",
   "enabled_providers": [
     "openrouter"
@@ -139,7 +139,7 @@ opencode-home-config/
       "models": {
         "google/gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
         "google/gemini-3.7-flash": { "name": "Gemini 3.7 Flash" },
-        "moonshotai/kimi-code-2.7": { "name": "Kimi Code 2.7" },
+        "moonshotai/kimi-k2.7-code": { "name": "Kimi K2.7 Code" },
         "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
         "z-ai/glm-5.2": { "name": "GLM 5.2" },
         "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" }
@@ -302,7 +302,7 @@ opencode-work-config/
         "google/gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
         "google/gemini-3.7-flash": { "name": "Gemini 3.7 Flash" },
         "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
-        "moonshotai/kimi-code-2.7": { "name": "Kimi Code 2.7" },
+        "moonshotai/kimi-k2.7-code": { "name": "Kimi K2.7 Code" },
         "z-ai/glm-5.2": { "name": "GLM 5.2" }
       }
     },
