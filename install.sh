@@ -14,7 +14,6 @@ SECRETS_FILE="$DEST/.secrets.env"
 if [ ! -f "$SECRETS_FILE" ]; then
     cat << 'EOF' > "$SECRETS_FILE"
 export OPENROUTER_HOME_API_KEY=""
-export GOOGLE_API_KEY=""
 export GITHUB_PERSONAL_ACCESS_TOKEN=""
 export INTERVALS_API_KEY=""
 export INTERVALS_ATHLETE_ID=""
@@ -37,7 +36,7 @@ if command -v systemctl >/dev/null 2>&1 && systemctl --user is-system-running >/
     set -a
     # shellcheck disable=SC1090
     source "$SECRETS_FILE"
-    systemctl --user import-environment OPENROUTER_HOME_API_KEY GOOGLE_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
+    systemctl --user import-environment OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
     set +a
 fi
 
