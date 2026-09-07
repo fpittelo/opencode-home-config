@@ -1,0 +1,44 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [dev, qa, main]
+  pull_request:
+    branches: [dev, qa, main]
+
+jobs:
+  validate-config:
+    name: JSONC Validation & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate opencode.jsonc (parseable JSON)
+        run: node -e "JSON.parse(require('fs').readFileSync('opencode.jsonc','utf8').replace(/\\/g,'\\\\').replace(/(^|[^\\])\\/.*$/g,'$1'))" || node -e "const fs=require('fs'); const c=fs.readFileSync('opencode.jsonc','utf8'); try { JSON.parse(c); console.log('Valid JSON'); } catch(e) { console.error('Invalid JSON:',e.message); process.exit(1); }"
+      - name: Check install.sh syntax
+        run: bash -n install.sh
+      - name: Verify all agent files exist
+        run: |
+          for agent in architect coach code-reviewer cyber-security developer devops scrum-master; do
+            test -f "agents/$agent.md" || { echo "Missing agents/$agent.md"; exit 1; }
+          done
+      - name: Verify all skill directories exist
+        run: |
+          for skill in coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+            test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
+          done
+
+  secret-scan:
+    name: Gitleaks Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
