@@ -18,7 +18,7 @@ Previous migration proposals relied either on a **monolithic repository** with *
 ### B. The "Golden Architecture" Pillars (v3.1)
 1. **Strict Repository Separation (Compliance by Design):**
    - **HOME Repo:** `github.com/fpittelo/opencode-home-config` (Private on GitHub).
-   - **WORK Repo:** `gitlab.epfl.ch/isgov-ea/opencode-work-config` (Internal on EPFL GitLab).
+   - **WORK Repo:** `gitlab.epfl.ch/isgov/ea/opencode-work-config` (Internal on EPFL GitLab).
 2. **Native Zero-Switch Workspace Scoping & Deep-Merge Shielding (Engine Verified):**
    - Every workspace/project directory automatically determines its own agents, skills, and MCP tools via local `.opencode/` or global fallback.
    - **Deep-Merge Isolation Verified:** OpenCode's configuration engine implements recursive key-by-key object merging (`k(r, a)` in core runtime). The work configuration explicitly suppresses personal MCP servers (`GITHUB`, `COACH *`) with `"enabled": false`, which overrides global `enabled: true` while preserving structural definitions. This was empirically tested and verified on OpenCode `v1.18.29`: personal Docker containers are completely suppressed (`○ disabled`) inside enterprise workspaces on dual-use hosts.
@@ -40,7 +40,7 @@ Previous migration proposals relied either on a **monolithic repository** with *
 flowchart TD
     subgraph Cloud_Remotes ["Source Control & Package Registries"]
         GH_REPO["GitHub: fpittelo/opencode-home-config\n(Personal AI, Coach, Governance)"]
-        GL_REPO["EPFL GitLab: isgov-ea/opencode-work-config\n(EPFL AI, ADOIT, EA Skills)"]
+        GL_REPO["EPFL GitLab: isgov/ea/opencode-work-config\n(EPFL AI, ADOIT, EA Skills)"]
         GHCR["ghcr.io/fpittelo/coach:*\nghcr.io/github/github-mcp-server:*"]
         IC_REG["ic-registry.epfl.ch/isgov-ea/gitlab-mcp:*\nic-registry.epfl.ch/isgov-ea/adoit-api-mcp:*"]
     end
@@ -224,7 +224,7 @@ opencode-home-config/
 
 ---
 
-### B. Enterprise Work Repository (`gitlab.epfl.ch/isgov-ea/opencode-work-config`)
+### B. Enterprise Work Repository (`gitlab.epfl.ch/isgov/ea/opencode-work-config`)
 
 ```
 opencode-work-config/
@@ -501,7 +501,7 @@ To eliminate the brittle file synchronization, Windows file locking, and Windows
 #### Step 2: Bootstrap Work Configuration inside WSL2
 ```bash
 mkdir -p ~/projects
-git clone git@gitlab.epfl.ch:isgov-ea/opencode-work-config.git ~/projects/opencode-work-config
+git clone git@gitlab-ssh.epfl.ch:isgov/ea/opencode-work-config.git ~/projects/opencode-work-config
 cd ~/projects/opencode-work-config
 chmod +x install.sh && ./install.sh
 ```
@@ -727,22 +727,26 @@ opencode mcp list
 
 ## 6. End-to-End Migration Checklist
 
+> **⚠️ Sprint #1+#2 Retrospective (2026-09-07):** Issue #3 (Phase 2 VIDAR Rollout) was closed as `status::done` but `install.sh` was never run on the physical workstation. The global `~/.config/opencode/` symlinks still point to the legacy Google Drive configuration. This is a critical DoD violation that blocks Phases 3-5. See the retrospective comment on Issue #14 for full details.
+>
+> **⚠️ Docker Registry Paths:** The `ic-registry.epfl.ch/isgov-ea/*` paths in the `opencode.jsonc` work profile have not been verified against the actual EPFL container registry. The GitLab group is `isgov/ea` (with slash), but the Docker registry may use a different path convention (`isgov-ea` with hyphen). This must be verified before Issue #4 can be completed.
+
 ### Phase 1 — Repository Genesis & CI/CD Setup
-- [ ] Create private repository `github.com/fpittelo/opencode-home-config`.
-- [ ] Create internal repository `gitlab.epfl.ch/isgov-ea/opencode-work-config`.
-- [ ] Populate `opencode-home-config`: 7 agents, 10 skills, `install.sh`, and `opencode.jsonc`.
-- [ ] Populate `opencode-work-config`: 8 agents, full 20 skills, `install.sh`, `envs/` templates, and `opencode.jsonc`.
-- [ ] Add CI pipelines (GitHub Actions & GitLab CI) with strict JSONC parsing and secret scanning.
-- [ ] Create persistent branches (`dev`, `qa`, `main`) and tag `v1.0.0` on `main`.
+- [x] Create private repository `github.com/fpittelo/opencode-home-config`. *(Issue #1, v1.0.0)*
+- [x] Create internal repository `gitlab.epfl.ch/isgov/ea/opencode-work-config`. *(Created 2026-09-07, project ID 41613)*
+- [x] Populate `opencode-home-config`: 7 agents, 10 skills, `install.sh`, and `opencode.jsonc`. *(Issue #1)*
+- [x] Populate `opencode-work-config`: 8 agents, full 20 skills, `install.sh`, `envs/` templates, and `opencode.jsonc`. *(Commit f3de6b2 on main)*
+- [x] Add CI pipelines (GitHub Actions & GitLab CI) with strict JSONC parsing and secret scanning. *(Issues #1, #9, #14 for GitHub; .gitlab-ci.yml for GitLab — ⚠️ GitLab CI pipeline not yet verified)*
+- [x] Create persistent branches (`dev`, `qa`, `main`) and tag `v1.0.0` on `main`. *(v1.0.0 + v1.1.0 released)*
 
 ### Phase 2 — VIDAR (Home) Rollout
-- [ ] Install OpenCode CLI (`curl -fsSL https://opencode.ai/install | bash`).
-- [ ] Install OpenCode Desktop (`https://opencode.ai/download/stable/linux-x64-deb`).
-- [ ] Clone `opencode-home-config` into `~/projects/opencode-home-config`.
-- [ ] Execute `./install.sh`.
-- [ ] Populate `~/.config/opencode/.secrets.env` (`chmod 600`).
-- [ ] Launch OpenCode CLI (`opencode`) and OpenCode Desktop; verify Coach MCP and personal agents appear.
-- [ ] Test EPFL project isolation: open a sample EPFL workspace with `.opencode` pointing to `opencode-work-config`, run `opencode mcp list`, and verify personal servers (`COACH *`, `GITHUB`) show `○ disabled`.
+- [x] Install OpenCode CLI (`curl -fsSL https://opencode.ai/install | bash`). *(v1.18.29 installed)*
+- [ ] Install OpenCode Desktop (`https://opencode.ai/download/stable/linux-x64-deb`). *(Not verified)*
+- [x] Clone `opencode-home-config` into `~/projects/opencode-home-config`. *(Issue #3 AC1)*
+- [ ] **Execute `./install.sh`** — ⚠️ **CRITICAL: Not yet run.** Global symlinks still point to legacy Google Drive. *(Issue #3 DoD violation — see Sprint #1+#2 Retrospective)*
+- [x] Populate `~/.config/opencode/.secrets.env` (`chmod 600`). *(File exists, 355 bytes, chmod 600)*
+- [ ] Launch OpenCode CLI (`opencode`) and OpenCode Desktop; verify Coach MCP and personal agents appear. *(Blocked by install.sh)*
+- [ ] Test EPFL project isolation: open a sample EPFL workspace with `.opencode` pointing to `opencode-work-config`, run `opencode mcp list`, and verify personal servers (`COACH *`, `GITHUB`) show `○ disabled`. *(Issue #4 — open)*
 
 ### Phase 3 — SCXPITTELOUDF (Work Laptop) Rollout
 - [ ] Configure `%USERPROFILE%\.wslconfig` on Windows host with `networkingMode=mirrored` and `dnsTunneling=true` (run `wsl --shutdown`).
@@ -809,5 +813,5 @@ Execute only after full completion and sign-off of the Phase 4 soak period:
   mkdir -p "/AI_OS_ROOT/CONFIGS/@ARCHIVE"
   mv /AI_OS_ROOT/CONFIGS/OPENCODE "$ARCHIVE_DIR"
   ```
-- [ ] Place a tombstone `README.md` at `/AI_OS_ROOT/CONFIGS/OPENCODE_MIGRATED.md` pointing to `github.com/fpittelo/opencode-home-config` and `gitlab.epfl.ch/isgov-ea/opencode-work-config`.
+- [ ] Place a tombstone `README.md` at `/AI_OS_ROOT/CONFIGS/OPENCODE_MIGRATED.md` pointing to `github.com/fpittelo/opencode-home-config` and `gitlab.epfl.ch/isgov/ea/opencode-work-config`.
 - [ ] Enjoy zero-friction, concurrent AI agent development across Home and Work!
