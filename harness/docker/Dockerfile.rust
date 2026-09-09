@@ -1,0 +1,80 @@
+# syntax=docker/dockerfile:1.7
+# Harness Runner — Rust stable toolchain
+# Multi-stage, non-root, minimal image for closed-loop verification of HOME Rust projects.
+#
+# Build:
+#   docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:dev harness/docker
+#
+# Run (local WSL2 / Docker Desktop example):
+#   docker run --rm \
+#     --read-only \
+#     --user 1000:1000 \
+#     --memory=4g --memory-swap=4g \
+#     --cpus=2.0 \
+#     --network=none \
+#     --tmpfs /tmp:noexec,nosuid,size=1g \
+#     -v "$PWD:/workspace:rw" \
+#     -v harness-cargo-registry:/home/harness/.cargo/registry \
+#     -v harness-cargo-git:/home/harness/.cargo/git \
+#     -v harness-cargo-target:/workspace/target \
+#     -w /workspace \
+#     ghcr.io/fpittelo/harness-runner-rust:dev \
+#     bash -c "cargo fmt --check && cargo clippy -- -D warnings && cargo test"
+
+ARG RUST_VERSION=1.88.0
+ARG DEBIAN_VERSION=bookworm
+
+# -----------------------------------------------------------------------------
+# Stage 1: Build cargo plugins
+# -----------------------------------------------------------------------------
+FROM rust:${RUST_VERSION}-slim-${DEBIAN_VERSION} AS builder
+
+# Install build dependencies for cargo-audit / cargo-deny (OpenSSL etc.).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install supply-chain security plugins with BuildKit cache mounts.
+# --locked uses the upstream Cargo.lock so dependency MSRVs stay compatible.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    cargo install --locked cargo-audit cargo-deny
+
+# -----------------------------------------------------------------------------
+# Stage 2: Runtime image
+# -----------------------------------------------------------------------------
+FROM rust:${RUST_VERSION}-slim-${DEBIAN_VERSION} AS runtime
+
+# Runtime dependencies: git, pkg-config, libssl for cargo-audit DB fetch.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root harness user (UID/GID 1000).
+RUN groupadd --gid 1000 harness && \
+    useradd --uid 1000 --gid harness --shell /bin/bash --create-home harness
+
+# Add rustfmt and clippy to the stable toolchain.
+RUN rustup component add rustfmt clippy
+
+# Copy pre-built cargo plugins from the builder stage.
+COPY --from=builder /usr/local/cargo/bin/cargo-audit /usr/local/cargo/bin/cargo-audit
+COPY --from=builder /usr/local/cargo/bin/cargo-deny /usr/local/cargo/bin/cargo-deny
+
+USER harness
+WORKDIR /workspace
+
+# Cache directories are mounted as named volumes at runtime.
+ENV CARGO_HOME=/home/harness/.cargo \
+    CARGO_TARGET_DIR=/workspace/target \
+    PATH="/usr/local/cargo/bin:${PATH}"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD rustc --version || exit 1
+
+CMD ["rustc", "--version"]

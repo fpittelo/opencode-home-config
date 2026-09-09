@@ -1,7 +1,7 @@
 ---
 description: "Personal Athletic Coach & Longevity Advisor (Zwift Cycling & Kettlebell Strength)"
 mode: primary
-model: "openrouter/google/gemini-3.7-flash"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.3
 permission:
   edit: deny
