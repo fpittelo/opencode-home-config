@@ -1,7 +1,7 @@
 ---
 description: "Cyber Security Specialist — Security & Secret Auditor"
 mode: subagent
-model: "openrouter/moonshotai/kimi-k2.7-code"
+model: "openrouter/qwen/qwen3-coder-next"
 temperature: 0.1
 permission:
   edit: deny
