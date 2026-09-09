@@ -1,7 +1,7 @@
 ---
 description: "Architect — Technical Lead & Solution Architect"
 mode: primary
-model: "openrouter/z-ai/glm-5.2"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.2
 permission:
   edit: allow

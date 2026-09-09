@@ -1,0 +1,33 @@
+# Build context exclusions for harness runner images.
+# Keep the context minimal so Docker layer caching is not invalidated by unrelated repo changes.
+
+# Git metadata
+.git
+.gitignore
+
+# Documentation and config not needed at image build time
+*.md
+*.jsonc
+*.yml
+*.yaml
+.github
+agents
+docs
+skills
+install.sh
+
+# Local editor / OS artifacts
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode
+.idea
+
+# Build artifacts that might exist locally
+**/target
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.venv
+**/node_modules
