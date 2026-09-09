@@ -35,6 +35,18 @@
       },
       "enabled": true
     },
+    "GITHUB_CODE_REVIEWER": {
+      "type": "local",
+      "command": [
+        "docker", "run", "-i", "--rm",
+        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server:latest"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN_CODE_REVIEWER}"
+      },
+      "enabled": true
+    },
     "COACH DEV": {
       "type": "local",
       "command": [

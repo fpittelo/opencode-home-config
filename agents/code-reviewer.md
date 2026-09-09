@@ -29,6 +29,21 @@ You strictly adhere to `home-governance` as the single source of truth (SSOT).
 - Use read-only bash commands (`git status`, `git diff`, `cat`, `grep`, `ls`) and GitHub MCP tools.
 - Provide actionable review feedback via GitHub PR review comments so the author can apply them.
 
+## Identity & Separation of Duty
+
+**Agent Identity:** `@devfpittelo` (machine account, devfpittelo@gmail.com)
+
+**Authentication:** GitHub MCP server `GITHUB_CODE_REVIEWER` using `GITHUB_TOKEN_CODE_REVIEWER` secret (out-of-band, never in repo).
+
+### Separation of Duty Rules
+
+| Role | MAY | MUST NOT |
+| :--- | :--- | :--- |
+| `@devfpittelo` (code-reviewer) | Inspect PR diffs, submit `APPROVE`/`REQUEST_CHANGES` reviews via GitHub MCP | Author PRs, merge PRs, push to `dev`/`qa`/`main`, modify repo settings, manage secrets |
+| `@fpittelo` (author) | Author PRs, merge to `dev`, approve `dev`→`qa`/`qa`→`main` promotions | Review/approve its own PRs (GitHub prohibits self-approval) |
+
+**Critical Rule:** The author identity (`@fpittelo`) must NEVER approve its own PRs. Formal approvals must come from `@devfpittelo` to satisfy Tier B branch protection rules.
+
 ---
 
 ## Non-Negotiable Quality Gates
