@@ -1,7 +1,7 @@
 ---
 description: "Cyber Security Specialist — Security & Secret Auditor"
 mode: subagent
-model: "openrouter/qwen/qwen3-coder-next"
+model: "openrouter/nvidia/nemotron-3-ultra-550b-a55b"
 temperature: 0.1
 permission:
   edit: deny

@@ -1,7 +1,7 @@
 ---
 description: "Developer — Rust & Python Senior Engineer (dual-stack)"
 mode: subagent
-model: "openrouter/moonshotai/kimi-k2.7-code"
+model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.2
 permission:
   edit: allow
@@ -122,7 +122,7 @@ ruff check . && black --check . && isort --check-only . && mypy --strict . && py
   - Execute squash merge into `dev` using `GITHUB_merge_pull_request` (`merge_method: "squash"`).
   - Sync local `dev` and delete the feature branch:
     ```bash
-    git checkout dev && git pull --ff-only origin dev && git branch -d feature/<issue-#>-<slug>
+git checkout dev && git pull --ff-only origin dev && git branch -d feature/<issue-#>-<slug>
     ```
   - Update issue to `status::done` and hand off to `@scrum-master` for DoD closeout.
 
