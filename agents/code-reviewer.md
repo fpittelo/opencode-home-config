@@ -1,7 +1,7 @@
 ---
 description: "Code Reviewer — PR Quality Gatekeeper"
 mode: subagent
-model: "openrouter/qwen/qwen3-coder-next"
+model: "openrouter/minimax/minimax-m3"
 temperature: 0.1
 permission:
   edit: deny
