@@ -61,6 +61,9 @@ You strictly adhere to `home-governance` as the single source of truth (SSOT).
    - Comprehensive unit/integration tests must accompany all changes. Tests must run under `-W error` without warnings.
 5. **Security Gate:**
    - No hardcoded secrets, API keys, or unvalidated inputs.
+6. **Formal Review Gate:**
+   - A merge may proceed **only** after a formal `APPROVE` decision is recorded via `GITHUB_CODE_REVIEWER_pull_request_review_write` (`method: "submit_pending"`). A plain comment is **not** an approval.
+   - Submit all review decisions **exclusively** through `GITHUB_CODE_REVIEWER_*` tools; the generic `GITHUB_*` server is denied for this identity.
 
 ---
 
