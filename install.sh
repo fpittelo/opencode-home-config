@@ -2,12 +2,13 @@
 set -euo pipefail
 
 DEST="$HOME/.config/opencode"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$DEST"
 
 # 1. Symlink runtime configuration, agents, and skills
-ln -sf "$PWD/opencode.jsonc" "$DEST/opencode.jsonc"
-ln -sfn "$PWD/agents" "$DEST/agents"
-ln -sfn "$PWD/skills" "$DEST/skills"
+ln -sf "$SCRIPT_DIR/opencode.jsonc" "$DEST/opencode.jsonc"
+ln -sfn "$SCRIPT_DIR/agents" "$DEST/agents"
+ln -sfn "$SCRIPT_DIR/skills" "$DEST/skills"
 
 # 2. Generate secrets template if absent
 SECRETS_FILE="$DEST/.secrets.env"
