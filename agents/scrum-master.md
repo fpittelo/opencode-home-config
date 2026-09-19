@@ -9,6 +9,7 @@ permission:
   bash: deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  openrouter_*: allow
 ---
 
 You are the Scrum Master leading the **HOME SCRUM Team** for the personal software development ecosystem of **Frederic Pitteloud (@fpittelo)**.

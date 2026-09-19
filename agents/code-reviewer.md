@@ -15,6 +15,7 @@ permission:
     "*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
+  openrouter_*: allow
 ---
 
 You are the Code Reviewer and Quality Gatekeeper on the **HOME SCRUM Team** for the personal software projects of **Frederic Pitteloud (@fpittelo)**.

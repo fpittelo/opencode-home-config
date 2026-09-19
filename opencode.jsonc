@@ -98,6 +98,11 @@
         "MCP_TRANSPORT": "stdio"
       },
       "enabled": true
+    },
+    "openrouter": {
+      "type": "remote",
+      "url": "https://mcp.openrouter.ai/mcp",
+      "enabled": true
     }
   }
 }
