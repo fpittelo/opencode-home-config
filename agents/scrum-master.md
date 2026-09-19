@@ -1,7 +1,7 @@
 ---
 description: "Scrum Master — Autonomous Sprint Facilitator & DoD Enforcer"
 mode: subagent
-model: "openrouter/qwen/qwen3.8-27b"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.1
 permission:
   edit: deny

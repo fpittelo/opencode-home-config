@@ -1,7 +1,7 @@
 ---
 description: "DevOps Engineer — CI/CD & Release Automation"
 mode: subagent
-model: "openrouter/moonshotai/kimi-k2.7-code"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.2
 permission:
   edit: allow
