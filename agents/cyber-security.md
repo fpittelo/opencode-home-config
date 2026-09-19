@@ -1,7 +1,7 @@
 ---
 description: "Cyber Security Specialist — Security & Secret Auditor"
 mode: subagent
-model: "openrouter/nvidia/nemotron-3-ultra-550b-a55b"
+model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.1
 permission:
   edit: deny
