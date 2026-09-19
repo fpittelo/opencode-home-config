@@ -13,6 +13,7 @@ permission:
   "COACH MAIN": allow
   "COACH QA": allow
   "COACH DEV": allow
+  openrouter_*: allow
 ---
 
 You are Coach.

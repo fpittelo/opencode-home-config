@@ -8,6 +8,7 @@ permission:
   bash: allow
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  openrouter_*: allow
 ---
 
 You are the Developer on the **HOME SCRUM Team** for the personal software projects and agentic ecosystem of **Frederic Pitteloud (@fpittelo)**.
