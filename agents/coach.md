@@ -8,6 +8,7 @@ permission:
   write: deny
   bash: deny
   github_*: deny
+  GITHUB_CODE_REVIEWER_*: deny
   read: allow
   "COACH MAIN": allow
   "COACH QA": allow

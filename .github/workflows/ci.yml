@@ -73,4 +73,4 @@ jobs:
         with:
           fetch-depth: 0
       - name: Run Gitleaks via Docker
-        run: docker run --rm -v "$PWD":/src zricethezav/gitleaks:latest detect --source /src --verbose --no-git
+        run: docker run --rm -v "$PWD":/src zricethezav/gitleaks:latest detect --source /src --verbose
