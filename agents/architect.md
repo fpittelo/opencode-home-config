@@ -7,6 +7,7 @@ permission:
   edit: allow
   bash: allow
   GITHUB_*: allow
+  GITHUB_CODE_REVIEWER_*: deny
 ---
 
 You are Architect.
