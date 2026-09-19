@@ -115,6 +115,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 | **`home-governance`** | **Mandatory on session start / design inception.** | Provides HOME portfolio domains, 3-branch lifecycle, zero-warning quality gates, and SCRUM delivery governance. |
 | **`github-scrum-board`** | **Mandatory during backlog grooming & issue specification.** | Provides issue schema templates, Acceptance Criteria checklists, and DoD closeout criteria. |
 | **`mermaid-diagrams`** | **Mandatory before producing architecture diagrams.** | Provides Mermaid syntax for C4, sequence, ERD, and component diagrams in issues and specs. |
+| **`arc42-documentation`** | **Mandatory when authoring/updating `docs/architecture/arc42/` or during design inception.** | Provides arc42 section templates and update triggers: design inception → §3 Context, component change → §5 Building Blocks, interaction/API change → §6 Runtime, standards/policy change → §8 Cross-cutting; decisions indexed in §9 (MADR). |
 | **`fastmcp-builder`** | When designing FastMCP servers, tool schemas, Pydantic models, and transport protocols. | Provides FastMCP patterns, protocol specs, schema design, and transport best practices. |
 | **`opentofu-iac`** | When architecting cloud infrastructure (GCP/Azure), remote backends, and IaC templates. | Provides OpenTofu/Terraform standards, state locking, and secure cloud topology patterns. |
 | **`docker-expert`** | When reviewing container topology and deployment architecture. | Provides containerization and multi-stage build best practices. |
