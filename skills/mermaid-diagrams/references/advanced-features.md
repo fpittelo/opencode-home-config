@@ -31,6 +31,8 @@ flowchart TD
 config:
   theme: default
 ---
+flowchart LR
+    A[Start] --> B[End]
 ```
 
 **Available themes:**
@@ -312,9 +314,9 @@ flowchart LR
     
     A -.->|REST API| B
     
-    %% Tooltips are defined with links
-    link A: API Documentation @ https://api.example.com
-    link B: Service Dashboard @ https://dashboard.example.com
+    %% Tooltips are defined with click statements
+    click A "https://api.example.com" "API Documentation"
+    click B "https://dashboard.example.com" "Service Dashboard"
 ```
 
 ## Subgraph Styling

@@ -4,6 +4,15 @@ mode: subagent
 model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.1
 permission:
+# 87: unattended read-only access; last matching rule wins, so deny rules override allows
+  read:
+    "/home/frede/projects/**": allow
+    "/home/frede/.config/**": allow
+    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/**/*.env": deny
+    "/home/frede/.config/**/*.pem": deny
+    "/home/frede/.config/**/*.key": deny
+    "/home/frede/.config/**/*token*": deny
   edit: deny
   write: deny
   bash: deny
@@ -46,14 +55,14 @@ You orchestrate the autonomous issue-by-issue sprint delivery engine without req
 ```mermaid
 stateDiagram-v2
     [*] --> Standby: Active Sprint Milestone
-    Standby --> PickIssue: Find highest-priority status::todo
-    PickIssue --> Dispatch: Set status::in-progress & assign agent
+    Standby --> PickIssue: Find highest-priority todo issue
+    PickIssue --> Dispatch: Set in-progress & assign agent
     Dispatch --> InDevelopment: Agent executes TDD & opens PR to dev
-    InDevelopment --> UnderReview: CI Green (0 warnings) & status::review
+    InDevelopment --> UnderReview: CI Green (0 warnings) & review status
     UnderReview --> Merged: @code-reviewer APPROVE -> PR author squash-merges into dev
     Merged --> DoDVerification: @scrum-master verifies 5 DoD criteria
     DoDVerification --> CloseIssue: Post closing summary comment & close issue
-    CloseIssue --> CheckNext: More status::todo issues in Sprint?
+    CloseIssue --> CheckNext: More todo issues in Sprint?
     CheckNext --> PickIssue: Yes (Autonomous Next Issue)
     CheckNext --> SprintComplete: No (All Sprint deliverables in dev)
     SprintComplete --> [*]

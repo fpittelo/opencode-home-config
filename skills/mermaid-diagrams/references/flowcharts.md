@@ -247,24 +247,24 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([Start Binary Search]) --> Init[Set low = 0, high = array.length - 1]
-    Init --> Check{low <= high?}
+    Start([Start Binary Search]) --> Init["Set low = 0, high = array.length - 1"]
+    Init --> Check{"low <= high?"}
     
-    Check -->|No| NotFound[Return -1: Not found]
+    Check -->|No| NotFound["Return -1: Not found"]
     NotFound --> End([End])
     
-    Check -->|Yes| CalcMid[mid = low + (high - low) / 2]
-    CalcMid --> Compare{array[mid] == target?}
+    Check -->|Yes| CalcMid["mid = low + (high - low) / 2"]
+    CalcMid --> Compare{"array[mid] == target?"}
     
-    Compare -->|Yes| Found[Return mid: Found]
+    Compare -->|Yes| Found["Return mid: Found"]
     Found --> End
     
-    Compare -->|No| CheckLess{array[mid] < target?}
+    Compare -->|No| CheckLess{"array[mid] < target?"}
     
-    CheckLess -->|Yes| MoveLow[low = mid + 1]
+    CheckLess -->|Yes| MoveLow["low = mid + 1"]
     MoveLow --> Check
     
-    CheckLess -->|No| MoveHigh[high = mid - 1]
+    CheckLess -->|No| MoveHigh["high = mid - 1"]
     MoveHigh --> Check
     
     style Start fill:#90EE90
