@@ -106,11 +106,6 @@
       "type": "remote",
       "url": "https://mcp.openrouter.ai/mcp",
       "enabled": true
-    },
-    "openrouter": {
-      "type": "remote",
-      "url": "https://mcp.openrouter.ai/mcp",
-      "enabled": true
     }
   },
   "permission": {
