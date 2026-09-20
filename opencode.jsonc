@@ -116,5 +116,16 @@
       "mkfs.*": "deny",
       "dd if=* of=/dev/*": "deny"
     }
+  },
+  "compaction": {
+    "auto": true,
+    "tail_turns": 15
+  },
+  "tool_output": {
+    "max_lines": 300,
+    "max_bytes": 32768
+  },
+  "experimental": {
+    "mcp_timeout": 30000
   }
 }
