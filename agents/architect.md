@@ -4,7 +4,23 @@ mode: primary
 model: "openrouter/z-ai/glm-5.3"
 temperature: 0.2
 permission:
-  edit: allow
+# 87: unattended access; last matching rule wins, so deny rules below override allows
+  read:
+    "/home/frede/projects/**": allow
+    "/home/frede/.config/**": allow
+    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/**/*.env": deny
+    "/home/frede/.config/**/*.pem": deny
+    "/home/frede/.config/**/*.key": deny
+    "/home/frede/.config/**/*token*": deny
+  edit:
+    "/home/frede/projects/**": allow
+    "/home/frede/.config/**": allow
+    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/**/*.env": deny
+    "/home/frede/.config/**/*.pem": deny
+    "/home/frede/.config/**/*.key": deny
+    "/home/frede/.config/**/*token*": deny
   bash: allow
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
