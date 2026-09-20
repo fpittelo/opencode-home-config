@@ -50,8 +50,10 @@ C4Context
 **Relationships:**
 ```mermaid
 C4Context
-    Rel(from, to, "Label")
-    Rel(from, to, "Label", "Optional Technology")
+    System(system1, "System One", "First system")
+    System(system2, "System Two", "Second system")
+    Rel(system1, system2, "Label")
+    Rel(system1, system2, "Label", "Optional Technology")
     BiRel(system1, system2, "Bidirectional")
 ```
 

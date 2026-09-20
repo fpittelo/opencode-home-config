@@ -432,8 +432,8 @@ erDiagram
     }
     
     ENROLLMENT {
-        uuid student_id FK PK
-        uuid course_id FK PK
+        uuid student_id FK, PK
+        uuid course_id FK, PK
         date enrolled_date
         varchar grade
     }

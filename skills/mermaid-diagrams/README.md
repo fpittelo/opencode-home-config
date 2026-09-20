@@ -35,7 +35,7 @@ The skill activates when you mention:
 
 Mermaid syntax is intuitive and follows a consistent pattern across all diagram types:
 
-```mermaid
+```text
 diagramType
   definition content
 ```

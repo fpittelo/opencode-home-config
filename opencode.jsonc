@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openrouter/moonshotai/kimi-k2.7-code",
+  "model": "openrouter/google/gemini-3.8-flash",
   "small_model": "openrouter/google/gemini-3.8-flash",
   "enabled_providers": [
     "openrouter"
@@ -14,7 +14,7 @@
       "models": {
         "google/gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
         "moonshotai/kimi-k2.7-code": { "name": "Kimi K2.7 Code" },
-        "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
+        "qwen/qwen3.8-2.4t-a95b": { "name": "Qwen 3.8 2.4T A95B" },
         "deepseek/deepseek-v4.1-flash": { "name": "DeepSeek V4.1 Flash" },
         "z-ai/glm-5.3": { "name": "GLM 5.3" },
         "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" }
@@ -34,6 +34,11 @@
       },
       "enabled": true
     },
+    // AC2 (#83): this second github-mcp-server instance is necessary, not redundant —
+    // it authenticates as the separate @devfpittelo identity via
+    // {env:GITHUB_TOKEN_CODE_REVIEWER} so @code-reviewer can approve PRs under
+    // separation-of-duties (SoD). The primary GITHUB server acts as @fpittelo, and
+    // one server instance can only carry one token/identity.
     "GITHUB_CODE_REVIEWER": {
       "type": "local",
       "command": [
@@ -46,6 +51,9 @@
       },
       "enabled": true
     },
+    // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
+    // duplicate tool schemas are not injected into every LLM turn. To switch
+    // environments, set "enabled": true on the target and false on the others.
     "COACH DEV": {
       "type": "local",
       "command": [
@@ -76,7 +84,7 @@
         "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
         "MCP_TRANSPORT": "stdio"
       },
-      "enabled": true
+      "enabled": false
     },
     "COACH MAIN": {
       "type": "local",
@@ -92,12 +100,40 @@
         "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
         "MCP_TRANSPORT": "stdio"
       },
-      "enabled": true
+      "enabled": false
     },
     "openrouter": {
       "type": "remote",
       "url": "https://mcp.openrouter.ai/mcp",
       "enabled": true
     }
+  },
+  "permission": {
+    // Last matching rule wins: broad rules first, narrow allow/deny rules last.
+    "bash": {
+      "*": "ask",
+      "git *": "allow",
+      "docker *": "allow",
+      "pytest*": "allow",
+      "ruff*": "allow",
+      "bash -n *": "allow",
+      "python*": "allow",
+      "npm*": "allow",
+      "node*": "allow",
+      "rm -rf /*": "deny",
+      "mkfs.*": "deny",
+      "dd if=* of=/dev/*": "deny"
+    }
+  },
+  "compaction": {
+    "auto": true,
+    "tail_turns": 15
+  },
+  "tool_output": {
+    "max_lines": 300,
+    "max_bytes": 32768
+  },
+  "experimental": {
+    "mcp_timeout": 30000
   }
 }

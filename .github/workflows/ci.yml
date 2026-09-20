@@ -61,7 +61,7 @@ jobs:
           done
       - name: Verify all skill directories exist
         run: |
-          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
             test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
           done
 
@@ -74,3 +74,54 @@ jobs:
           fetch-depth: 0
       - name: Run Gitleaks via Docker
         run: docker run --rm -v "$PWD":/src zricethezav/gitleaks:latest detect --source /src --verbose
+
+  docs-quality-gate:
+    name: Docs Quality Gate (mermaid, links, MADR)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build docs-validator image (ADR-0001)
+        run: docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
+      - name: Run docs validation in hardened container
+        run: |
+          docker run --rm \
+            --read-only \
+            --user 1000:1000 \
+            --cap-drop=ALL \
+            --security-opt no-new-privileges \
+            --network=none \
+            --memory=4g --memory-swap=4g \
+            --cpus=2.0 \
+            --tmpfs /tmp:noexec,nosuid,size=1g \
+            -v "$PWD:/workspace:ro" \
+            -w /workspace \
+            ghcr.io/fpittelo/harness-docs-validator:dev \
+            bash harness/docs-validation/run_docs_validation.sh /workspace
+
+  architecture-gate:
+    name: Architecture Gate (requires-architecture)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Enforce architecture coverage for requires-architecture PRs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_FILE: ${{ github.event_path }}
+        run: |
+          set -euo pipefail
+          if ! jq -e 'any(.pull_request.labels[]?; .name == "requires-architecture")' "$EVENT_FILE" >/dev/null; then
+            echo "NOTE: PR does not carry the 'requires-architecture' label - architecture gate passes trivially."
+            exit 0
+          fi
+          echo "PR carries 'requires-architecture': the diff must touch docs/adr/** or docs/architecture/arc42/**."
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -Eq '^(docs/adr/|docs/architecture/arc42/)'; then
+            echo "PASS: architecture documentation updated (docs/adr/** or docs/architecture/arc42/**)."
+            exit 0
+          fi
+          echo "::error::PR labeled 'requires-architecture' but the diff contains no changes under docs/adr/** or docs/architecture/arc42/**. Label semantics: apply 'requires-architecture' to PRs that change architecture-relevant behaviour; the two accepted paths to satisfy this gate are (1) a new or updated ADR under docs/adr/** (MADR schema) or (2) an arc42 documentation update under docs/architecture/arc42/**. Add the corresponding changes or remove the label."
+          exit 1

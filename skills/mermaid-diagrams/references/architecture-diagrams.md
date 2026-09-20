@@ -41,7 +41,7 @@ service {serviceId}({icon})[{title}] (in {parentId})?
 architecture-beta
     service api(server)[API Server]
     service db(database)[Database]
-    service cache(redis)[Cache] in api
+    service cache(redis)[Cache]
 ```
 
 ### Edges

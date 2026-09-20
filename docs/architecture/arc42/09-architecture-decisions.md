@@ -1,12 +1,12 @@
 # 9. Architecture Decisions (MADR Index)
 
-*Status: placeholder — wired by STORY-03 (issue #60), which establishes the MADR workflow, tooling, and `docs/adr/` directory. Until then, decisions are traceable via their GitHub issues.*
+*Status: live — wired by STORY-03 (issue #60). ADRs are created via the `madr-adr` skill (`bash skills/madr-adr/scripts/new-adr.sh "<title>"`) and stored under `docs/adr/`; the format and machine-checkable header schema are specified in `skills/madr-adr/SKILL.md` (CI lint enforcement lands with STORY-04, #61).*
 
-**This section is the authoritative index of Architecture Decision Records.** Each decision is recorded as a separate MADR document under `docs/adr/` and indexed here.
+**This section is the authoritative index of Architecture Decision Records.** Each decision is recorded as a separate MADR document under `docs/adr/` and indexed here. *Every accepted ADR MUST be listed below (number, title, status, link); the directory-level inventory mirrors this index in `docs/adr/README.md`.*
 
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
-| *(pending — first entry will be ADR-0001, created via the `madr-adr` skill per Epic 3 refinement note 5)* | | | |
+| [MADR-0001](../../adr/0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Validator tooling for the harness docs quality gate (mermaid, links, MADR) | accepted | 2026-09-20 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
@@ -16,4 +16,4 @@
 | SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | ADR-0003 candidate |
 | OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | ADR-0004 candidate |
 | Remote OpenRouter MCP server for model-catalog access | #67 | ADR-0005 candidate |
-| Mermaid-validation tooling choice for CI gates | STORY-04 #61 refinement note 5 | **ADR-0001 (first MADR, via #60/#61)** |
+| Mermaid-validation tooling choice for CI gates | STORY-04 #61 refinement note 5 | **Delivered — MADR-0001 (accepted)** |
