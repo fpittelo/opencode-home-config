@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "openrouter/moonshotai/kimi-k2.7-code",
+  "model": "openrouter/google/gemini-3.8-flash",
   "small_model": "openrouter/google/gemini-3.8-flash",
   "enabled_providers": [
     "openrouter"
