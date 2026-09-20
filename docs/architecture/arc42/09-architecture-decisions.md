@@ -6,7 +6,7 @@
 
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
-| *(pending — first entry will be ADR-0001, created via the `madr-adr` skill per Epic 3 refinement note 5)* | | | |
+| [MADR-0001](../../adr/0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Validator tooling for the harness docs quality gate (mermaid, links, MADR) | accepted | 2026-09-20 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
@@ -16,4 +16,4 @@
 | SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | ADR-0003 candidate |
 | OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | ADR-0004 candidate |
 | Remote OpenRouter MCP server for model-catalog access | #67 | ADR-0005 candidate |
-| Mermaid-validation tooling choice for CI gates | STORY-04 #61 refinement note 5 | **ADR-0001 (first MADR, via #60/#61)** |
+| Mermaid-validation tooling choice for CI gates | STORY-04 #61 refinement note 5 | **Delivered — MADR-0001 (accepted)** |

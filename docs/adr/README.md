@@ -23,4 +23,4 @@ This scaffolds the next sequential `NNNN-<slug>.md` from the template (refuses t
 
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
-| *(empty — first entry will be ADR-0001 per Epic 3 refinement note 5; pre-MADR decisions are listed as back-index candidates in arc42 §9)* | | | |
+| [0001 — Validator tooling for the harness docs quality gate](0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Mermaid, link, and MADR validation tooling | accepted | 2026-09-20 |
