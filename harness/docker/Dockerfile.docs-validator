@@ -1,0 +1,83 @@
+# syntax=docker/dockerfile:1.7
+# Docs Validator — Python 3.12 + Node 22 + pinned mermaid-cli (ADR-0001, STORY-04 #61).
+# Single image, three validators: mermaid render (mmdc), relative links, MADR schema.
+# All network use happens at IMAGE BUILD TIME; the validation runtime is fully
+# offline (CI runs this image with --network=none).
+#
+# Build:
+#   docker build -f harness/docker/Dockerfile.docs-validator \
+#     -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
+#
+# Run (harness security flags):
+#   docker run --rm \
+#     --read-only \
+#     --user 1000:1000 \
+#     --cap-drop=ALL \
+#     --security-opt no-new-privileges \
+#     --network=none \
+#     --memory=4g --memory-swap=4g \
+#     --cpus=2.0 \
+#     --tmpfs /tmp:noexec,nosuid,size=1g \
+#     -v "$PWD:/workspace:ro" \
+#     -w /workspace \
+#     ghcr.io/fpittelo/harness-docs-validator:dev \
+#     bash harness/docs-validation/run_docs_validation.sh /workspace
+
+ARG PYTHON_VERSION=3.12
+ARG DEBIAN_VERSION=bookworm
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION}
+
+# Pinned tooling versions for reproducible gate behaviour.
+ARG NODE_MAJOR=22
+ARG MERMAID_CLI_VERSION=11.17.0
+
+# Node 22 (nodesource repo) + Debian chromium (apt resolves every required
+# shared library; no manual dependency list to maintain).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl gnupg \
+    && install -d -m 0755 /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+       | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+       > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y --no-install-recommends nodejs chromium \
+    && rm -rf /var/lib/apt/lists/*
+
+# mermaid-cli pinned to the exact version. PUPPETEER_SKIP_DOWNLOAD=1 skips
+# puppeteer's own chromium download at npm install time; Debian chromium is
+# used instead via executablePath in the puppeteer config below.
+ENV PUPPETEER_SKIP_DOWNLOAD=1 \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
+RUN npm install -g --no-audit --no-fund "@mermaid-js/mermaid-cli@${MERMAID_CLI_VERSION}" \
+    && npm cache clean --force
+
+# Chromium sandbox inside the harness (non-root UID 1000, --cap-drop=ALL):
+# mmdc accepts a puppeteer config ONLY via the -p flag (no env var support),
+# so the npm launcher is wrapped to always inject the shipped config file.
+# The validators call plain `mmdc -i <in> -o <out>` and stay untouched.
+COPY puppeteer-config.json /usr/local/share/docs-validator/puppeteer-config.json
+RUN MMDC_BIN="$(command -v mmdc)" \
+    && mv "${MMDC_BIN}" "${MMDC_BIN}.bin" \
+    && printf '#!/bin/sh\nexec %s.bin -p /usr/local/share/docs-validator/puppeteer-config.json "$@"\n' "${MMDC_BIN}" \
+       > /usr/local/bin/mmdc \
+    && chmod 0755 /usr/local/bin/mmdc
+
+# Belt-and-braces env: PUPPETEER_EXECUTABLE_PATH is honoured by puppeteer.launch
+# when no executablePath is set; XDG dirs are routed to /tmp so chromium never
+# writes to $HOME on the read-only root filesystem.
+ENV PUPPETEER_CONFIG_FILE=/usr/local/share/docs-validator/puppeteer-config.json \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    XDG_CONFIG_HOME=/tmp/.xdg-config \
+    XDG_CACHE_HOME=/tmp/.xdg-cache
+
+# Non-root harness user (UID/GID 1000), same convention as the runner images.
+RUN groupadd --gid 1000 harness && \
+    useradd --uid 1000 --gid harness --shell /bin/bash --create-home harness
+
+USER harness
+WORKDIR /workspace
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD mmdc --version || exit 1
+
+CMD ["bash"]
