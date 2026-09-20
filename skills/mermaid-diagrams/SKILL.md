@@ -11,7 +11,7 @@ Create professional software diagrams using Mermaid's text-based syntax. Mermaid
 
 All Mermaid diagrams follow this pattern:
 
-```mermaid
+```text
 diagramType
   definition content
 ```
