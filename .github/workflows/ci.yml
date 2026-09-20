@@ -61,7 +61,7 @@ jobs:
           done
       - name: Verify all skill directories exist
         run: |
-          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
             test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
           done
 
