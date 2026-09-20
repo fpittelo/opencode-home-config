@@ -14,7 +14,7 @@
       "models": {
         "google/gemini-3.8-flash": { "name": "Gemini 3.8 Flash" },
         "moonshotai/kimi-k2.7-code": { "name": "Kimi K2.7 Code" },
-        "moonshotai/kimi-k2.6": { "name": "Kimi K2.6" },
+        "qwen/qwen3.8-2.4t-a95b": { "name": "Qwen 3.8 2.4T A95B" },
         "deepseek/deepseek-v4.1-flash": { "name": "DeepSeek V4.1 Flash" },
         "z-ai/glm-5.3": { "name": "GLM 5.3" },
         "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" }
