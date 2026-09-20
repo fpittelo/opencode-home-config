@@ -99,5 +99,22 @@
       "url": "https://mcp.openrouter.ai/mcp",
       "enabled": true
     }
+  },
+  "permission": {
+    // Last matching rule wins: broad rules first, narrow allow/deny rules last.
+    "bash": {
+      "*": "ask",
+      "git *": "allow",
+      "docker *": "allow",
+      "pytest*": "allow",
+      "ruff*": "allow",
+      "bash -n *": "allow",
+      "python*": "allow",
+      "npm*": "allow",
+      "node*": "allow",
+      "rm -rf /*": "deny",
+      "mkfs.*": "deny",
+      "dd if=* of=/dev/*": "deny"
+    }
   }
 }
