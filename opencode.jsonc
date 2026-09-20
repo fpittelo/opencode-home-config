@@ -34,6 +34,11 @@
       },
       "enabled": true
     },
+    // AC2 (#83): this second github-mcp-server instance is necessary, not redundant —
+    // it authenticates as the separate @devfpittelo identity via
+    // {env:GITHUB_TOKEN_CODE_REVIEWER} so @code-reviewer can approve PRs under
+    // separation-of-duties (SoD). The primary GITHUB server acts as @fpittelo, and
+    // one server instance can only carry one token/identity.
     "GITHUB_CODE_REVIEWER": {
       "type": "local",
       "command": [
@@ -46,6 +51,9 @@
       },
       "enabled": true
     },
+    // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
+    // duplicate tool schemas are not injected into every LLM turn. To switch
+    // environments, set "enabled": true on the target and false on the others.
     "COACH DEV": {
       "type": "local",
       "command": [
@@ -76,7 +84,7 @@
         "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
         "MCP_TRANSPORT": "stdio"
       },
-      "enabled": true
+      "enabled": false
     },
     "COACH MAIN": {
       "type": "local",
@@ -92,7 +100,7 @@
         "INTERVALS_ATHLETE_ID": "{env:INTERVALS_ATHLETE_ID}",
         "MCP_TRANSPORT": "stdio"
       },
-      "enabled": true
+      "enabled": false
     },
     "openrouter": {
       "type": "remote",
