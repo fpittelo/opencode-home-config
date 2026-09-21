@@ -16,7 +16,8 @@ ln -sfn "$SCRIPT_DIR/skills" "$DEST/skills"
 #    Supply-chain posture: version pinned + SHA256 verified against the release's
 #    published checksums file — fail hard on any mismatch. No curl|bash: the
 #    artifact is downloaded, verified, then extracted. Idempotent: skipped when
-#    the pinned version is already installed.
+#    the pinned version is already installed (trusted on --version alone —
+#    deliberate: anyone able to write ~/.local/bin already has code execution).
 GITHUB_MCP_VERSION="1.12.2" # same build as the previously pinned image digest sha256:508a0857… (commit 85598ba6, 2026-09-16)
 GITHUB_MCP_TARBALL_SHA256="95843162759da2c31dde082dd145be35db82164594796c294414b69790c2290e" # github-mcp-server_Linux_x86_64.tar.gz, per github-mcp-server_1.12.2_checksums.txt
 BIN_DIR="$HOME/.local/bin"
@@ -27,12 +28,14 @@ if [ -x "$BIN_PATH" ] && "$BIN_PATH" --version 2>/dev/null | grep -qF "Version: 
     echo "✅  github-mcp-server $GITHUB_MCP_VERSION already installed at $BIN_PATH (skipping)."
 else
     echo "⏳  Installing github-mcp-server $GITHUB_MCP_VERSION (native binary, checksum-verified)..."
+    # Platform guard: the pinned artifact is Linux x86_64 only (VIDAR target).
+    [ "$(uname -s)/$(uname -m)" = "Linux/x86_64" ] || { echo "❌  Unsupported platform $(uname -s)/$(uname -m) — pinned artifact github-mcp-server_Linux_x86_64.tar.gz requires Linux x86_64." >&2; exit 1; }
     TMP_DIR="$(mktemp -d)"
     trap 'rm -rf "$TMP_DIR"' EXIT
     ARTIFACT="github-mcp-server_Linux_x86_64.tar.gz"
     RELEASE_URL="https://github.com/github/github-mcp-server/releases/download/v$GITHUB_MCP_VERSION"
-    curl -fsSL -o "$TMP_DIR/$ARTIFACT" "$RELEASE_URL/$ARTIFACT"
-    curl -fsSL -o "$TMP_DIR/checksums.txt" "$RELEASE_URL/github-mcp-server_${GITHUB_MCP_VERSION}_checksums.txt"
+    curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$TMP_DIR/$ARTIFACT" "$RELEASE_URL/$ARTIFACT"
+    curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$TMP_DIR/checksums.txt" "$RELEASE_URL/github-mcp-server_${GITHUB_MCP_VERSION}_checksums.txt"
     # Verify against the published checksums file first (release integrity),
     # then against our pinned hash (pin-drift detection). Fail hard on mismatch.
     PUBLISHED_SHA256="$(awk -v f="$ARTIFACT" '$2 == f {print $1}' "$TMP_DIR/checksums.txt")"
