@@ -4,18 +4,34 @@ mode: subagent
 model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.1
 permission:
+  # 89 (AC2): explicit secret read-denies. code-reviewer previously declared no
+  # `read` block and inherited the default read permission, so it was NOT covered
+  # by the secret denies the 5 rule-bearing agents carry. edit/write are already
+  # blanket-denied below (strictly stronger than per-path edit rules).
+  read:
+    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/**/*.env": deny
+    "/home/frede/.config/**/*.pem": deny
+    "/home/frede/.config/**/*.key": deny
+    "/home/frede/.config/**/*token*": deny
   edit: deny
   write: deny
   bash:
+    # 89 follow-up: catch-all deny MUST come first (last matching rule wins);
+    # the trailing "*": deny previously overrode every allow above it.
+    "*": deny
     "git status *": allow
     "git diff *": allow
     "cat *": allow
     "grep *": allow
     "ls *": allow
-    "*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
-  openrouter_*: allow
+  # 108: Coach MCP is @coach-only; openrouter MCP is @architect/@coach-only (SoD)
+  COACH_DEV_*: deny
+  COACH_QA_*: deny
+  COACH_MAIN_*: deny
+  openrouter_*: deny
 ---
 
 You are the Code Reviewer and Quality Gatekeeper on the **HOME SCRUM Team** for the personal software projects of **Frederic Pitteloud (@fpittelo)**.

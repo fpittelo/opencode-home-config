@@ -4,8 +4,8 @@
 
 | Node | Hosts | Infrastructure |
 | :--- | :--- | :--- |
-| Local workstation (VIDAR, Linux) | OpenCode runtime, agent/skill profile (`~/.config/opencode/`), `.secrets.env` (systemd user environment) | Bare metal |
-| Docker runtime (local) | MCP server containers: `GITHUB`, `GITHUB_CODE_REVIEWER`, `COACH DEV/QA/MAIN` | Docker Engine; tokens injected via environment |
+| Local workstation (VIDAR, Linux) | OpenCode runtime, agent/skill profile (`~/.config/opencode/`), `.secrets.env` (systemd user environment), `github-mcp-server` native binary (`~/.local/bin/`, pinned v1.12.2, checksum-verified by `install.sh`) | Bare metal |
+| Docker runtime (local) | MCP server container: `COACH_DEV/QA/MAIN` (toggle pattern — one enabled at a time) | Docker Engine; tokens injected via environment |
 | GitHub Actions runners (ubuntu-latest) | CI pipeline jobs (JSONC validation, Gitleaks via Docker) | GitHub-hosted |
 | OpenRouter SaaS | LLM inference + `openrouter` remote MCP endpoint | Public HTTPS, OAuth |
 | Intervals.icu SaaS | Training analytics backend for Coach MCP | HTTPS API |

@@ -1,2 +1,9 @@
 # Default owner for everything in the repository
 *    @fpittelo @devfpittelo
+
+# Permission surface (#89, from #87 STRIDE finding (c)): changes to the agent
+# permission config, agent definitions, and CI workflows require the repository
+# owner's review. CODEOWNERS is last-match-wins, so these override the default.
+/opencode.jsonc      @fpittelo
+/agents/             @fpittelo
+/.github/workflows/  @fpittelo

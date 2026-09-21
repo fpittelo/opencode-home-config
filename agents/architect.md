@@ -5,9 +5,15 @@ model: "openrouter/z-ai/glm-5.3"
 temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
+# 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
+#          tree; closes non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
+#          A deny-by-default "*" catch-all was evaluated and REJECTED: opencode 1.18.31
+#          evaluates relative read paths against these patterns, so a catch-all deny
+#          breaks normal project reads (verified empirically in PR #121).
   read:
+    "/home/frede/.config/**": deny
     "/home/frede/projects/**": allow
-    "/home/frede/.config/**": allow
+    "/home/frede/.config/opencode/**": allow
     "/home/frede/.config/opencode/.secrets.env": deny
     "/home/frede/.config/**/*.env": deny
     "/home/frede/.config/**/*.pem": deny
@@ -24,6 +30,10 @@ permission:
   bash: allow
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  # 108: Coach MCP is @coach-only (SoD); @architect keeps openrouter_* (model selection/evals)
+  COACH_DEV_*: deny
+  COACH_QA_*: deny
+  COACH_MAIN_*: deny
   openrouter_*: allow
 ---
 
