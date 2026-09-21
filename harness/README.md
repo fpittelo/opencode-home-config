@@ -177,3 +177,29 @@ docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runne
 docker run --rm ghcr.io/fpittelo/harness-runner-python:dev python --version
 docker run --rm ghcr.io/fpittelo/harness-runner-rust:dev rustc --version
 ```
+
+---
+
+## 8. Native Fast Path & Config-Repo Gate (MADR-0003, #131)
+
+`run.sh` is **native-first**: when the host provides the required toolchain, the gates run directly on the host (no Docker cold start, no image pull, no volume warm-up). If **any** required tool is missing, the run falls back to the container path above, unchanged (same security flags, same two-phase deps/gate design, same coverage threshold). Every phase prints which path it took and why.
+
+| Stack | Native gate requires on `PATH` | Native deps requires |
+| :--- | :--- | :--- |
+| `python` | `ruff`, `black`, `isort`, `mypy`, `pytest` | `uv` (only when `pyproject.toml` exists) |
+| `rust` | `cargo` | `cargo` (only when `Cargo.toml` exists) |
+
+The gate command chains are identical in both paths (`pytest --cov-fail-under=80` included). The network-off guarantee of the gate phase is container-only; native runs execute on the host under the operator's own controls.
+
+`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, and the three native docs validators (links, MADR, mermaid syntax). Zero Docker, fail-fast, well under 5 s:
+
+```bash
+bash harness/run-config-gate.sh            # this repo (default root)
+bash harness/run-config-gate.sh /tmp/repo  # alternate root (negative-path tests)
+```
+
+The mermaid syntax-mode regression suite (stdlib `unittest`) guards `check_mermaid.py --syntax`:
+
+```bash
+python3 harness/docs-validation/test_check_mermaid_syntax.py
+```
