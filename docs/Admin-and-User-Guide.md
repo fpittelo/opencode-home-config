@@ -167,23 +167,23 @@ fix/<issue-#>-<slug>        # Bug fixes
 - `dev` → `qa` and `qa` → `main` promotions require **explicit approval from @fpittelo**.
 - Merging to `main` creates a versioned release tag (`vX.Y.Z`) and triggers board hygiene.
 
-### 2.6 MCP Containers
+### 2.6 MCP Servers
 
-OpenCode connects to external services via **MCP (Model Context Protocol) servers** running as Docker containers. The HOME profile defines 4 containers:
+OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 5 servers: the two GitHub servers run as a pinned native binary, the three Coach servers as Docker containers:
 
-| MCP Server | Docker Image | Environment Variables | Purpose |
+| MCP Server | Runtime | Environment Variables | Purpose |
 |:---|:---|:---|:---|
-| `GITHUB` | `ghcr.io/github/github-mcp-server:latest` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
+| `GITHUB` | Native binary `github-mcp-server` v1.12.2 at `~/.local/bin/` (installed + SHA256-verified by `install.sh`) | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
+| `GITHUB_CODE_REVIEWER` | Same binary, restricted to `--toolsets=context,repos,pull_requests` | `GITHUB_TOKEN_CODE_REVIEWER` | PR review as @devfpittelo (separation of duties) |
 | `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
 | `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
 | `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
 
-All 4 containers are pre-flighted and verified working (see Issue #24 — Derisk #2).
-
 **How they work:**
-- OpenCode starts each container with `docker run -i --rm` and communicates via stdin/stdout (stdio transport).
+- All servers communicate via stdin/stdout (stdio transport).
+- The GitHub servers spawn the native binary directly (`~/.local/bin/github-mcp-server stdio`, #109) — millisecond startup vs ~0.6 s per container spawn (#106 baseline). The binary version is pinned and its SHA256 checksum is verified against the release checksums file by `install.sh`.
+- The Coach servers are started with `docker run -i --rm`; containers are automatically removed (`--rm`) when the session ends.
 - Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
-- Containers are automatically removed (`--rm`) when the session ends.
 
 ### 2.7 CI/CD Pipeline
 
@@ -201,12 +201,12 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 | Symptom | Likely Cause | Fix |
 |:---|:---|:---|
 | `opencode` fails to start | `OPENROUTER_HOME_API_KEY` empty | `source ~/.config/opencode/.secrets.env` |
-| MCP tools not available | Docker not running | `systemctl --user start docker` or `sudo systemctl start docker` |
-| MCP container pull fails | Network or GHCR auth issue | `docker pull ghcr.io/github/github-mcp-server:latest` to test |
+| MCP tools not available | Docker not running (Coach servers) or binary missing (GitHub servers) | `systemctl --user start docker`; re-run `install.sh` to (re)install `~/.local/bin/github-mcp-server` |
+| MCP Coach image pull fails | Network or GHCR auth issue | `docker pull ghcr.io/fpittelo/coach:dev` to test |
 | Agents not loading | Broken symlink in `~/.config/opencode/agents` | Re-run `install.sh` |
 | Skills not activating | Broken symlink in `~/.config/opencode/skills` | Re-run `install.sh` |
 | Wrong model used | `opencode.jsonc` has wrong `model` field | Check `opencode.jsonc` line 3 |
-| `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (step 3 adds it) |
+| `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (it adds the source line) |
 | Secrets not in GUI apps | systemd user session doesn't have them | `systemctl --user import-environment OPENROUTER_HOME_API_KEY ...` |
 
 ---
