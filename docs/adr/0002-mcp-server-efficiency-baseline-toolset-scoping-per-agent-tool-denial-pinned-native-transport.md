@@ -1,6 +1,6 @@
 # MADR-0002: MCP server efficiency baseline: toolset scoping, per-agent tool denial, pinned native transport
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-09-21
 - **Deciders:** @architect, @fpittelo
 

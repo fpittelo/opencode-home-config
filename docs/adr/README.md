@@ -24,3 +24,4 @@ This scaffolds the next sequential `NNNN-<slug>.md` from the template (refuses t
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
 | [0001 — Validator tooling for the harness docs quality gate](0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Mermaid, link, and MADR validation tooling | accepted | 2026-09-20 |
+| [0002 — MCP server efficiency baseline](0002-mcp-server-efficiency-baseline-toolset-scoping-per-agent-tool-denial-pinned-native-transport.md) | Toolset scoping, per-agent tool denial, pinned native transport | accepted | 2026-09-21 |
