@@ -4,11 +4,19 @@ mode: subagent
 model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.1
 permission:
-  # 89 (AC2): explicit secret read-denies. code-reviewer previously declared no
-  # `read` block and inherited the default read permission, so it was NOT covered
-  # by the secret denies the 5 rule-bearing agents carry. edit/write are already
-  # blanket-denied below (strictly stronger than per-path edit rules).
+  # 89 (AC2): explicit secret read-denies (kept).
+  # 123 (Part 3, absorbed from #124 / PR #139 review): ALIGN with the PR #121
+  # sibling pattern. The previous secret-only block declared NO
+  # `/home/frede/.config/**` deny, so the global default `read: allow` still
+  # resolved credential stores OUTSIDE the opencode tree as ALLOW — verified via
+  # `opencode debug agent code-reviewer`: gcloud/application_default_credentials.json,
+  # gh/hosts.yml, etc. resolved to allow. The targeted denylist closes those while
+  # keeping the project-file reads reviews depend on (`/home/frede/projects/**`
+  # stays explicitly allowed). edit/write remain blanket-denied below.
   read:
+    "/home/frede/.config/**": deny
+    "/home/frede/projects/**": allow
+    "/home/frede/.config/opencode/**": allow
     "/home/frede/.config/opencode/.secrets.env": deny
     "/home/frede/.config/**/*.env": deny
     "/home/frede/.config/**/*.pem": deny

@@ -6,15 +6,16 @@
 
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
-| [MADR-0001](../../adr/0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Validator tooling for the harness docs quality gate (mermaid, links, MADR) | accepted | 2026-09-20 |
+| [MADR-0001](../../adr/0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Validator tooling for the harness docs quality gate (mermaid, links, MADR) — per-PR render usage superseded by MADR-0003 | accepted | 2026-09-20 |
 | [MADR-0002](../../adr/0002-mcp-server-efficiency-baseline-toolset-scoping-per-agent-tool-denial-pinned-native-transport.md) | MCP server efficiency baseline: toolset scoping, per-agent tool denial, pinned native transport | accepted | 2026-09-21 |
+| [MADR-0003](../../adr/0003-proportionate-quality-gates-ci-and-harness-simplification.md) | Proportionate quality gates — CI and harness simplification (KIS/YAGNI) | accepted | 2026-09-21 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
 | Decision | Where recorded | Candidate ADR |
 | :--- | :--- | :--- |
-| Board-as-SSOT: GitHub Issues + labels + milestones, no Projects v2, no file-based backlogs | Epic 3 #57 refinement note 1 | ADR-0002 candidate |
-| SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | ADR-0003 candidate |
-| OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | ADR-0004 candidate |
-| Remote OpenRouter MCP server for model-catalog access | #67 | ADR-0005 candidate |
+| Board-as-SSOT: GitHub Issues + labels + milestones, no Projects v2, no file-based backlogs | Epic 3 #57 refinement note 1 | future ADR candidate |
+| SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | future ADR candidate |
+| OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | future ADR candidate |
+| Remote OpenRouter MCP server for model-catalog access | #67 | future ADR candidate |
 | Mermaid-validation tooling choice for CI gates | STORY-04 #61 refinement note 5 | **Delivered — MADR-0001 (accepted)** |
