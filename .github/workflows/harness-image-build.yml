@@ -1,16 +1,19 @@
 name: Harness Runner Image Build
 
+# MADR-0003 D4 (#133): image builds are on-demand only. Runner images serve
+# other repositories and change rarely, so they are NOT rebuilt on every
+# harness/docker/** push anymore. Triggers:
+#   - workflow_dispatch: manual rebuild of the selected branch's images
+#     (published under the branch tag, e.g. :dev).
+#   - push of version tags matching harness-v* (e.g. harness-v1.0.0):
+#     publishes the images tagged with that exact git tag for traceability.
+# Build-only verification of these images lives in deep-validation.yml.
+
 on:
+  workflow_dispatch:
   push:
-    branches: [dev, qa, main]
-    paths:
-      - 'harness/docker/**'
-      - '.github/workflows/harness-image-build.yml'
-  pull_request:
-    branches: [dev, qa, main]
-    paths:
-      - 'harness/docker/**'
-      - '.github/workflows/harness-image-build.yml'
+    tags:
+      - 'harness-v*'
 
 env:
   REGISTRY: ghcr.io
@@ -47,6 +50,7 @@ jobs:
           images: ${{ env.PYTHON_IMAGE }}
           tags: |
             type=ref,event=branch
+            type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Python runner
@@ -84,6 +88,7 @@ jobs:
           images: ${{ env.RUST_IMAGE }}
           tags: |
             type=ref,event=branch
+            type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Rust runner
@@ -121,6 +126,7 @@ jobs:
           images: ${{ env.DOCS_VALIDATOR_IMAGE }}
           tags: |
             type=ref,event=branch
+            type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push docs validator
