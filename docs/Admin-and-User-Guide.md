@@ -13,7 +13,7 @@
    - [Secrets Management](#23-secrets-management)
    - [Directory Structure](#24-directory-structure)
    - [3-Branch Git Lifecycle](#25-3-branch-git-lifecycle)
-   - [MCP Containers](#26-mcp-containers)
+   - [MCP Servers](#26-mcp-servers)
    - [CI/CD Pipeline](#27-cicd-pipeline)
    - [Troubleshooting](#28-troubleshooting)
 3. [User Guide](#3-user-guide)
@@ -75,10 +75,12 @@ chmod +x install.sh && ./install.sh
 | 1 | Symlink the config file | `~/.config/opencode/opencode.jsonc` → repo's `opencode.jsonc` |
 | 1 | Symlink the agents directory | `~/.config/opencode/agents` → repo's `agents/` |
 | 1 | Symlink the skills directory | `~/.config/opencode/skills` → repo's `skills/` |
-| 2 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
-| 3 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
-| 3 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
-| 3 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
+| 2 | Install pinned `github-mcp-server` v1.12.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
+| 3 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
+| 4 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
+| 5 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
+| 5 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
+| 5 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
 
 The installer is **idempotent** — running it again will update the symlinks but will NOT overwrite an existing `.secrets.env`.
 
@@ -167,23 +169,23 @@ fix/<issue-#>-<slug>        # Bug fixes
 - `dev` → `qa` and `qa` → `main` promotions require **explicit approval from @fpittelo**.
 - Merging to `main` creates a versioned release tag (`vX.Y.Z`) and triggers board hygiene.
 
-### 2.6 MCP Containers
+### 2.6 MCP Servers
 
-OpenCode connects to external services via **MCP (Model Context Protocol) servers** running as Docker containers. The HOME profile defines 4 containers:
+OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 5 local servers (plus the remote `openrouter` endpoint): the two GitHub servers run as a pinned native binary, the three Coach servers as Docker containers:
 
-| MCP Server | Docker Image | Environment Variables | Purpose |
+| MCP Server | Runtime | Environment Variables | Purpose |
 |:---|:---|:---|:---|
-| `GITHUB` | `ghcr.io/github/github-mcp-server:latest` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
+| `GITHUB` | Native binary `github-mcp-server` v1.12.2 at `~/.local/bin/` (installed + SHA256-verified by `install.sh`) | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
+| `GITHUB_CODE_REVIEWER` | Same binary, restricted to `--toolsets=context,repos,pull_requests` | `GITHUB_TOKEN_CODE_REVIEWER` | PR review as @devfpittelo (separation of duties) |
 | `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
 | `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
 | `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
 
-All 4 containers are pre-flighted and verified working (see Issue #24 — Derisk #2).
-
 **How they work:**
-- OpenCode starts each container with `docker run -i --rm` and communicates via stdin/stdout (stdio transport).
+- All servers communicate via stdin/stdout (stdio transport).
+- The GitHub servers spawn the native binary directly (`~/.local/bin/github-mcp-server stdio`, #109) — millisecond startup vs ~0.6 s per container spawn (#106 baseline). The binary version is pinned and its SHA256 checksum is verified against the release checksums file by `install.sh`.
+- The Coach servers are started with `docker run -i --rm`; containers are automatically removed (`--rm`) when the session ends.
 - Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
-- Containers are automatically removed (`--rm`) when the session ends.
 
 ### 2.7 CI/CD Pipeline
 
@@ -201,12 +203,12 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 | Symptom | Likely Cause | Fix |
 |:---|:---|:---|
 | `opencode` fails to start | `OPENROUTER_HOME_API_KEY` empty | `source ~/.config/opencode/.secrets.env` |
-| MCP tools not available | Docker not running | `systemctl --user start docker` or `sudo systemctl start docker` |
-| MCP container pull fails | Network or GHCR auth issue | `docker pull ghcr.io/github/github-mcp-server:latest` to test |
+| MCP tools not available | Docker not running (Coach servers) or binary missing (GitHub servers) | `systemctl --user start docker`; re-run `install.sh` to (re)install `~/.local/bin/github-mcp-server` |
+| MCP Coach image pull fails | Network or GHCR auth issue | `docker pull ghcr.io/fpittelo/coach:dev` to test |
 | Agents not loading | Broken symlink in `~/.config/opencode/agents` | Re-run `install.sh` |
 | Skills not activating | Broken symlink in `~/.config/opencode/skills` | Re-run `install.sh` |
 | Wrong model used | `opencode.jsonc` has wrong `model` field | Check `opencode.jsonc` line 3 |
-| `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (step 3 adds it) |
+| `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (it adds the source line) |
 | Secrets not in GUI apps | systemd user session doesn't have them | `systemctl --user import-environment OPENROUTER_HOME_API_KEY ...` |
 
 ---
@@ -269,14 +271,16 @@ Skills are knowledge modules that activate automatically when the conversation m
 
 ### 3.4 MCP Tools
 
-MCP tools connect OpenCode to external services. The HOME profile has 4 MCP containers:
+MCP tools connect OpenCode to external services. The HOME profile defines 6 MCP servers: the two GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), and `openrouter` as a remote endpoint:
 
-| MCP Tool | What it provides |
-|:---|:---|
-| **GITHUB** | Create/read GitHub issues, PRs, releases, branches, commits. The agent you're talking to right now uses this. |
-| **COACH_DEV** | Training plan management (dev branch of coach service — experimental) |
-| **COACH_QA** | Training plan management (qa staging — pre-production) |
-| **COACH_MAIN** | Training plan management (production coach service) |
+| MCP Tool | Runtime | What it provides |
+|:---|:---|:---|
+| **GITHUB** | Native binary `github-mcp-server` v1.12.2 | Create/read GitHub issues, PRs, releases, branches, commits as @fpittelo. The agent you're talking to right now uses this. |
+| **GITHUB_CODE_REVIEWER** | Same native binary, restricted toolsets | Formal PR reviews as @devfpittelo (@code-reviewer only — separation of duties) |
+| **COACH_DEV** | Docker container `ghcr.io/fpittelo/coach:dev` | Training plan management (dev branch of coach service — experimental) |
+| **COACH_QA** | Docker container `ghcr.io/fpittelo/coach:qa` | Training plan management (qa staging — disabled; enabled by toggling, see §2.6) |
+| **COACH_MAIN** | Docker container `ghcr.io/fpittelo/coach:latest` | Training plan management (production coach service — disabled; enabled by toggling, see §2.6) |
+| **openrouter** | Remote endpoint (`mcp.openrouter.ai`) | Model catalog & docs lookup via OpenRouter |
 
 The coach containers connect to Intervals.icu for workout analytics, training plans, and athlete data.
 
@@ -414,7 +418,7 @@ cd ~/projects/opencode-home-config && ./install.sh
 **After switching to HOME:**
 - **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
 - **10 skills** available (coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, home-governance, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
-- **4 MCP containers** active (GITHUB, COACH_DEV, COACH_QA, COACH_MAIN)
+- **6 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER as native binaries, COACH_DEV as the active Coach container, openrouter remote; COACH_QA/COACH_MAIN disabled)
 - **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
 - **Use for:** personal projects under `~/projects/HOME/`
 

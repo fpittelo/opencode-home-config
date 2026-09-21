@@ -22,9 +22,9 @@ C4Container
         Container(arc42docs, "arc42 Docs", "Markdown", "Architecture documentation (this tree)")
     }
 
-    Container_Boundary(mcp_servers, "MCP Servers (Docker / remote)") {
-        Container(mcp_github, "GITHUB MCP", "Docker container", "Board & repo operations as @fpittelo")
-        Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Docker container", "Formal PR reviews as @devfpittelo (SoD)")
+    Container_Boundary(mcp_servers, "MCP Servers (native binary / Docker / remote)") {
+        Container(mcp_github, "GITHUB MCP", "Native binary process", "Board & repo operations as @fpittelo")
+        Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Native binary process", "Formal PR reviews as @devfpittelo (SoD)")
         Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
     }
@@ -52,7 +52,7 @@ C4Container
 | `skills/*/SKILL.md` (11) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode` | Bash, systemd env import |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, Gitleaks full-history scan | GitHub Actions |
-| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (Docker) / streamable-HTTP (remote) |
+| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker) / streamable-HTTP (remote) |
 
 **Permission model invariants (enforced since #68, extended by #108):**
 - `@code-reviewer`: `GITHUB_*: deny` then `GITHUB_CODE_REVIEWER_*: allow` — acts ONLY as `@devfpittelo`.
