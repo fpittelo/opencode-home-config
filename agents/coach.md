@@ -9,7 +9,23 @@ permission:
   bash: deny
   github_*: deny
   GITHUB_CODE_REVIEWER_*: deny
-  read: allow
+# 87: unattended access; last matching rule wins, so deny rules below override allows
+# 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
+#          tree; closes non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
+#          A deny-by-default "*" catch-all was evaluated and REJECTED: opencode 1.18.31
+#          evaluates relative read paths against these patterns, so a catch-all deny
+#          breaks normal project reads (verified empirically in PR #121).
+# 122: replicate the PR #121 targeted read allowlist + secret denies on @coach;
+#      closes the blanket `read: allow` that exposed ~/.config/opencode/.secrets.env.
+  read:
+    "/home/frede/.config/**": deny
+    "/home/frede/projects/**": allow
+    "/home/frede/.config/opencode/**": allow
+    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/**/*.env": deny
+    "/home/frede/.config/**/*.pem": deny
+    "/home/frede/.config/**/*.key": deny
+    "/home/frede/.config/**/*token*": deny
   # 108: keys renamed with the servers (COACH DEV -> COACH_DEV); wildcard patterns
   # match the namespaced tool names (e.g. COACH_DEV_intervals_*). Full Coach access.
   COACH_MAIN_*: allow
