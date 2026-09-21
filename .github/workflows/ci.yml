@@ -1,17 +1,59 @@
 name: CI Pipeline
 
+# MADR-0003 D1 (#134): single native per-PR quality gate - zero Docker,
+# target wall-clock < 90 s. Runs on every PR and every push to dev/qa/main.
+# Coverage (unchanged from the former 4-job pipeline): JSONC validation,
+# install.sh syntax, agent/skill presence, native docs validators (links,
+# MADR schema, mermaid syntax), diff-scoped secret scan, and the
+# label-conditional architecture gate.
+# Deep checks (full-history secret scan, Chromium render validation, image
+# builds) moved to the scheduled deep-validation workflow (MADR-0003 D2-D4,
+# #133) where their latency is irrelevant.
+
 on:
   push:
     branches: [dev, qa, main]
   pull_request:
     branches: [dev, qa, main]
 
+permissions:
+  contents: read
+  # gitleaks-action posts review comments on the PR when it detects a leak
+  # (verified in gitleaks-action v3.0.0 src/gitleaks.js); nothing else needs
+  # write access.
+  pull-requests: write
+
 jobs:
-  validate-config:
-    name: JSONC Validation & Linting
+  quality-gate:
+    name: Quality Gate (native, zero Docker)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Bounded shallow fetch - deliberately NOT fetch-depth: 0 (MADR-0003
+          # D1: no full-history checkout/scan in the per-PR path). The depth
+          # must cover three consumers of this single checkout:
+          #   1. gitleaks-action: on pull_request events it scans ONLY the
+          #      PR's commits, running
+          #        gitleaks detect --log-opts="--no-merges --first-parent
+          #        <first-PR-commit>^..<last-PR-commit>"
+          #      (verified in gitleaks-action v3.0.0 src/gitleaks.js); on push
+          #      events it scans only the pushed commits
+          #      (<first-pushed>^..<last-pushed>). Those commit objects must
+          #      exist locally for the git log range to resolve - depth 60
+          #      covers PR/push chains up to ~58 commits (this repo's PRs
+          #      carry 1-3 commits; a chain beyond the bound fails loudly,
+          #      never silently).
+          #   2. architecture gate: diffs
+          #      github.event.pull_request.base.sha..GITHUB_SHA; the base tip
+          #      is the merge ref's first parent (1 hop).
+          #   3. the validation steps: check out the PR merge ref (standard
+          #      pull_request semantics).
+          # Full-history scanning never happens on PR/push events with this
+          # action regardless of checkout depth; the scan range is always
+          # bound to the event's commits.
+          fetch-depth: 60
+
       - name: Validate opencode.jsonc (JSONC with comment stripping)
         run: |
           python3 -c "
@@ -65,50 +107,39 @@ jobs:
             test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
           done
 
-  secret-scan:
-    name: Gitleaks Secret Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      - name: Run Gitleaks via Docker
-        run: docker run --rm -v "$PWD":/src zricethezav/gitleaks:latest detect --source /src --verbose
-
-  docs-quality-gate:
-    name: Docs Quality Gate (mermaid, links, MADR)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Pull published docs-validator image (build fallback)
+      - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
-          docker pull ghcr.io/fpittelo/harness-docs-validator:dev || \
-            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
-      - name: Run docs validation in hardened container
-        run: |
-          docker run --rm \
-            --read-only \
-            --user 1000:1000 \
-            --cap-drop=ALL \
-            --security-opt no-new-privileges \
-            --network=none \
-            --memory=4g --memory-swap=4g \
-            --cpus=2.0 \
-            --tmpfs /tmp:noexec,nosuid,size=1g \
-            -v "$PWD:/workspace:ro" \
-            -w /workspace \
-            ghcr.io/fpittelo/harness-docs-validator:dev \
-            bash harness/docs-validation/run_docs_validation.sh /workspace
+          python3 harness/docs-validation/check_links.py .
+          python3 harness/docs-validation/check_madr.py .
+          # --syntax: native structural mermaid validation (MADR-0003 D1);
+          # render-level validation stays in the deep-validation workflow
+          # (MADR-0003 D2, #133).
+          python3 harness/docs-validation/check_mermaid.py --syntax .
 
-  architecture-gate:
-    name: Architecture Gate (requires-architecture)
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      - name: Scan for secrets (gitleaks, diff-scoped)
+        # Pinned to the v3.0.0 commit SHA (no @master/@main; v2 is Node 20 and
+        # dead on hosted runners since 2026-09-16). Scan scope by event type
+        # (verified in v3.0.0 src/gitleaks.js):
+        #   - pull_request: ONLY the PR's commits
+        #     (--log-opts="--no-merges --first-parent <first-PR-commit>^..<last-PR-commit>")
+        #   - push: ONLY the pushed commits
+        #     (<first-pushed>^..<last-pushed>)
+        # Full-history scans are out of scope here by design; they belong to
+        # the deep-validation workflow (MADR-0003 D2, #133). GITHUB_TOKEN is
+        # required for PR scans and is used to post review comments on
+        # detected leaks. No GITLEAKS_LICENSE needed (personal account).
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pin the scanned binary to the version this action release defaults
+          # to, making the toolchain explicit and auditable.
+          GITLEAKS_VERSION: "8.24.3"
+          # Lean gate: no SARIF artifact upload on every run (leaks still fail
+          # the job, post a PR review comment and appear in the job summary).
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
       - name: Enforce architecture coverage for requires-architecture PRs
+        if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           EVENT_FILE: ${{ github.event_path }}

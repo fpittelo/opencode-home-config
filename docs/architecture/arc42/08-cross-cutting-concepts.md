@@ -4,16 +4,21 @@
 
 ## 8.1 Security & Privacy (Swiss nLPD)
 
-- **Zero secrets in repo:** all credentials referenced as `{env:VAR}` in `opencode.jsonc`; actual values live in `~/.config/opencode/.secrets.env`, imported into the systemd user environment. Gitleaks scans **full git history** in CI (since #68).
+- **Zero secrets in repo:** all credentials referenced as `{env:VAR}` in `opencode.jsonc`; actual values live in `~/.config/opencode/.secrets.env`, imported into the systemd user environment. Gitleaks scans the **PR diff on every pull request** (pinned action) and the **full git history weekly and at every qa → main promotion** (MADR-0003; the per-PR full-history scan introduced by #68 is retired).
 - **Segregation of duties:** PR reviews are performed by machine account `@devfpittelo` through the dedicated `GITHUB_CODE_REVIEWER` MCP server; cross-impersonation is denied in both directions via permission patterns (#68).
 - **Least privilege:** per-agent permission rules scope MCP tool access (e.g. Coach tools for `@coach` only; reviewer tools denied to all other agents).
 - **Boundary separation:** HOME profile and EPFL work profile are strictly isolated (deep-merge shield on the work side); zero personal/professional cross-contamination.
 
-## 8.2 Quality Gates & CI
+## 8.2 Quality Gates & CI (Proportionate — MADR-0003)
 
-- Every merge into `dev`/`qa`/`main` requires a 100% green pipeline: **0 warnings, 0 failures**.
-- CI jobs: JSONC validation of `opencode.jsonc`; `bash -n install.sh`; agent-file presence; **skill-presence inventory** (hardcoded list — new skills must be registered here or CI fails); Gitleaks full-history secret scan.
-- Local pre-flight mirrors CI before every push.
+*Status: target state per MADR-0003 (accepted 2026-09-21) — lands progressively with #134 (slim per-PR CI), #133 (deep-validation workflow) and #131 (harness fast path); the legacy 4-job pipeline runs until then.*
+
+- **Proportionate Quality Gates principle:** the cost of a control must be proportional to the risk it mitigates. Every-PR gates run natively in < 90 s; deep checks run weekly and pre-release. Adding a gate requires stating what it catches that existing gates don't (YAGNI); each governance review must identify at least one candidate for removal (KIS).
+- **Per-PR gate (single native job, zero Docker):** JSONC validation of `opencode.jsonc`; `bash -n install.sh`; agent-file presence; skill-presence inventory; **diff-scoped pinned gitleaks**; native link and MADR validators; native Mermaid **syntax** check; label-conditional architecture gate.
+- **Deep validation (weekly cron + every qa → main promotion):** full-history gitleaks; Chromium render-level Mermaid validation (docs-validator image); image-build verification.
+- **Harness runner images:** built on `workflow_dispatch` / `harness-v*` tags only — not on every `harness/docker/**` change.
+- **Local pre-flight:** native fast path first (host toolchain); the container path remains the reproducibility fallback with the original security flags and two-phase deps/gate design.
+- Every merge into `dev`/`qa`/`main` still requires a 100% green pipeline: **0 warnings, 0 failures** — unchanged.
 
 ## 8.3 Configuration & Secrets
 
@@ -31,3 +36,28 @@
 - Agents: `agents/<role>.md`; skills: `skills/<name>/SKILL.md`; arc42: `docs/architecture/arc42/NN-<slug>.md`; ADRs: `docs/adr/` (wired by #60).
 - Branches: `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>` off `dev`.
 - Labels: `type::*`, `status::*`, `agent::*`, `blocker::*`, `severity::*` (see `github-scrum-board` skill).
+
+## 8.6 Parallel Agent Sessions — Git Worktree Pattern
+
+*Status: adopted 2026-09-21 (#119), from the #107 incident: concurrent agent sessions sharing one working directory cause branch-checkout collisions.*
+
+When multiple agent sessions are dispatched in parallel, each session MUST own an isolated working tree via `git worktree` — never share a checkout:
+
+```bash
+# 1. Create (from a synced dev): one worktree per session, named for its issue
+git fetch origin && git worktree add -b feature/<issue-#>-<slug> \
+  ../wt-<issue-#>-<slug> origin/dev
+
+# 2. Work: cd ../wt-<issue-#>-<slug> — branch, commit, push, PR as normal
+#    (the worktree is a full working tree; harness/validators run inside it)
+
+# 3. Clean up (after squash-merge + remote branch deletion; -D because squash
+#    merges do not preserve branch ancestry, so -d would refuse):
+git worktree remove ../wt-<issue-#>-<slug> && git branch -D feature/<issue-#>-<slug>
+```
+
+Rules:
+- **One worktree per concurrently active issue**; the shared clone stays parked on `dev` for read-only inspection.
+- Worktrees live outside the repo (`../wt-…`) so they never pollute the main checkout or `gitleaks`/docs scans.
+- Cleanup is part of the DoD closeout: no `wt-*` directories may outlive their merged issue.
+- Single-agent sequential work (the default loop, WIP limit 1) does not need a worktree — plain feature branches in the main checkout remain the norm.
