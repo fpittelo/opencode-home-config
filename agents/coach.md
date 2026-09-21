@@ -11,7 +11,10 @@ permission:
   GITHUB_CODE_REVIEWER_*: deny
 # 87: unattended access; last matching rule wins, so deny rules below override allows
 # 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
-#          tree; closes non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
+#          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,
+#          gcloud application_default_credentials.json, ...). Stores like
+#          ~/.aws/credentials and ~/.docker/config.json live OUTSIDE ~/.config and
+#          were never covered by the previous allow either.
 #          A deny-by-default "*" catch-all was evaluated and REJECTED: opencode 1.18.31
 #          evaluates relative read paths against these patterns, so a catch-all deny
 #          breaks normal project reads (verified empirically in PR #121).
