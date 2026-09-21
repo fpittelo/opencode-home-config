@@ -5,9 +5,11 @@ model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
+# 89 (AC1): read narrowed to ~/.config/opencode/** (least privilege). Closes the whole
+#          class of non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
   read:
     "/home/frede/projects/**": allow
-    "/home/frede/.config/**": allow
+    "/home/frede/.config/opencode/**": allow
     "/home/frede/.config/opencode/.secrets.env": deny
     "/home/frede/.config/**/*.env": deny
     "/home/frede/.config/**/*.pem": deny

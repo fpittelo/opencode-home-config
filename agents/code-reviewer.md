@@ -4,6 +4,16 @@ mode: subagent
 model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.1
 permission:
+  # 89 (AC2): explicit secret read-denies. code-reviewer previously declared no
+  # `read` block and inherited the default read permission, so it was NOT covered
+  # by the secret denies the 5 rule-bearing agents carry. edit/write are already
+  # blanket-denied below (strictly stronger than per-path edit rules).
+  read:
+    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/**/*.env": deny
+    "/home/frede/.config/**/*.pem": deny
+    "/home/frede/.config/**/*.key": deny
+    "/home/frede/.config/**/*token*": deny
   edit: deny
   write: deny
   bash:
