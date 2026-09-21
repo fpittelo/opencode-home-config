@@ -265,6 +265,8 @@ Skills are knowledge modules that activate automatically when the conversation m
 
 **How skills activate:** Skills load automatically when the conversation topic matches their description. You don't need to do anything — just ask a question and the relevant skill provides context to the agent.
 
+**External skills channel (`~/.agents/skills/`):** Some skills are installed outside this repo via the Vercel `skills` CLI into `~/.agents/skills/` — that channel is **not** covered by this repository's CI-validated surface. Wrapper skills may declare cross-skill dependencies as prose (e.g. "Call the Skill tool with X") that `skills add` does **not** auto-install. After any external skill install, verify with `npx skills list` and a smoke invocation in a fresh session. Precedents: #101 (`grill-me` was non-functional until its `grilling` dependency was installed manually) and #77 (external-skills governance).
+
 ### 3.4 MCP Tools
 
 MCP tools connect OpenCode to external services. The HOME profile has 4 MCP containers:
