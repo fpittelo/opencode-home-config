@@ -10,3 +10,5 @@
 | No invariant test suite (parity gap with work config) | Medium — drift (e.g. unregistered model reference) passes CI silently | STORY planned: minimal pytest suite (model registry validity, secret-interpolation-only, exec bit) | #56 (F4) |
 | Permission semantics ("last match wins") verified by spec, not runtime tests | Low–Medium | Live-session witnesses (AC3 of #68 passed); runtime test candidate for harness work | #61 |
 | Branch protection on `qa`/`main` still procedural, not technical | Medium — promotion gate not machine-enforced | WP3/WP4 in progress | #46, #49, #50 |
+| Deep validation (full-history secrets, Chromium Mermaid render) moved from per-PR to weekly + pre-release cadence (MADR-0003) | Low–Medium — a render-only Mermaid defect or a pre-existing secret can sit on `dev` up to the next deep run | Diff-scoped pinned gitleaks still runs on every PR; deep gate runs at every qa → main promotion plus weekly cron | MADR-0003, #133, #134 |
+| Stale references in `opencode-config-migration-plan-v3.1.md` (pre-rename literals, Docker-transport claims) | Low — reader confusion | Accepted as technical debt by @fpittelo (2026-09-21, #116 closed) | #116 |
