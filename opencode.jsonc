@@ -22,12 +22,16 @@
     }
   },
   "mcp": {
+    // #107: image pinned by digest — GHCR publishes no version tags for this image
+    // (only latest/main/nightly), so :latest is mutable. Digest below = v1.12.2
+    // (2026-09-16, commit 85598ba6). Default toolsets kept intentionally (no
+    // --toolsets flag): upstream defaults already match the SCRUM set (#106 baseline).
     "GITHUB": {
       "type": "local",
       "command": [
         "docker", "run", "-i", "--rm",
         "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server:latest"
+        "ghcr.io/github/github-mcp-server@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6"
       ],
       "environment": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
@@ -39,12 +43,16 @@
     // {env:GITHUB_TOKEN_CODE_REVIEWER} so @code-reviewer can approve PRs under
     // separation-of-duties (SoD). The primary GITHUB server acts as @fpittelo, and
     // one server instance can only carry one token/identity.
+    // #107: same digest pin as GITHUB (v1.12.2); toolsets restricted to
+    // context,repos,pull_requests — 32 tools / ~80 KB vs 45 / ~124 KB default
+    // (−35% schema, #106 baseline). Review work needs no issues/labels toolsets.
     "GITHUB_CODE_REVIEWER": {
       "type": "local",
       "command": [
         "docker", "run", "-i", "--rm",
         "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server:latest"
+        "ghcr.io/github/github-mcp-server@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6",
+        "stdio", "--toolsets=context,repos,pull_requests"
       ],
       "environment": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN_CODE_REVIEWER}"
@@ -54,6 +62,9 @@
     // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
     // duplicate tool schemas are not injected into every LLM turn. To switch
     // environments, set "enabled": true on the target and false on the others.
+    // #107 image policy: coach tags (dev/qa/latest) are environment promotion tags
+    // published by coach repo CI (dev→qa→main); they are the accepted pin level for
+    // our own images — do not swap them for floating refs. Server renames: #108.
     "COACH DEV": {
       "type": "local",
       "command": [
