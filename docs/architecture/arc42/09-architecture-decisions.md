@@ -7,6 +7,7 @@
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
 | [MADR-0001](../../adr/0001-validator-tooling-for-the-harness-docs-quality-gate-mermaid-links-madr.md) | Validator tooling for the harness docs quality gate (mermaid, links, MADR) | accepted | 2026-09-20 |
+| [MADR-0002](../../adr/0002-mcp-server-efficiency-baseline-toolset-scoping-per-agent-tool-denial-pinned-native-transport.md) | MCP server efficiency baseline: toolset scoping, per-agent tool denial, pinned native transport | accepted | 2026-09-21 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 

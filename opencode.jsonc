@@ -22,12 +22,19 @@
     }
   },
   "mcp": {
+    // #109: native binary transport (MADR-0002 decision point 3) — replaces the
+    // former `docker run` of ghcr.io/github/github-mcp-server@sha256:508a0857…
+    // (v1.12.2, commit 85598ba6 — same build as the installed binary). The binary
+    // is installed by install.sh at ~/.local/bin/github-mcp-server, version-pinned
+    // + SHA256-verified against the release checksums file. Native startup is
+    // milliseconds vs ~0.6 s per container spawn (2x per session, #106 baseline).
+    // Default toolsets kept intentionally (no --toolsets flag): upstream defaults
+    // already match the SCRUM set (#106 baseline).
     "GITHUB": {
       "type": "local",
       "command": [
-        "docker", "run", "-i", "--rm",
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server:latest"
+        "{env:HOME}/.local/bin/github-mcp-server",
+        "stdio"
       ],
       "environment": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
@@ -39,12 +46,16 @@
     // {env:GITHUB_TOKEN_CODE_REVIEWER} so @code-reviewer can approve PRs under
     // separation-of-duties (SoD). The primary GITHUB server acts as @fpittelo, and
     // one server instance can only carry one token/identity.
+    // #109: native binary transport (same pinned build as GITHUB, installed by
+    // install.sh). #107 toolset restriction preserved on the binary transport:
+    // --toolsets=context,repos,pull_requests — 32 tools / ~80 KB vs 45 / ~124 KB
+    // default (−35% schema, #106 baseline). Review work needs no issues/labels
+    // toolsets.
     "GITHUB_CODE_REVIEWER": {
       "type": "local",
       "command": [
-        "docker", "run", "-i", "--rm",
-        "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server:latest"
+        "{env:HOME}/.local/bin/github-mcp-server",
+        "stdio", "--toolsets=context,repos,pull_requests"
       ],
       "environment": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN_CODE_REVIEWER}"
@@ -54,7 +65,14 @@
     // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
     // duplicate tool schemas are not injected into every LLM turn. To switch
     // environments, set "enabled": true on the target and false on the others.
-    "COACH DEV": {
+    // #107 image policy: coach tags (dev/qa/latest) are environment promotion tags
+    // published by coach repo CI (dev→qa→main); they are the accepted pin level for
+    // our own images — do not swap them for floating refs.
+    // #108: servers renamed to space-free COACH_DEV/COACH_QA/COACH_MAIN so MCP tool
+    // permission patterns are unambiguous (tools are namespaced <SERVER>_<tool>).
+    // SoD (#83 pattern extended): every agent except @coach denies COACH_*_* tools;
+    // every agent except @architect/@coach denies openrouter_* tools.
+    "COACH_DEV": {
       "type": "local",
       "command": [
         "docker", "run", "-i", "--rm",
@@ -70,7 +88,7 @@
       },
       "enabled": true
     },
-    "COACH QA": {
+    "COACH_QA": {
       "type": "local",
       "command": [
         "docker", "run", "-i", "--rm",
@@ -86,7 +104,7 @@
       },
       "enabled": false
     },
-    "COACH MAIN": {
+    "COACH_MAIN": {
       "type": "local",
       "command": [
         "docker", "run", "-i", "--rm",

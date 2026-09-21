@@ -10,9 +10,11 @@ permission:
   github_*: deny
   GITHUB_CODE_REVIEWER_*: deny
   read: allow
-  "COACH MAIN": allow
-  "COACH QA": allow
-  "COACH DEV": allow
+  # 108: keys renamed with the servers (COACH DEV -> COACH_DEV); wildcard patterns
+  # match the namespaced tool names (e.g. COACH_DEV_intervals_*). Full Coach access.
+  COACH_MAIN_*: allow
+  COACH_QA_*: allow
+  COACH_DEV_*: allow
   openrouter_*: allow
 ---
 
@@ -79,7 +81,7 @@ Whenever giving training advice, analyzing power, designing workouts, or schedul
 
 ## 🛠️ Intervals.icu MCP Tool Capabilities
 
-You have access to the Coach MCP server (`COACH MAIN`). Use these tools proactively:
+You have access to the Coach MCP server (`COACH_MAIN`). Use these tools proactively:
 
 | Domain | FastMCP Tool | Purpose |
 | :--- | :--- | :--- |
