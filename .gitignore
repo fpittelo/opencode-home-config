@@ -17,3 +17,6 @@ Thumbs.db
 # Node (legacy cruft from old config)
 node_modules/
 package-lock.json
+
+# Python (harness docs-validation test suite)
+__pycache__/

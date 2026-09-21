@@ -1,0 +1,125 @@
+name: Deep Validation
+
+# MADR-0003 D2/D3 (#133): deep checks on a deep cadence. Docker IS allowed
+# here - latency is irrelevant on this cadence. This workflow never gates
+# PRs and must NOT be added to branch-protection required checks.
+#
+# Triggers:
+#   - weekly cron (Mondays 05:00 UTC): bounds worst-case detection latency
+#     on dev for defects the fast per-PR path cannot see (render-level
+#     Mermaid failures, pre-existing secrets).
+#   - push to main (= every qa -> main promotion): nothing reaches
+#     production without full-history secret scanning, render-level
+#     Mermaid validation and image-build verification.
+#   - workflow_dispatch: manual on-demand deep checks.
+
+on:
+  schedule:
+    - cron: "0 5 * * 1" # Mondays 05:00 UTC
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  # Least privilege: every job only reads the repository. No GHCR push
+  # (image builds here are build-only verification; publishing stays in
+  # harness-image-build.yml), no PR review comments (this workflow never
+  # runs on pull_request events).
+  contents: read
+
+jobs:
+  secret-scan-full-history:
+    name: Secret Scan (gitleaks, full history)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (full history)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Scan full git history (gitleaks v8.24.3, pinned image)
+        # Why not gitleaks-action? Verified in gitleaks-action v3.0.0
+        # (src/index.js + src/gitleaks.js @ e0c47f4f): the action appends a
+        # --log-opts commit range for push and pull_request events and only
+        # omits it (full-history scan) for schedule/workflow_dispatch. On
+        # the qa -> main promotion trigger (push to main) it would therefore
+        # scan ONLY the promotion commits - not full history. To get
+        # identical full-history semantics on ALL three triggers, the
+        # version-pinned gitleaks binary is invoked directly (pinned Docker
+        # image tag - fixes the unpinned :latest usage MADR-0003 called
+        # out). With no --log-opts, gitleaks detect scans every commit
+        # reachable from HEAD. --redact keeps secret values out of the job
+        # log while file/line/rule stay visible for triage.
+        run: |
+          docker run --rm \
+            --network=none \
+            -v "$PWD:/src:ro" \
+            -w /src \
+            zricethezav/gitleaks:v8.24.3 \
+            detect --source /src --verbose --redact
+
+  docs-render-validation:
+    name: Docs Render Validation (mermaid render, links, MADR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Pull published docs-validator image (build fallback)
+        run: |
+          docker pull ghcr.io/fpittelo/harness-docs-validator:dev || \
+            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
+
+      - name: Run docs validation in hardened container
+        # Identical invocation to the former per-PR docs-quality-gate job
+        # (removed by MADR-0003 D1/#134): read-only rootfs, non-root UID
+        # 1000, no capabilities, no network, resource caps. Runs
+        # run_docs_validation.sh, which exercises the RENDER mode of
+        # check_mermaid.py (default mode, unchanged by #134) plus the link
+        # and MADR validators.
+        run: |
+          docker run --rm \
+            --read-only \
+            --user 1000:1000 \
+            --cap-drop=ALL \
+            --security-opt no-new-privileges \
+            --network=none \
+            --memory=4g --memory-swap=4g \
+            --cpus=2.0 \
+            --tmpfs /tmp:noexec,nosuid,size=1g \
+            -v "$PWD:/workspace:ro" \
+            -w /workspace \
+            ghcr.io/fpittelo/harness-docs-validator:dev \
+            bash harness/docs-validation/run_docs_validation.sh /workspace
+
+  image-build-verification:
+    name: Verify Harness Image Build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: python-runner
+            dockerfile: Dockerfile.python
+          - name: rust-runner
+            dockerfile: Dockerfile.rust
+          - name: docs-validator
+            dockerfile: Dockerfile.docs-validator
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (verification only, no push)
+        # Build-only: proves the harness images still build. Publishing is
+        # owned by harness-image-build.yml (workflow_dispatch / harness-v*
+        # tags, MADR-0003 D4).
+        uses: docker/build-push-action@v6
+        with:
+          context: ./harness/docker
+          file: ./harness/docker/${{ matrix.dockerfile }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
