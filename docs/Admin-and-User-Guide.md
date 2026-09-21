@@ -16,6 +16,7 @@
    - [MCP Servers](#26-mcp-servers)
    - [CI/CD Pipeline](#27-cicd-pipeline)
    - [Troubleshooting](#28-troubleshooting)
+   - [GitHub PAT Permissions Checklist](#29-github-pat-permissions-checklist)
 3. [User Guide](#3-user-guide)
    - [Starting a Session](#31-starting-a-session)
    - [Agents](#32-agents)
@@ -210,6 +211,26 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 | Wrong model used | `opencode.jsonc` has wrong `model` field | Check `opencode.jsonc` line 3 |
 | `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (it adds the source line) |
 | Secrets not in GUI apps | systemd user session doesn't have them | `systemctl --user import-environment OPENROUTER_HOME_API_KEY ...` |
+
+### 2.9 GitHub PAT Permissions Checklist
+
+Minimum scopes for squad PATs (fine-grained; classic-PAT equivalent in parentheses). A missing scope causes #40-class multi-hour delivery blocks — check this list **first** when GitHub MCP tools or pushes suddenly fail with 403:
+
+- [ ] **Metadata: Read** (auto-selected) — mandatory baseline
+- [ ] **Contents: Read and write** (`repo`) — push branches/tags, open PRs
+- [ ] **Issues: Read and write** (`repo`) — board hygiene, issue comments
+- [ ] **Pull requests: Read and write** (`repo`) — reviews, approvals, merges
+- [ ] **Actions: Read** (`repo`) — CI status; **Read and write** only for tokens that dispatch/re-run workflows
+- [ ] **Workflows: Read and write** (`workflow`) — required to push changes touching `.github/workflows/**`
+- [ ] **Packages: Read** (`read:packages`) — pull `ghcr.io/fpittelo/*` images; **Read and write** (`write:packages`) only for tokens that publish images
+
+**After a token rotation, verify in this order:**
+
+1. `gh auth status` (or MCP `get_me`) — token valid.
+2. `docker pull ghcr.io/fpittelo/coach:dev` — Packages OK.
+3. Push a trivial branch and open a draft PR — Contents/Workflows/PRs OK.
+4. Comment on any issue — Issues OK.
+5. Trigger a `workflow_dispatch` run (Actions tab) — Actions OK.
 
 ---
 
