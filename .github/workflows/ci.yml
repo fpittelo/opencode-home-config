@@ -80,8 +80,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Build docs-validator image (ADR-0001)
-        run: docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
+      - name: Pull published docs-validator image (build fallback)
+        run: |
+          docker pull ghcr.io/fpittelo/harness-docs-validator:dev || \
+            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
       - name: Run docs validation in hardened container
         run: |
           docker run --rm \
