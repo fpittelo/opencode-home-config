@@ -36,3 +36,28 @@
 - Agents: `agents/<role>.md`; skills: `skills/<name>/SKILL.md`; arc42: `docs/architecture/arc42/NN-<slug>.md`; ADRs: `docs/adr/` (wired by #60).
 - Branches: `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>` off `dev`.
 - Labels: `type::*`, `status::*`, `agent::*`, `blocker::*`, `severity::*` (see `github-scrum-board` skill).
+
+## 8.6 Parallel Agent Sessions — Git Worktree Pattern
+
+*Status: adopted 2026-09-21 (#119), from the #107 incident: concurrent agent sessions sharing one working directory cause branch-checkout collisions.*
+
+When multiple agent sessions are dispatched in parallel, each session MUST own an isolated working tree via `git worktree` — never share a checkout:
+
+```bash
+# 1. Create (from a synced dev): one worktree per session, named for its issue
+git fetch origin && git worktree add -b feature/<issue-#>-<slug> \
+  ../wt-<issue-#>-<slug> origin/dev
+
+# 2. Work: cd ../wt-<issue-#>-<slug> — branch, commit, push, PR as normal
+#    (the worktree is a full working tree; harness/validators run inside it)
+
+# 3. Clean up (after squash-merge + remote branch deletion; -D because squash
+#    merges do not preserve branch ancestry, so -d would refuse):
+git worktree remove ../wt-<issue-#>-<slug> && git branch -D feature/<issue-#>-<slug>
+```
+
+Rules:
+- **One worktree per concurrently active issue**; the shared clone stays parked on `dev` for read-only inspection.
+- Worktrees live outside the repo (`../wt-…`) so they never pollute the main checkout or `gitleaks`/docs scans.
+- Cleanup is part of the DoD closeout: no `wt-*` directories may outlive their merged issue.
+- Single-agent sequential work (the default loop, WIP limit 1) does not need a worktree — plain feature branches in the main checkout remain the norm.
