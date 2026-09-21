@@ -90,7 +90,7 @@ Execute assigned sprint issues with complete autonomy using this sequential flow
 flowchart TD
     A["1. Pick Issue assigned by @scrum-master\n(Set status::in-progress)"] --> B["2. git checkout dev && git pull --ff-only\ngit checkout -b feature/<issue-#>-slug dev"]
     B --> C["3. TDD Cycle\n- Write failing test (Red)\n- Write minimal passing code (Green)\n- Refactor (Clean)"]
-    C --> D["4. Local Pre-Flight Check\nruff && black && isort && mypy && pytest -W error"]
+    C --> D["4. Local Pre-Flight Check\nbash harness/run.sh python/rust\n+ language-specific gates"]
     D -->|Pass| E["5. Push branch & Open PR targeting dev\n(Resolves #<issue-#>, set status::review)"]
     D -->|Fail <= 3 attempts| C
     D -->|Fail > 3 attempts| ESC["Circuit Breaker: Add blocker::active\nEscalate to @architect"]
@@ -121,6 +121,8 @@ git checkout -b feature/<issue-#>-<slug> dev
 
 ### 3. Local Pre-Flight Quality Gate
 
+**Before pushing ANY code: run `bash harness/run.sh python|rust`** (see the `harness-engineering` skill). The harness is the authoritative pre-push gate: it runs the language-specific commands below inside the hardened container (read-only root, non-root UID 1000, dropped capabilities, no-new-privileges, network-off gate phase, bounded CPU/memory) and its exit code gates the push. It complements — it does not replace — the language-specific lint/type commands, which you still run directly while iterating locally.
+
 **For Rust projects:**
 ```bash
 cargo fmt --check && cargo clippy -- -D warnings && cargo test
@@ -133,7 +135,7 @@ ruff check . && black --check . && isort --check-only . && mypy --strict . && py
 
 **For mixed-language repos (e.g., Kratos):** Run both gates in their respective directories.
 
-**Zero warnings and zero failures are strictly required.**
+**Zero warnings and zero failures are strictly required — the harness exit code must be `0` before any push.**
 
 ### 4. Self-Remediation Circuit Breaker (Max 3 Attempts)
 - If pre-flight checks or CI fail, you have a maximum of **3 consecutive targeted remediation attempts**.
