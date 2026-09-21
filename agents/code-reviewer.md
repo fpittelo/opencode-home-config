@@ -17,12 +17,14 @@ permission:
   edit: deny
   write: deny
   bash:
+    # 89 follow-up: catch-all deny MUST come first (last matching rule wins);
+    # the trailing "*": deny previously overrode every allow above it.
+    "*": deny
     "git status *": allow
     "git diff *": allow
     "cat *": allow
     "grep *": allow
     "ls *": allow
-    "*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
   # 108: Coach MCP is @coach-only; openrouter MCP is @architect/@coach-only (SoD)

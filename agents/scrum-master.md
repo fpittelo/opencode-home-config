@@ -5,9 +5,13 @@ model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.1
 permission:
 # 87: unattended read-only access; last matching rule wins, so deny rules override allows
-# 89 (AC1): read narrowed to ~/.config/opencode/** (least privilege). Closes the whole
-#          class of non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
+# 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
+#          tree; closes non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
+#          A deny-by-default "*" catch-all was evaluated and REJECTED: opencode 1.18.31
+#          evaluates relative read paths against these patterns, so a catch-all deny
+#          breaks normal project reads (verified empirically in PR #121).
   read:
+    "/home/frede/.config/**": deny
     "/home/frede/projects/**": allow
     "/home/frede/.config/opencode/**": allow
     "/home/frede/.config/opencode/.secrets.env": deny
