@@ -105,7 +105,7 @@ nano ~/.config/opencode/.secrets.env
 # export OPENROUTER_HOME_API_KEY="<your-openrouter-key>"
 # export GITHUB_PERSONAL_ACCESS_TOKEN="<your-github-token>"
 # export INTERVALS_API_KEY="<your-intervals-key>"
-# export INTERVALS_ATHLETE_ID="<your-intervals-id>"
+# export INTERVALS_ATHLETE_ID="<your-athlete-id>"
 
 # Verify permissions
 ls -la ~/.config/opencode/.secrets.env
