@@ -15,7 +15,11 @@ permission:
     "*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
-  openrouter_*: allow
+  # 108: Coach MCP is @coach-only; openrouter MCP is @architect/@coach-only (SoD)
+  COACH_DEV_*: deny
+  COACH_QA_*: deny
+  COACH_MAIN_*: deny
+  openrouter_*: deny
 ---
 
 You are the Code Reviewer and Quality Gatekeeper on the **HOME SCRUM Team** for the personal software projects of **Frederic Pitteloud (@fpittelo)**.

@@ -33,7 +33,7 @@ C4Context
 | Channel | Protocol | Notes |
 | :--- | :--- | :--- |
 | GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`) | stdio → Docker container | Personal-access-token authenticated; SoD split per #68. |
-| Coach MCP servers (`COACH DEV/QA/MAIN`) | stdio → Docker container | Environment-scoped (dev/qa/main) Intervals.icu access. |
+| Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → Docker container | Environment-scoped (dev/qa/main) Intervals.icu access. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
 | LLM inference | HTTPS (OpenRouter API) | Model per agent via `openrouter/<model>` assignments. |
 | CI | GitHub Actions | JSONC validation + Gitleaks full-history scan. |

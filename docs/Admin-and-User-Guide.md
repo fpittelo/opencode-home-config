@@ -174,9 +174,9 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 | MCP Server | Docker Image | Environment Variables | Purpose |
 |:---|:---|:---|:---|
 | `GITHUB` | `ghcr.io/github/github-mcp-server:latest` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
-| `COACH DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
-| `COACH QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
-| `COACH MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
+| `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
+| `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
+| `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
 
 All 4 containers are pre-flighted and verified working (see Issue #24 — Derisk #2).
 
@@ -274,9 +274,9 @@ MCP tools connect OpenCode to external services. The HOME profile has 4 MCP cont
 | MCP Tool | What it provides |
 |:---|:---|
 | **GITHUB** | Create/read GitHub issues, PRs, releases, branches, commits. The agent you're talking to right now uses this. |
-| **COACH DEV** | Training plan management (dev branch of coach service — experimental) |
-| **COACH QA** | Training plan management (qa staging — pre-production) |
-| **COACH MAIN** | Training plan management (production coach service) |
+| **COACH_DEV** | Training plan management (dev branch of coach service — experimental) |
+| **COACH_QA** | Training plan management (qa staging — pre-production) |
+| **COACH_MAIN** | Training plan management (production coach service) |
 
 The coach containers connect to Intervals.icu for workout analytics, training plans, and athlete data.
 
@@ -414,7 +414,7 @@ cd ~/projects/opencode-home-config && ./install.sh
 **After switching to HOME:**
 - **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
 - **10 skills** available (coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, home-governance, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
-- **4 MCP containers** active (GITHUB, COACH DEV, COACH QA, COACH MAIN)
+- **4 MCP containers** active (GITHUB, COACH_DEV, COACH_QA, COACH_MAIN)
 - **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
 - **Use for:** personal projects under `~/projects/HOME/`
 
@@ -474,7 +474,7 @@ The WORK `opencode.jsonc` sets the `GITHUB` and `COACH *` MCP servers to `"enabl
 ```jsonc
 "mcp": {
     "GITHUB": { ..., "enabled": false },
-    "COACH DEV": { ..., "enabled": false },
+    "COACH_DEV": { ..., "enabled": false },
     ...
 }
 ```

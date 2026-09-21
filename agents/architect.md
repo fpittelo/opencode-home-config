@@ -24,6 +24,10 @@ permission:
   bash: allow
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  # 108: Coach MCP is @coach-only (SoD); @architect keeps openrouter_* (model selection/evals)
+  COACH_DEV_*: deny
+  COACH_QA_*: deny
+  COACH_MAIN_*: deny
   openrouter_*: allow
 ---
 

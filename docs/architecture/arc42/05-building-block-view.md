@@ -25,7 +25,7 @@ C4Container
     Container_Boundary(mcp_servers, "MCP Servers (Docker / remote)") {
         Container(mcp_github, "GITHUB MCP", "Docker container", "Board & repo operations as @fpittelo")
         Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Docker container", "Formal PR reviews as @devfpittelo (SoD)")
-        Container(mcp_coach, "COACH DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
+        Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
     }
 
