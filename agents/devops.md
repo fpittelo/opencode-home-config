@@ -24,7 +24,11 @@ permission:
   bash: allow
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
-  openrouter_*: allow
+  # 108: Coach MCP is @coach-only; openrouter MCP is @architect/@coach-only (SoD)
+  COACH_DEV_*: deny
+  COACH_QA_*: deny
+  COACH_MAIN_*: deny
+  openrouter_*: deny
 ---
 
 You are the DevOps Engineer on the **HOME SCRUM Team** for the personal software projects and infrastructure of **Frederic Pitteloud (@fpittelo)**.
