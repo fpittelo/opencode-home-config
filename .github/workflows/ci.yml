@@ -61,7 +61,7 @@ jobs:
           done
       - name: Verify all skill directories exist
         run: |
-          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
             test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
           done
 
@@ -80,8 +80,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Build docs-validator image (ADR-0001)
-        run: docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
+      - name: Pull published docs-validator image (build fallback)
+        run: |
+          docker pull ghcr.io/fpittelo/harness-docs-validator:dev || \
+            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
       - name: Run docs validation in hardened container
         run: |
           docker run --rm \
