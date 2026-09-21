@@ -6,7 +6,10 @@ temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
 # 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
-#          tree; closes non-matching credential stores (gh/hosts.yml, gcloud/aws/docker).
+#          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,
+#          gcloud application_default_credentials.json, ...). Stores like
+#          ~/.aws/credentials and ~/.docker/config.json live OUTSIDE ~/.config and
+#          were never covered by the previous allow either.
 #          A deny-by-default "*" catch-all was evaluated and REJECTED: opencode 1.18.31
 #          evaluates relative read paths against these patterns, so a catch-all deny
 #          breaks normal project reads (verified empirically in PR #121).
@@ -27,7 +30,75 @@ permission:
     "/home/frede/.config/**/*.pem": deny
     "/home/frede/.config/**/*.key": deny
     "/home/frede/.config/**/*token*": deny
-  bash: allow
+  bash:
+    # 123 (AC4 of #89): explicit per-agent allowlist replacing the blanket
+    # `bash: allow` that bypassed the repo-level #86 guardrails. ORDERING: the
+    # "*": deny catch-all MUST be FIRST — opencode evaluates rules in order and
+    # the LAST matching rule wins, so a trailing catch-all would override every
+    # allow above it (exact inversion fixed for @code-reviewer in 88465bc).
+    # opencode also splits compound commands (&&, ;, |) and requires EVERY
+    # segment to match an allow rule, so the loop's chained commands are all
+    # enumerated below. Verified live on opencode 1.18.31 (see PR #123).
+    "*": deny
+    # Read-only inspection
+    "ls *": allow
+    "cat *": allow
+    "rg *": allow
+    "grep *": allow
+    "wc *": allow
+    "head *": allow
+    "tail *": allow
+    # Git read-only inspection
+    "git status *": allow
+    "git log *": allow
+    "git diff *": allow
+    "git show *": allow
+    "git branch *": allow
+    "git rev-parse *": allow
+    "git remote *": allow
+    "git ls-files *": allow
+    "git blame *": allow
+    "git describe *": allow
+    # Git plumbing (branch / commit / push)
+    "git checkout *": allow
+    "git switch *": allow
+    "git pull *": allow
+    "git fetch *": allow
+    "git add *": allow
+    "git commit *": allow
+    "git push *": allow
+    "git stash *": allow
+    "git restore *": allow
+    # Harness + repo gate machinery (required by the autonomous sprint loop)
+    "bash harness/run.sh *": allow
+    "bash harness/run-config-gate.sh *": allow
+    "bash -n *": allow
+    "python3 harness/docs-validation/*": allow
+    # Python stack (ruff/black/isort/mypy/pytest/uv/pip)
+    "uv*": allow
+    "pip*": allow
+    "pytest*": allow
+    "ruff*": allow
+    "black*": allow
+    "isort*": allow
+    "mypy*": allow
+    # Rust stack
+    "cargo*": allow
+    "rustup*": allow
+    # Secret scanning
+    "gitleaks*": allow
+    # Working-directory changes (shell builtin; no side effects of its own)
+    "cd *": allow
+    # Defence-in-depth: already unreachable via the leading catch-all, restated
+    # so the dangerous surface is legible and survives any future reordering.
+    "sudo*": deny
+    "curl*": deny
+    "wget*": deny
+    "rm -rf *": deny
+    "bash -c *": deny
+    "sh *": deny
+    "git push --force*": deny
+    "git push -f*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
   # 108: Coach MCP is @coach-only; openrouter MCP is @architect/@coach-only (SoD)
