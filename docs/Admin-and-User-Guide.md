@@ -248,7 +248,7 @@ cd ~/projects/HOME/my-personal-project
 opencode
 ```
 
-That's it. OpenCode loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session.
+That's it. OpenCode loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
 
 ### 3.2 Agents
 
@@ -265,6 +265,8 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 | **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.2 | No | No |
 
 **How agents work:**
+- **@architect is the default primary agent** — every session starts in the governed Solution Architect persona (#149): `agents/architect.md` declares `mode: primary` and `opencode.jsonc` sets `"default_agent": "architect"`.
+- **Built-in `BUILD` and `PLAN` modes are disabled** (#149): `"agent": { "build": { "disable": true }, "plan": { "disable": true } }` removes them from the TUI mode switcher, so only governed HOME SCRUM agents are offered.
 - **Primary agents** (architect, coach) are available directly in the main session.
 - **Subagents** (code-reviewer, cyber-security, developer, devops, scrum-master) are dispatched by the primary agent when their specialty is needed.
 - Each agent has a **temperature** setting (0.1–0.3) — lower means more deterministic, higher means more creative.
