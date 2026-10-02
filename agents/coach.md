@@ -31,6 +31,8 @@ permission:
     "/home/frede/.config/**/*token*": deny
   # 108: keys renamed with the servers (COACH DEV -> COACH_DEV); wildcard patterns
   # match the namespaced tool names (e.g. COACH_DEV_intervals_*). Full Coach access.
+  # 150: @coach is the ONLY agent with COACH_* allows — the global default-deny
+  # baseline (opencode.jsonc permission COACH_*_*: deny) covers everyone else.
   COACH_MAIN_*: allow
   COACH_QA_*: allow
   COACH_DEV_*: allow
