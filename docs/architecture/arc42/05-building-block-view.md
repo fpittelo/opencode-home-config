@@ -54,12 +54,14 @@ C4Container
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, Gitleaks full-history scan | GitHub Actions |
 | MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker) / streamable-HTTP (remote) |
 
-**Permission model invariants (enforced since #68, extended by #108):**
+**Permission model invariants (enforced since #68, extended by #108, #150):**
 - `@code-reviewer`: `GITHUB_*: deny` then `GITHUB_CODE_REVIEWER_*: allow` — acts ONLY as `@devfpittelo`.
 - All other agents: `GITHUB_*: allow` then `GITHUB_CODE_REVIEWER_*: deny` — cannot impersonate the reviewer.
-- `@coach` only: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: allow — Coach MCP is coach-only (SoD).
-- All other agents: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny.
+- Global default-deny baseline (#150): `opencode.jsonc` denies `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*` at the root `permission` level — built-in subagents (`explore`, `general`, `task`) and any unconfigured persona inherit zero Coach MCP access.
+- `@coach` only: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: allow — Coach MCP is coach-only (SoD); `agents/coach.md` is the sole allow whitelist.
+- All other agents: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny (explicit per-agent backstop of the global baseline).
 - `@architect` and `@coach` only: `openrouter_*: allow`; all other agents `openrouter_*: deny` (supersedes #67's "all agents" rule).
+- The coach-exclusivity invariant is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 8/8 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
 
 **Mode gating invariants (enforced since #149):**
 - `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).
