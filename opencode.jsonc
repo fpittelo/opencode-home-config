@@ -70,8 +70,12 @@
     // our own images — do not swap them for floating refs.
     // #108: servers renamed to space-free COACH_DEV/COACH_QA/COACH_MAIN so MCP tool
     // permission patterns are unambiguous (tools are namespaced <SERVER>_<tool>).
-    // SoD (#83 pattern extended): every agent except @coach denies COACH_*_* tools;
-    // every agent except @architect/@coach denies openrouter_* tools.
+    // SoD (#83 pattern extended, #150): Coach MCP is @coach-only. The root
+    // permission object below carries the global default-deny baseline
+    // (COACH_*_*: deny) covering built-in subagents (explore, general, task)
+    // and any unconfigured persona; every SCRUM agent re-states the denies
+    // explicitly in agents/*.md, and agents/coach.md holds the sole allow
+    // whitelist. Every agent except @architect/@coach denies openrouter_* tools.
     "COACH_DEV": {
       "type": "local",
       "command": [
@@ -127,6 +131,13 @@
     }
   },
   "permission": {
+    // #150 (AC1): global default-deny baseline for the Coach MCP namespaces —
+    // built-in subagents (explore, general, task) and any unconfigured persona
+    // inherit zero Coach MCP access. @coach re-allows in agents/coach.md and
+    // every SCRUM agent re-states the deny explicitly (defense in depth).
+    "COACH_DEV_*": "deny",
+    "COACH_QA_*": "deny",
+    "COACH_MAIN_*": "deny",
     // Last matching rule wins: broad rules first, narrow allow/deny rules last.
     "bash": {
       "*": "ask",
