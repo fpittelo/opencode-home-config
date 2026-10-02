@@ -101,7 +101,9 @@ permission:
     "git push -f*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
-  # 108: Coach MCP is @coach-only; openrouter MCP is @architect/@coach-only (SoD)
+  # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
+  # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
+  # openrouter MCP is @architect/@coach-only.
   COACH_DEV_*: deny
   COACH_QA_*: deny
   COACH_MAIN_*: deny
