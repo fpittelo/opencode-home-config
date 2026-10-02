@@ -191,7 +191,7 @@ docker run --rm ghcr.io/fpittelo/harness-runner-rust:dev rustc --version
 
 The gate command chains are identical in both paths (`pytest --cov-fail-under=80` included). The network-off guarantee of the gate phase is container-only; native runs execute on the host under the operator's own controls.
 
-`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, and the three native docs validators (links, MADR, mermaid syntax). Zero Docker, fail-fast, well under 5 s:
+`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, the coach-exclusivity permission invariant (#150, `harness/config-validation/check_coach_exclusivity.py`), and the three native docs validators (links, MADR, mermaid syntax). Zero Docker, fail-fast, well under 5 s:
 
 ```bash
 bash harness/run-config-gate.sh            # this repo (default root)
