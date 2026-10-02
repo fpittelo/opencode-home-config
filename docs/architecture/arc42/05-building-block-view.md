@@ -14,7 +14,7 @@ C4Container
     System_Ext(intervals, "Intervals.icu", "Training analytics")
 
     Container_Boundary(home_profile, "HOME OpenCode Profile (installed to ~/.config/opencode)") {
-        Container(opencode_jsonc, "opencode.jsonc", "JSONC", "Provider scoping, MCP server registry, env interpolation")
+        Container(opencode_jsonc, "opencode.jsonc", "JSONC", "Provider scoping, default agent + mode gating, MCP server registry, env interpolation")
         Container(agents, "Agent Specs (7)", "Markdown + YAML frontmatter", "Mandates, models, permission rules per agent")
         Container(skills, "Skills (11)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, ...")
         Container(installer, "install.sh", "Bash", "Path-independent symlinking into ~/.config/opencode")
@@ -47,19 +47,25 @@ C4Container
 
 | Building block | Responsibility | Key interfaces |
 | :--- | :--- | :--- |
-| `opencode.jsonc` | Single runtime configuration: `enabled_providers: ["openrouter"]`, MCP registry, `{env:VAR}` secret interpolation | OpenCode runtime schema (https://opencode.ai/config.json) |
+| `opencode.jsonc` | Single runtime configuration: `enabled_providers: ["openrouter"]`, `default_agent: "architect"` + built-in `build`/`plan` mode disabling (#149), MCP registry, `{env:VAR}` secret interpolation | OpenCode runtime schema (https://opencode.ai/config.json) |
 | `agents/*.md` (7) | Role mandates, model assignments, permission boundaries (allow/deny, last-match-wins) | OpenCode agent loading; frontmatter schema |
 | `skills/*/SKILL.md` (11) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode` | Bash, systemd env import |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, Gitleaks full-history scan | GitHub Actions |
 | MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker) / streamable-HTTP (remote) |
 
-**Permission model invariants (enforced since #68, extended by #108):**
+**Permission model invariants (enforced since #68, extended by #108, #150):**
 - `@code-reviewer`: `GITHUB_*: deny` then `GITHUB_CODE_REVIEWER_*: allow` — acts ONLY as `@devfpittelo`.
 - All other agents: `GITHUB_*: allow` then `GITHUB_CODE_REVIEWER_*: deny` — cannot impersonate the reviewer.
-- `@coach` only: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: allow — Coach MCP is coach-only (SoD).
-- All other agents: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny.
+- Global default-deny baseline (#150): `opencode.jsonc` denies `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*` at the root `permission` level — built-in subagents (`explore`, `general`, `task`) and any unconfigured persona inherit zero Coach MCP access.
+- `@coach` only: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: allow — Coach MCP is coach-only (SoD); `agents/coach.md` is the sole allow whitelist.
+- All other agents: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny (explicit per-agent backstop of the global baseline).
 - `@architect` and `@coach` only: `openrouter_*: allow`; all other agents `openrouter_*: deny` (supersedes #67's "all agents" rule).
+- The coach-exclusivity invariant is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 8/8 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
+
+**Mode gating invariants (enforced since #149):**
+- `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).
+- Built-in `build` and `plan` modes are disabled (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the TUI mode switcher offers governed HOME SCRUM agents only.
 
 ## 5.3 Level 3
 

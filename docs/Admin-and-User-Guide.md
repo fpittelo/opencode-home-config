@@ -187,6 +187,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - The GitHub servers spawn the native binary directly (`~/.local/bin/github-mcp-server stdio`, #109) — millisecond startup vs ~0.6 s per container spawn (#106 baseline). The binary version is pinned and its SHA256 checksum is verified against the release checksums file by `install.sh`.
 - The Coach servers are started with `docker run -i --rm`; containers are automatically removed (`--rm`) when the session ends.
 - Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
+- **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
 
 ### 2.7 CI/CD Pipeline
 
@@ -248,7 +249,7 @@ cd ~/projects/HOME/my-personal-project
 opencode
 ```
 
-That's it. OpenCode loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session.
+That's it. OpenCode loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
 
 ### 3.2 Agents
 
@@ -265,6 +266,8 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 | **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.2 | No | No |
 
 **How agents work:**
+- **@architect is the default primary agent** — every session starts in the governed Solution Architect persona (#149): `agents/architect.md` declares `mode: primary` and `opencode.jsonc` sets `"default_agent": "architect"`.
+- **Built-in `BUILD` and `PLAN` modes are disabled** (#149): `"agent": { "build": { "disable": true }, "plan": { "disable": true } }` removes them from the TUI mode switcher, so only governed HOME SCRUM agents are offered.
 - **Primary agents** (architect, coach) are available directly in the main session.
 - **Subagents** (code-reviewer, cyber-security, developer, devops, scrum-master) are dispatched by the primary agent when their specialty is needed.
 - Each agent has a **temperature** setting (0.1–0.3) — lower means more deterministic, higher means more creative.
@@ -304,6 +307,8 @@ MCP tools connect OpenCode to external services. The HOME profile defines 6 MCP 
 | **openrouter** | Remote endpoint (`mcp.openrouter.ai`) | Model catalog & docs lookup via OpenRouter |
 
 The coach containers connect to Intervals.icu for workout analytics, training plans, and athlete data.
+
+**Coach MCP availability (#150):** Coach tools (`COACH_DEV_*`, `COACH_QA_*`, `COACH_MAIN_*`) are exclusively available to the **@coach** agent. A global default-deny baseline in `opencode.jsonc` denies all three Coach namespaces for every other persona — including built-in subagents (`explore`, `general`, `task`) — and each SCRUM agent re-states the deny explicitly in its spec. This keeps personal biometric and training data (Intervals.icu) isolated to the coaching workflow. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`, run locally via `bash harness/run-config-gate.sh` and in CI).
 
 ### 3.5 Models
 
