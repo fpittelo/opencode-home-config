@@ -199,6 +199,10 @@ multiplexer purpose-built for coding agents. Herdr hosts OpenCode TUI panes as r
 sessions survive terminal detach and Herdr server restarts, and a sidebar shows live agent state
 (working / blocked / idle) across all projects.*
 
+**Agent-facing skill:** HOME SCRUM agents operate Herdr through the tracked skill
+`skills/herdr/SKILL.md` (#170) — scope-gated on `HERDR_ENV=1` and explicit user intent; the
+pane-history-off invariant below also binds agent usage (no pane-content scraping).
+
 **Client / server model:**
 
 | Piece | What it is | How you use it |
@@ -473,13 +477,15 @@ flowchart TD
 | **Ask (single checkpoint)** | One confirmation prompt | `rm *`, `pip install*`, `npm install -g*` / `npm i -g*`, `kill*` / `pkill*` / `killall*`, `chmod *`, `chown *`, `systemctl*` |
 | **Deny (hard block)** | Blocked, no prompt | Catastrophic / irreversible / bypass commands (below) |
 
-**Hard deny tail (catastrophic / irreversible / bypass):** `sudo*`; `rm -rf` on `/`, `~` or `$HOME`; disk and device tools (`mkfs*`, `dd *of=/dev/*`, `shred*`, `wipefs*`, `blockdev*`, `fdisk*` / `sfdisk*` / `gdisk*`, `parted*`, `truncate * /dev/*`); writes and moves to block devices (`* > /dev/sd*` and the nvme/mmcblk/vd/hd variants, `mv * /dev/…`); power-off (`shutdown*`, `reboot*`, `halt*`, `poweroff*`, `systemctl poweroff*` / `reboot*` / `halt*`); persistence (`crontab*`, `systemd-run*`); recursive permission changes on absolute paths (`chmod -R * /*`, `chown -R * /*`); bulk deletion (`find * -delete*`, `find * -exec rm*`); git history destruction (`git push --force*` / `-f*`, `git filter-branch*`, `git filter-repo*`, `git clean*`, `git reset --hard*`); network fetchers (`curl*`, `wget*`); inline-code interpreters (`bash -c *`, `sh *`, `python* -c*`, `node -e*` / `--eval*`, `perl -e*`, `ruby -e*`); environment and secret reads (`printenv*`, `env`, `cat *.secrets.env*`, `cat /proc/*/environ*`).
+**Hard deny tail (catastrophic / irreversible / bypass):** `sudo*`; `rm -rf` on `/`, `~` or `$HOME`; disk and device tools (`mkfs*`, `dd *of=/dev/*`, `shred*`, `wipefs*`, `blockdev*`, `fdisk*` / `sfdisk*` / `gdisk*`, `parted*`, `truncate * /dev/*`); writes and moves to block devices (`* > /dev/sd*` and the nvme/mmcblk/vd/hd variants, `mv * /dev/…`); power-off (`shutdown*`, `reboot*`, `halt*`, `poweroff*`, `systemctl poweroff*` / `reboot*` / `halt*`); persistence (`crontab*`, `systemd-run*`); recursive permission changes on absolute paths (`chmod -R * /*`, `chown -R * /*`); bulk deletion (`find * -delete*`, `find * -exec rm*`); git history destruction (`git push --force*` / `-f*`, `git filter-branch*`, `git filter-repo*`, `git clean*`, `git reset --hard*`); network fetchers (`curl*`, `wget*`); inline-code interpreters (`bash -c *`, `sh *`, `python* -c*`, `node -e*` / `--eval*`, `perl -e*`, `ruby -e*`); environment and secret reads (`printenv*`, `env`, `cat /proc/*/environ*`); file-centric secret denies (`*.env*`, `*.pem*`, `*.key*` — any command referencing a credential filename, #167).
 
 **Unchanged by #158:**
 
-- File `read`/`edit` credential denies (`.secrets.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `cat *.secrets.env*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
+- File `read`/`edit` credential denies (`.secrets.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `*.env*` / `*.pem*` / `*.key*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
 - `COACH_*` MCP denies (#150) — Coach tools remain @coach-only (see §3.4).
 - `@code-reviewer` keeps its read-only bash allowlist; `@scrum-master` and `@coach` keep zero-bash charters (separation of duties).
+
+**Since #167 (refines MADR-0004):** the deny tail gains **file-centric secret denies** — `*.env*`, `*.pem*`, `*.key*` block **any command referencing a credential filename**, closing the read-command-family bypass (`head`, `rg`, `strings`, …) that the #158 `cat`-specific deny left open (`*.env*` subsumes it). Token-named files are excluded (command-agnostic `*token*` over-matches); false positives such as `ls *.pem` block in the safe direction.
 
 **Reference:** MADR-0004 (`docs/adr/0004-allow-by-default-bash-permission-posture.md`) and arc42 §8.1.
 

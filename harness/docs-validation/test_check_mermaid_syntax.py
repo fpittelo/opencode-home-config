@@ -14,7 +14,6 @@ gitGraph strings, nested-fence extraction, zero-block documents).
 
 Run:
     python3 harness/docs-validation/test_check_mermaid_syntax.py
-    python3 -m unittest harness.docs-validation.test_check_mermaid_syntax
 """
 from __future__ import annotations
 
