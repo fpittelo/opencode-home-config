@@ -16,6 +16,7 @@
 *Status: target state per MADR-0003 (accepted 2026-09-21) — lands progressively with #134 (slim per-PR CI), #133 (deep-validation workflow) and #131 (harness fast path); the legacy 4-job pipeline runs until then.*
 
 - **Proportionate Quality Gates principle:** the cost of a control must be proportional to the risk it mitigates. Every-PR gates run natively in < 90 s; deep checks run weekly and pre-release. Adding a gate requires stating what it catches that existing gates don't (YAGNI); each governance review must identify at least one candidate for removal (KIS).
+- **KIS & YAGNI delivery principle (#180):** agents deliver the minimal diff satisfying the issue's acceptance criteria, with brief evidence; scope beyond the ACs is a review finding. Extends MADR-0003's Proportionate Quality Gates principle from pipeline controls to agent delivery behavior (Sprint 08 provenance: #167).
 - **Per-PR gate (single native job, zero Docker):** JSONC validation of `opencode.jsonc`; `bash -n install.sh`; agent-file presence; skill-presence inventory; **diff-scoped pinned gitleaks**; native link and MADR validators; native Mermaid **syntax** check; label-conditional architecture gate.
 - **Deep validation (weekly cron + every qa → main promotion):** full-history gitleaks; Chromium render-level Mermaid validation (docs-validator image); image-build verification.
 - **Harness runner images:** built on `workflow_dispatch` / `harness-v*` tags only — not on every `harness/docker/**` change.

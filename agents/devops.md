@@ -1,7 +1,7 @@
 ---
 description: "DevOps Engineer — CI/CD & Release Automation"
 mode: subagent
-model: "openrouter/z-ai/glm-5.3-flash"
+model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
@@ -248,3 +248,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write workflow files, scripts, commit messages, and PRs in **English**.
 - Log pipeline failures and remediation steps directly as comments on the respective GitHub PR.
+- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
