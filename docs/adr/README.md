@@ -28,3 +28,4 @@ This scaffolds the next sequential `NNNN-<slug>.md` from the template (refuses t
 | [0003 — Proportionate quality gates](0003-proportionate-quality-gates-ci-and-harness-simplification.md) | CI and harness simplification (KIS/YAGNI) | accepted | 2026-09-21 |
 | [0004 — Allow-by-default bash permission posture](0004-allow-by-default-bash-permission-posture.md) | Allow-by-default bash posture with catastrophic-deny guardrails (supersedes the #123 allowlist policy) | accepted | 2026-10-03 |
 | [0005 — Adopt Herdr agent runtime](0005-adopt-herdr-agent-runtime.md) | Herdr agent runtime for OpenCode on VIDAR — pinned binary, default-on idempotent install, local-only | accepted | 2026-10-03 |
+| [0006 — Sprint 09 model roster refresh](0006-sprint-09-model-roster-gpt-6-luna-introduction-and-per-agent-assignment-refresh.md) | GPT-6 Luna introduction and per-agent assignment refresh (architect/scrum-master/devops switches) | accepted | 2026-10-03 |

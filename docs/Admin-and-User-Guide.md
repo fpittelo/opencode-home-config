@@ -330,13 +330,13 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 
 | Agent | Role | Model | Can edit files? | Can run bash? |
 |:---|:---|:---|:---|:---|
-| **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | GLM 5.2 | Yes | Yes |
-| **@coach** | Athletic Coach & Longevity Advisor — Zwift cycling, kettlebell, Intervals.icu analytics | Gemini 3.7 Flash | No | No |
-| **@code-reviewer** | PR Quality Gatekeeper — inspects pull requests and approves/rejects | GLM 5.2 | No | No |
-| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | Kimi K2.7 Code | No | Yes |
-| **@developer** | Senior Developer — Rust + Python dual-stack, strict TDD, writes production code | Kimi K2.7 Code | Yes | Yes |
-| **@devops** | DevOps Engineer — CI/CD pipelines, Docker, release automation, infrastructure | Kimi K2.7 Code | Yes | Yes |
-| **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.2 | No | No |
+| **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | GLM 5.3 Flash | Yes | Yes |
+| **@coach** | Athletic Coach & Longevity Advisor — Zwift cycling, kettlebell, Intervals.icu analytics | GLM 5.3 Flash | No | No |
+| **@code-reviewer** | PR Quality Gatekeeper — inspects pull requests and approves/rejects | DeepSeek V4.1 Flash | No | No |
+| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | DeepSeek V4.1 Flash | No | Yes |
+| **@developer** | Senior Developer — Rust + Python dual-stack, strict TDD, writes production code | GLM 5.3 Flash | Yes | Yes |
+| **@devops** | DevOps Engineer — CI/CD pipelines, Docker, release automation, infrastructure | DeepSeek V4.1 Flash | Yes | Yes |
+| **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GPT-6 Luna | No | No |
 
 **How agents work:**
 - **@architect is the default primary agent** — every session starts in the governed Solution Architect persona (#149): `agents/architect.md` declares `mode: primary` and `opencode.jsonc` sets `"default_agent": "architect"`.
@@ -396,16 +396,17 @@ The HOME profile uses **OpenRouter only** — no direct Google or Anthropic API 
 
 | Model ID | Display Name | Role |
 |:---|:---|:---|
-| `moonshotai/kimi-k2.7-code` | Kimi K2.7 Code | **Default model** (main session) |
-| `google/gemini-3.7-flash` | Gemini 3.7 Flash | **Small model** (fast/cheap tasks) |
-| `google/gemini-3.8-flash` | Gemini 3.8 Flash | Available for selection |
-| `moonshotai/kimi-k2.6` | Kimi K2.6 | Available for selection |
-| `z-ai/glm-5.2` | GLM 5.2 | Available for selection (used by @architect, @code-reviewer, @scrum-master) |
-| `z-ai/glm-5.3-flash` | GLM 5.3 Flash | Available for selection |
+| `google/gemini-3.8-flash` | Gemini 3.8 Flash | **Default model** (main session + small model) |
+| `openai/gpt-6-luna` | GPT-6 Luna | Used by @scrum-master |
+| `z-ai/glm-5.3-flash` | GLM 5.3 Flash | Used by @architect, @developer, @coach |
+| `deepseek/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | Used by @code-reviewer, @cyber-security, @devops |
+| `z-ai/glm-5.3` | GLM 5.3 | Available for selection |
+| `moonshotai/kimi-k2.7-code` | Kimi K2.7 Code | Available for selection |
+| `qwen/qwen3.8-2.4t-a95b` | Qwen 3.8 2.4T A95B | Available for selection |
 
 **How to change the default model:** Edit line 3 of `opencode.jsonc`:
 ```jsonc
-"model": "openrouter/moonshotai/kimi-k2.7-code",
+"model": "openrouter/google/gemini-3.8-flash",
 ```
 
 ### 3.6 Daily Workflow

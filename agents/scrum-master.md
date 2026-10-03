@@ -1,7 +1,7 @@
 ---
 description: "Scrum Master — Autonomous Sprint Facilitator & DoD Enforcer"
 mode: subagent
-model: "openrouter/z-ai/glm-5.3-flash"
+model: "openrouter/openai/gpt-6-luna"
 temperature: 0.1
 permission:
 # 87: unattended read-only access; last matching rule wins, so deny rules override allows

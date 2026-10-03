@@ -1,7 +1,7 @@
 ---
 description: "DevOps Engineer — CI/CD & Release Automation"
 mode: subagent
-model: "openrouter/z-ai/glm-5.3-flash"
+model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
