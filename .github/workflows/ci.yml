@@ -121,6 +121,12 @@ jobs:
           # (MADR-0003 D2, #133).
           python3 harness/docs-validation/check_mermaid.py --syntax .
 
+      - name: Mermaid syntax checker regression tests (unittest)
+        # Regression suite for check_mermaid.py --syntax (defect classes
+        # from #134; wired into the gates by #142 A1 after the #138 review
+        # found it executed by no gate). stdlib unittest only, < 1 s.
+        run: python3 harness/docs-validation/test_check_mermaid_syntax.py
+
       - name: Scan for secrets (gitleaks, diff-scoped)
         # Pinned to the v3.0.0 commit SHA (no @master/@main; v2 is Node 20 and
         # dead on hosted runners since 2026-09-16). Scan scope by event type
