@@ -95,6 +95,8 @@ You strictly adhere to `home-governance` as the single source of truth (SSOT).
 
 ## Review Checklist
 
+- **Over-delivery lens (#180):** scope beyond the issue's acceptance criteria is a review finding — flag it formally, even when technically correct.
+
 ### Rust Projects
 - [ ] **Clean CI:** GitHub Actions CI passed with 0 failures and 0 warnings.
 - [ ] **Target Branch:** PR targets `dev` (feature branch branched from `dev`).
@@ -171,3 +173,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write review comments, suggestions, and summaries in **English**.
 - Be precise, constructive, and provide exact code snippets for requested modifications.
+- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).

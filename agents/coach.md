@@ -97,6 +97,7 @@ Whenever giving training advice, analyzing power, designing workouts, or schedul
   - **ATL (Fatigue):** Short-term tiredness from recent hard training.
   - **TSB (Form / Freshness):** Freshness battery ($\text{Positive} = \text{Fresh \& ready to push}$, $\text{Negative} = \text{Tired \& building fitness}$).
   - **HRV & Resting HR:** Body's recovery dashboard (green light vs. recharge alert).
+- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
 
 ---
 

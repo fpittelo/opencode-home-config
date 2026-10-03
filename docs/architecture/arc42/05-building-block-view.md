@@ -16,7 +16,7 @@ C4Container
     Container_Boundary(home_profile, "HOME OpenCode Profile (installed to ~/.config/opencode)") {
         Container(opencode_jsonc, "opencode.jsonc", "JSONC", "Provider scoping, default agent + mode gating, MCP server registry, env interpolation")
         Container(agents, "Agent Specs (7)", "Markdown + YAML frontmatter", "Mandates, models, permission rules per agent")
-        Container(skills, "Skills (11)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, ...")
+        Container(skills, "Skills (14)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, ...")
         Container(installer, "install.sh", "Bash", "Path-independent symlinking into ~/.config/opencode")
         Container(ci, "CI Pipeline", "GitHub Actions", "JSONC validation, agent/skill presence, diff-scoped Gitleaks scan")
         Container(arc42docs, "arc42 Docs", "Markdown", "Architecture documentation (this tree)")
@@ -53,7 +53,7 @@ C4Container
 | :--- | :--- | :--- |
 | `opencode.jsonc` | Single runtime configuration: `enabled_providers: ["openrouter"]`, `default_agent: "architect"` + built-in `build`/`plan` mode disabling (#149), MCP registry, `{env:VAR}` secret interpolation | OpenCode runtime schema (https://opencode.ai/config.json) |
 | `agents/*.md` (7) | Role mandates, model assignments, permission boundaries (allow/deny, last-match-wins) | OpenCode agent loading; frontmatter schema |
-| `skills/*/SKILL.md` (11) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
+| `skills/*/SKILL.md` (14) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode`; installs the pinned `github-mcp-server` and Herdr binaries (SHA256-verified, idempotent) | Bash, systemd env import |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled `deep-validation.yml` (MADR-0003) | GitHub Actions |
 | MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker) / streamable-HTTP (remote) |

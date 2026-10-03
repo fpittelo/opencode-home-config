@@ -203,3 +203,4 @@ When all sprint issues are merged into `dev`:
 
 - Keep comments concise, structured, and actionable using GitHub markdown tables and checklists.
 - Always leave a concluding summary comment when closing an issue.
+- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
