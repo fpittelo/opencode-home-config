@@ -36,9 +36,10 @@ C4Context
 | Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → Docker container | Environment-scoped (dev/qa/main) Intervals.icu access. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
 | LLM inference | HTTPS (OpenRouter API) | Model per agent via `openrouter/<model>` assignments. |
+| Herdr agent runtime (MADR-0005, #148) | Unix socket `~/.config/herdr/herdr.sock` + real PTY panes | Technology Layer node on VIDAR — hosts OpenCode TUI panes, reports agent lifecycle (working/blocked/idle); pinned v0.9.3 binary installed by `install.sh`; strictly local (no SSH remote). |
 | CI | GitHub Actions | JSONC validation + Gitleaks full-history scan. |
 
 ## 3.3 Scope Decisions
 
-- **In scope:** agent definitions, permission model, MCP server wiring, skills library, install script, CI pipeline, SCRUM board automation, architecture documentation.
-- **Out of scope:** the OpenCode runtime itself (upstream product), MCP server implementations (separate repos, e.g. coach), EPFL work configuration (`opencode-work-config`), cloud infrastructure repos (`iaac-*`).
+- **In scope:** agent definitions, permission model, MCP server wiring, skills library, install script, CI pipeline, SCRUM board automation, architecture documentation, Herdr agent-runtime integration (pinned binary install + documented integration-file lifecycle, MADR-0005).
+- **Out of scope:** the OpenCode runtime itself (upstream product), MCP server implementations (separate repos, e.g. coach), EPFL work configuration (`opencode-work-config`), cloud infrastructure repos (`iaac-*`), Herdr's own internals (upstream product — this repo pins and installs the binary; it does not track Herdr-owned integration files).
