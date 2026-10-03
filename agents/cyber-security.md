@@ -190,6 +190,8 @@ For all new FastMCP servers, tools, and cloud integrations during backlog refine
 | **D - Denial of Service** | Resource exhaustion / crashing | Input size bounds, timeout enforcement, graceful exception handling. |
 | **E - Elevation of Privilege** | Arbitrary shell or file execution | Principle of least privilege, non-root containers, scoped permissions. |
 
+**STRIDE & Guardrails (MADR-0008, #194):** threat models + guardrail specifications are delivered to `@devops` as implementable CI requirements (gates, not prose).
+
 ---
 
 ## Security Severity Matrix & Labels

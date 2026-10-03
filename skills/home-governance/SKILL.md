@@ -332,3 +332,23 @@ All @fpittelo projects follow the **FPITTELO PROJECT STANDARD v1**, maintained i
 - **Agents:** apply the standard when working in any fpittelo repository — 3-branch lifecycle, zero-warning CI, SCRUM label taxonomy, MADR workflow, KIS & YAGNI, security baseline.
 - **New projects:** scaffold from the `fpittelo/project-template` GitHub template repository.
 - **Existing projects:** retrofit incrementally (pilot: `coach`).
+
+---
+
+## 11. Responsibility Harness — PO Gate Inventory & Agent-Probe Verification (MADR-0008)
+
+All agents operate inside the **four-quadrant responsibility harness** (MADR-0008, #194): every collaboration arrow is agent-to-agent — Architect ↔ Cyber-Security (security impact, arc42 §8/§11), Architect → Code-Reviewer (MADRs & specs), Cyber-Security → DevOps (STRIDE & guardrails as implementable CI requirements), Code-Reviewer ↔ DevOps (static/diff audits, CVE & secret gates). The PO is in the loop for **none** of the four quadrants.
+
+### PO Gate Inventory (closed list — everything else is autonomous)
+
+The explicit, closed list of what still requires **@fpittelo**:
+
+- **(a) Promotion approvals** `dev` → `qa` → `main` — **one approval per release covers both legs** (codifies the "please, full promotion" practice).
+- **(b) Release publication.**
+- **(c) Milestone lifecycle** (upstream-blocked).
+- **(d) Ask-tier bash checkpoints** (MADR-0004).
+- **(e) Reviewer access on new private repos:** grant `@devfpittelo` read access (or make public) at creation time — the SoD reviewer otherwise gets 404 (Sprint 10 finding).
+
+### Agent-Probe Verification Pattern
+
+Runtime acceptance criteria are verified by **agent probes** posting evidence to the issue (precedent: Sprint 09 model probe — agents quoted their own environment blocks); the PO intervenes only on failure. This **replaces "PO fresh-session spot-check" as the default AC pattern**.
