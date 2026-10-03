@@ -199,6 +199,10 @@ multiplexer purpose-built for coding agents. Herdr hosts OpenCode TUI panes as r
 sessions survive terminal detach and Herdr server restarts, and a sidebar shows live agent state
 (working / blocked / idle) across all projects.*
 
+**Agent-facing skill:** HOME SCRUM agents operate Herdr through the tracked skill
+`skills/herdr/SKILL.md` (#170) — scope-gated on `HERDR_ENV=1` and explicit user intent; the
+pane-history-off invariant below also binds agent usage (no pane-content scraping).
+
 **Client / server model:**
 
 | Piece | What it is | How you use it |
