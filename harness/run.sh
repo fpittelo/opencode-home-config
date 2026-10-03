@@ -99,10 +99,21 @@ python_native_tools_ok() {
   for tool in ruff black isort mypy pytest; do
     command -v "${tool}" >/dev/null 2>&1 || return 1
   done
+  # pytest-cov is needed by the gate's --cov chain but is a pytest PLUGIN,
+  # not a standalone binary: pytest-cov >= 7 ships no console script (its
+  # only entry point is the pytest11 plugin), so `command -v pytest-cov`
+  # would false-negative on modern installs (#142 A2). Probe importability
+  # by the interpreter instead - exactly how pytest resolves the plugin.
+  python3 -c 'import pytest_cov' >/dev/null 2>&1
 }
 
 rust_native_tools_ok() {
-  command -v cargo >/dev/null 2>&1
+  # The gate chain is `cargo fmt --check && cargo clippy -- -D warnings &&
+  # cargo test`: fmt needs the rustfmt component, clippy needs the
+  # clippy-driver component - cargo alone is not sufficient (#142 A3).
+  command -v cargo >/dev/null 2>&1 || return 1
+  command -v rustfmt >/dev/null 2>&1 || return 1
+  command -v clippy-driver >/dev/null 2>&1 || return 1
 }
 
 run_deps() {
@@ -122,7 +133,9 @@ run_deps() {
       echo "==> [deps] native path: SKIP (no Cargo.toml in ${REPO_ROOT})"
       return 0
     fi
-    if rust_native_tools_ok; then
+    # deps needs cargo only (no rustfmt/clippy) - mirror the python deps
+    # path, which probes uv directly instead of the full gate toolchain.
+    if command -v cargo >/dev/null 2>&1; then
       echo "==> [deps] native path: host cargo found - fetching rust deps on the host (network ON)"
       (cd "${REPO_ROOT}" && cargo fetch)
       return 0
@@ -135,7 +148,7 @@ run_deps() {
 run_gate() {
   if [[ "${STACK}" == "python" ]]; then
     if python_native_tools_ok; then
-      echo "==> [gate] native path: host toolchain complete (ruff, black, isort, mypy, pytest) - fail-fast, coverage >= 80%"
+      echo "==> [gate] native path: host toolchain complete (ruff, black, isort, mypy, pytest, pytest-cov) - fail-fast, coverage >= 80%"
       (cd "${REPO_ROOT}" &&
         ruff check . &&
         black --check . &&
@@ -144,14 +157,14 @@ run_gate() {
         pytest -W error --cov=. --cov-fail-under=80)
       return 0
     fi
-    echo "==> [gate] python toolchain incomplete on host (need ruff+black+isort+mypy+pytest) - container fallback (security flags, network-off, coverage threshold preserved)"
+    echo "==> [gate] python toolchain incomplete on host (need ruff+black+isort+mypy+pytest+pytest-cov) - container fallback (security flags, network-off, coverage threshold preserved)"
   else
     if rust_native_tools_ok; then
-      echo "==> [gate] native path: host cargo found - fail-fast"
+      echo "==> [gate] native path: host toolchain complete (cargo, rustfmt, clippy) - fail-fast"
       (cd "${REPO_ROOT}" && cargo fmt --check && cargo clippy -- -D warnings && cargo test)
       return 0
     fi
-    echo "==> [gate] cargo not on host PATH - container fallback (security flags, network-off preserved)"
+    echo "==> [gate] rust toolchain incomplete on host (need cargo+rustfmt+clippy) - container fallback (security flags, network-off preserved)"
   fi
   "${GATE}"
 }
