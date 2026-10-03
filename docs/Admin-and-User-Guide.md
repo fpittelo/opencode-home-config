@@ -25,6 +25,7 @@
    - [Models](#35-models)
    - [Daily Workflow](#36-daily-workflow)
    - [Dos and Donts](#37-dos-and-donts)
+   - [Permission Posture & Safety Guardrails](#38-permission-posture--safety-guardrails)
 4. [Switching Between HOME and WORK Profiles](#4-switching-between-home-and-work-profiles)
    - [How Profile Switching Works](#41-how-profile-switching-works)
    - [Switch to HOME Profile](#42-switch-to-home-profile)
@@ -260,7 +261,7 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 | **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | GLM 5.2 | Yes | Yes |
 | **@coach** | Athletic Coach & Longevity Advisor — Zwift cycling, kettlebell, Intervals.icu analytics | Gemini 3.7 Flash | No | No |
 | **@code-reviewer** | PR Quality Gatekeeper — inspects pull requests and approves/rejects | GLM 5.2 | No | No |
-| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | Kimi K2.7 Code | No | No |
+| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | Kimi K2.7 Code | No | Yes |
 | **@developer** | Senior Developer — Rust + Python dual-stack, strict TDD, writes production code | Kimi K2.7 Code | Yes | Yes |
 | **@devops** | DevOps Engineer — CI/CD pipelines, Docker, release automation, infrastructure | Kimi K2.7 Code | Yes | Yes |
 | **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.2 | No | No |
@@ -271,6 +272,7 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 - **Primary agents** (architect, coach) are available directly in the main session.
 - **Subagents** (code-reviewer, cyber-security, developer, devops, scrum-master) are dispatched by the primary agent when their specialty is needed.
 - Each agent has a **temperature** setting (0.1–0.3) — lower means more deterministic, higher means more creative.
+- **Bash access (#158):** @architect, @developer, @devops and @cyber-security run bash **allow-by-default with catastrophic-deny guardrails** (ask-tier checkpoints on destructive-but-recoverable operations) — see §3.8. @code-reviewer is read-only and @scrum-master / @coach have no bash (separation of duties).
 
 ### 3.3 Skills
 
@@ -390,6 +392,28 @@ flowchart TD
 | ✅ Use OpenRouter for all AI models (HOME profile) | ❌ Add direct Google/Anthropic API keys |
 | ✅ Ask @architect to plan before @developer codes | ❌ Jump straight to coding without a plan |
 | ✅ Restart opencode after switching profiles | ❌ Keep an old session running with a stale profile |
+
+### 3.8 Permission Posture & Safety Guardrails
+
+*Since #158 (MADR-0004, 2026-10-03), the bash permission posture is **allow-by-default with catastrophic-deny guardrails**, replacing the former ask/deny-default + allowlist scheme (#86 → #89 → #123).*
+
+**How bash permissions work.** OpenCode evaluates the permission rules in order and the **last matching rule wins**. Compound commands (`&&`, `;`, `|`) are split, and **every segment** is evaluated — one denied segment blocks the whole command. The posture has three tiers:
+
+| Tier | Behaviour | Examples |
+|:---|:---|:---|
+| **Allow (default)** | Runs unprompted | `git *`, `python3 script.py`, `pytest*`, `bash harness/run-config-gate.sh`, everyday file operations |
+| **Ask (single checkpoint)** | One confirmation prompt | `rm *`, `pip install*`, `npm install -g*` / `npm i -g*`, `kill*` / `pkill*` / `killall*`, `chmod *`, `chown *`, `systemctl*` |
+| **Deny (hard block)** | Blocked, no prompt | Catastrophic / irreversible / bypass commands (below) |
+
+**Hard deny tail (catastrophic / irreversible / bypass):** `sudo*`; `rm -rf` on `/`, `~` or `$HOME`; disk and device tools (`mkfs*`, `dd *of=/dev/*`, `shred*`, `wipefs*`, `blockdev*`, `fdisk*` / `sfdisk*` / `gdisk*`, `parted*`, `truncate * /dev/*`); writes and moves to block devices (`* > /dev/sd*` and the nvme/mmcblk/vd/hd variants, `mv * /dev/…`); power-off (`shutdown*`, `reboot*`, `halt*`, `poweroff*`, `systemctl poweroff*` / `reboot*` / `halt*`); persistence (`crontab*`, `systemd-run*`); recursive permission changes on absolute paths (`chmod -R * /*`, `chown -R * /*`); bulk deletion (`find * -delete*`, `find * -exec rm*`); git history destruction (`git push --force*` / `-f*`, `git filter-branch*`, `git filter-repo*`, `git clean*`, `git reset --hard*`); network fetchers (`curl*`, `wget*`); inline-code interpreters (`bash -c *`, `sh *`, `python* -c*`, `node -e*` / `--eval*`, `perl -e*`, `ruby -e*`); environment and secret reads (`printenv*`, `env`, `cat *.secrets.env*`, `cat /proc/*/environ*`).
+
+**Unchanged by #158:**
+
+- File `read`/`edit` credential denies (`.secrets.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `cat *.secrets.env*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
+- `COACH_*` MCP denies (#150) — Coach tools remain @coach-only (see §3.4).
+- `@code-reviewer` keeps its read-only bash allowlist; `@scrum-master` and `@coach` keep zero-bash charters (separation of duties).
+
+**Reference:** MADR-0004 (`docs/adr/0004-allow-by-default-bash-permission-posture.md`) and arc42 §8.1.
 
 ---
 
