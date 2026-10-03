@@ -48,8 +48,8 @@ for agent in architect coach code-reviewer cyber-security developer devops scrum
   test -f "agents/${agent}.md" || fail "missing agents/${agent}.md"
 done
 echo "PASS run-config-gate: agent files present"
-# 4/9 all 13 skill directories exist (exact list from ci.yml).
-for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+# 4/9 all 14 skill directories exist (exact list from ci.yml).
+for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering herdr home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
   test -f "skills/${skill}/SKILL.md" || fail "missing skills/${skill}/SKILL.md"
 done
 echo "PASS run-config-gate: skill directories present"
