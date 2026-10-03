@@ -107,8 +107,14 @@ permission:
     "ruby -e*": deny
     "printenv*": deny
     "env": deny
-    "cat *.secrets.env*": deny
     "cat /proc/*/environ*": deny
+    # 167 (MADR-0004 Security Considerations): file-centric secret denies — block
+    # any command referencing a credential filename (closes the head/rg/strings
+    # read-family bypass; "*.env*" subsumes the #158 cat-specific deny; "*token*"
+    # skipped — over-matches command-agnostically).
+    "*.env*": deny
+    "*.pem*": deny
+    "*.key*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
