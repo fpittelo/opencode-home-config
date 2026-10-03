@@ -64,3 +64,40 @@ Rules:
 - Worktrees live outside the repo (`../wt-…`) so they never pollute the main checkout or `gitleaks`/docs scans.
 - Cleanup is part of the DoD closeout: no `wt-*` directories may outlive their merged issue.
 - Single-agent sequential work (the default loop, WIP limit 1) does not need a worktree — plain feature branches in the main checkout remain the norm.
+
+## 8.7 Responsibility Harness — Four-Quadrant Agent Collaboration (MADR-0008)
+
+*Status: adopted 2026-10-03 (#194, MADR-0008). SSOT: MADR-0008; the duty blocks live in the four quadrant agent specs (`agents/architect.md`, `agents/cyber-security.md`, `agents/code-reviewer.md`, `agents/devops.md`).*
+
+The HOME SCRUM Team is a single PO (@fpittelo) leading AI agents. Every collaboration arrow in the harness is **agent-to-agent** — the PO is in the loop for none of the four quadrants:
+
+```
+┌────────────────┐    Review Security Impact     ┌────────────────┐
+│   Architect    │ ◄───────────────────────────► │ Cyber-Security │
+│                │    arc42 Sec 8 & Sec 11       │                │
+└───────┬────────┘                               └───────┬────────┘
+        │                                                │
+        │ MADRs & Specs                                  │ STRIDE & Guardrails
+        ▼                                                ▼
+┌────────────────┐    Static/Diff Audits         ┌────────────────┐
+│ Code-Reviewer  │ ◄───────────────────────────► │ DevOps / CI-CD │
+│                │    CVE & Secret Gates         │                │
+└────────────────┘                               └────────────────┘
+```
+
+- **Architect ↔ Cyber-Security:** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) are reviewed by `@cyber-security` against arc42 §8 (cross-cutting security) & §11 (technical risks) before spec finalization.
+- **Architect → Code-Reviewer:** MADRs & specs are handed to `@code-reviewer` as the review baseline.
+- **Cyber-Security → DevOps:** STRIDE threat models + guardrail specifications are delivered to `@devops` as implementable CI requirements (gates, not prose).
+- **Code-Reviewer ↔ DevOps:** every review verifies CVE & secret gate results (CI evidence); gate gaps are coordinated with `@devops`.
+
+### PO Gate Inventory (closed list — everything else is autonomous)
+
+- **(a) Promotion approvals** `dev` → `qa` → `main` — **one approval per release covers both legs** (codifies the "please, full promotion" practice).
+- **(b) Release publication.**
+- **(c) Milestone lifecycle** (upstream-blocked).
+- **(d) Ask-tier bash checkpoints** (MADR-0004).
+- **(e) Reviewer access on new private repos:** grant `@devfpittelo` read access (or make public) at creation time — the SoD reviewer otherwise gets 404 (Sprint 10 finding).
+
+### Agent-probe verification pattern
+
+Runtime acceptance criteria are verified by **agent probes** posting evidence to the issue (precedent: Sprint 09 model probe); the PO intervenes only on failure. This replaces the "PO fresh-session spot-check" as the default AC pattern.
