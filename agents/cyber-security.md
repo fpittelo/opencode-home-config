@@ -25,40 +25,17 @@ permission:
   edit: deny
   write: deny
   bash:
-    # 123 (AC4 of #89): explicit per-agent allowlist replacing the blanket
-    # `bash: allow` that bypassed the repo-level #86 guardrails. ORDERING: the
-    # "*": deny catch-all MUST be FIRST — opencode evaluates rules in order and
-    # the LAST matching rule wins, so a trailing catch-all would override every
-    # allow above it (exact inversion fixed for @code-reviewer in 88465bc).
-    # opencode also splits compound commands (&&, ;, |) and requires EVERY
-    # segment to match an allow rule, so the loop's chained commands are all
-    # enumerated below. Verified live on opencode 1.18.31 (see PR #123).
-    "*": deny
-    # Read-only inspection
-    "ls *": allow
-    "cat *": allow
-    "rg *": allow
-    "grep *": allow
-    "wc *": allow
-    "head *": allow
-    "tail *": allow
-    # Git read-only inspection
-    "git status *": allow
-    "git log *": allow
-    "git diff *": allow
-    "git show *": allow
-    "git branch *": allow
-    "git rev-parse *": allow
-    "git remote *": allow
-    "git ls-files *": allow
-    "git blame *": allow
-    "git describe *": allow
-    # Harness + repo gate machinery (required by the autonomous sprint loop)
-    "bash harness/run.sh *": allow
-    "bash harness/run-config-gate.sh *": allow
-    "bash -n *": allow
-    "python3 harness/docs-validation/*": allow
-    # Security audit tooling (read-only)
+    # 158 (MADR-0004): allow-by-default posture with catastrophic-deny guardrails
+    # (PO directive 2026-10-03) — supersedes the #123 per-agent allowlist policy
+    # (AC4 of #89). ORDERING: broad rules first, deny rules LAST — opencode
+    # evaluates rules in order and the LAST matching rule wins. opencode also
+    # splits compound commands (&&, ;, |) and evaluates EVERY segment, so one
+    # denied segment blocks the whole command. Three tiers: (1) "*": allow for
+    # routine work; (2) ask-tier single checkpoint for destructive-but-recoverable
+    # ops; (3) hard deny tail for catastrophic / irreversible / bypass commands.
+    "*": allow
+    # Role signature (#158): security audit tooling stays explicitly allowed for
+    # the @cyber-security remit — redundant under "*": allow, kept for legibility.
     "gitleaks*": allow
     "pip-audit*": allow
     "trivy*": allow
@@ -67,19 +44,77 @@ permission:
     "cargo metadata *": allow
     "cargo tree *": allow
     "sha256sum *": allow
-    # opencode config/permission inspection (audit + smoke evidence)
     "opencode debug *": allow
     "opencode agent list*": allow
-    # Working-directory changes (shell builtin; no side effects of its own)
-    "cd *": allow
-    # Defence-in-depth: already unreachable via the leading catch-all, restated
-    # so the dangerous surface is legible and survives any future reordering.
+    # --- ask-tier (single checkpoint; catastrophic variants hard-denied below) ---
+    "rm *": ask
+    "pip install*": ask
+    "npm install -g*": ask
+    "npm i -g*": ask
+    "kill*": ask
+    "pkill*": ask
+    "killall*": ask
+    "chmod *": ask
+    "chown *": ask
+    "systemctl*": ask
+    # --- hard deny tail (catastrophic / irreversible / bypass) ---
     "sudo*": deny
+    "rm -rf /*": deny
+    "rm -fr /*": deny
+    "rm -rf /": deny
+    "rm -rf ~*": deny
+    "rm -rf $HOME*": deny
+    "rm -rf ${HOME}*": deny
+    "mkfs*": deny
+    "dd *of=/dev/*": deny
+    "shred*": deny
+    "wipefs*": deny
+    "blockdev*": deny
+    "fdisk*": deny
+    "sfdisk*": deny
+    "gdisk*": deny
+    "parted*": deny
+    "truncate * /dev/*": deny
+    "* > /dev/sd*": deny
+    "* > /dev/nvme*": deny
+    "* > /dev/mmcblk*": deny
+    "* > /dev/vd*": deny
+    "* > /dev/hd*": deny
+    "mv * /dev/sd*": deny
+    "mv * /dev/nvme*": deny
+    "mv * /dev/mmcblk*": deny
+    "shutdown*": deny
+    "reboot*": deny
+    "halt*": deny
+    "poweroff*": deny
+    "systemctl poweroff*": deny
+    "systemctl reboot*": deny
+    "systemctl halt*": deny
+    "crontab*": deny
+    "systemd-run*": deny
+    "chmod -R * /*": deny
+    "chown -R * /*": deny
+    "find * -delete*": deny
+    "find * -exec rm*": deny
+    "git push --force*": deny
+    "git push -f*": deny
+    "git filter-branch*": deny
+    "git filter-repo*": deny
+    "git clean*": deny
+    "git reset --hard*": deny
     "curl*": deny
     "wget*": deny
-    "rm -rf *": deny
     "bash -c *": deny
     "sh *": deny
+    "python* -c*": deny
+    "node -e*": deny
+    "node --eval*": deny
+    "perl -e*": deny
+    "ruby -e*": deny
+    "printenv*": deny
+    "env": deny
+    "cat *.secrets.env*": deny
+    "cat /proc/*/environ*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
