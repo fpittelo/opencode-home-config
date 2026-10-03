@@ -29,6 +29,8 @@ C4Container
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
     }
 
+    Container(herdr_runtime, "Herdr Agent Runtime", "Native binary (pinned v0.9.3, SHA256-verified)", "PTY pane host + lifecycle state server (MADR-0005); integration plugins in ~/.config/opencode are untracked and Herdr-owned")
+
     Rel(fpittelo, agents, "Owns & approves")
     Rel(agents, mcp_github, "Board ops via", "GITHUB_* tools")
     Rel(agents, mcp_reviewer, "Reviews via (code-reviewer only)", "GITHUB_CODE_REVIEWER_*")
@@ -40,6 +42,8 @@ C4Container
     Rel(mcp_coach, intervals, "Reads/writes training data", "HTTPS")
     Rel(mcp_openrouter, openrouter_api, "Serves catalog", "MCP over HTTPS")
     Rel(installer, agents, "Symlinks profile files")
+    Rel(installer, herdr_runtime, "Installs pinned binary (SHA256-verified)")
+    Rel(herdr_runtime, agents, "Hosts OpenCode TUI panes running", "real PTY + Unix socket")
     Rel(ci, opencode_jsonc, "Validates JSONC + secrets")
 ```
 
@@ -50,9 +54,10 @@ C4Container
 | `opencode.jsonc` | Single runtime configuration: `enabled_providers: ["openrouter"]`, `default_agent: "architect"` + built-in `build`/`plan` mode disabling (#149), MCP registry, `{env:VAR}` secret interpolation | OpenCode runtime schema (https://opencode.ai/config.json) |
 | `agents/*.md` (7) | Role mandates, model assignments, permission boundaries (allow/deny, last-match-wins) | OpenCode agent loading; frontmatter schema |
 | `skills/*/SKILL.md` (11) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
-| `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode` | Bash, systemd env import |
+| `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode`; installs the pinned `github-mcp-server` and Herdr binaries (SHA256-verified, idempotent) | Bash, systemd env import |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, Gitleaks full-history scan | GitHub Actions |
 | MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker) / streamable-HTTP (remote) |
+| Herdr runtime (MADR-0005) | Hosts OpenCode TUI panes as real PTYs; reports agent lifecycle (working/blocked/idle); sessions survive detach (`ctrl+b q` → `herdr`) and server restarts | `herdr` CLI (client/server), Unix socket `~/.config/herdr/herdr.sock`, integration plugins in `~/.config/opencode/` (untracked, Herdr-owned) |
 
 **Permission model invariants (enforced since #68, extended by #108, #150):**
 - `@code-reviewer`: `GITHUB_*: deny` then `GITHUB_CODE_REVIEWER_*: allow` — acts ONLY as `@devfpittelo`.

@@ -14,9 +14,10 @@
    - [Directory Structure](#24-directory-structure)
    - [3-Branch Git Lifecycle](#25-3-branch-git-lifecycle)
    - [MCP Servers](#26-mcp-servers)
-   - [CI/CD Pipeline](#27-cicd-pipeline)
-   - [Troubleshooting](#28-troubleshooting)
-   - [GitHub PAT Permissions Checklist](#29-github-pat-permissions-checklist)
+   - [Herdr Agent Runtime](#27-herdr-agent-runtime)
+   - [CI/CD Pipeline](#28-cicd-pipeline)
+   - [Troubleshooting](#29-troubleshooting)
+   - [GitHub PAT Permissions Checklist](#210-github-pat-permissions-checklist)
 3. [User Guide](#3-user-guide)
    - [Starting a Session](#31-starting-a-session)
    - [Agents](#32-agents)
@@ -78,11 +79,12 @@ chmod +x install.sh && ./install.sh
 | 1 | Symlink the agents directory | `~/.config/opencode/agents` → repo's `agents/` |
 | 1 | Symlink the skills directory | `~/.config/opencode/skills` → repo's `skills/` |
 | 2 | Install pinned `github-mcp-server` v1.12.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
-| 3 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
-| 4 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
-| 5 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
-| 5 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
-| 5 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
+| 3 | Install pinned `herdr` v0.9.3 binary — downloaded from the official Herdr release, SHA256-verified against the pinned release-asset digest (skipped if the pinned version is already installed) | `~/.local/bin/herdr` |
+| 4 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
+| 5 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
+| 6 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
+| 6 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
+| 6 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
 
 The installer is **idempotent** — running it again will update the symlinks but will NOT overwrite an existing `.secrets.env`.
 
@@ -190,7 +192,70 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
 - **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
 
-### 2.7 CI/CD Pipeline
+### 2.7 Herdr Agent Runtime
+
+*Since #148 (MADR-0005, 2026-10-03), VIDAR runs the **Herdr agent runtime** — a terminal
+multiplexer purpose-built for coding agents. Herdr hosts OpenCode TUI panes as real PTYs, so agent
+sessions survive terminal detach and Herdr server restarts, and a sidebar shows live agent state
+(working / blocked / idle) across all projects.*
+
+**Client / server model:**
+
+| Piece | What it is | How you use it |
+|:---|:---|:---|
+| Herdr server | Background process hosting the panes (auto-spawned on first `herdr` start — no systemd unit) | `herdr server stop` stops it; restarting restores the saved layout |
+| Herdr client (TUI) | The terminal UI you interact with | Start/reattach with `herdr` |
+| OpenCode panes | Real PTY panes running `opencode` (HOME SCRUM agents) | Detach with `ctrl+b q` — panes keep running; reattach later with `herdr` |
+| Integration plugins | Files Herdr wrote into `~/.config/opencode/` that report OpenCode session state + session IDs to the server over the local Unix socket `~/.config/herdr/herdr.sock` | Managed by Herdr — see lifecycle below |
+
+**Daily usage:**
+
+```bash
+herdr            # start (or reattach to) the Herdr TUI
+# ... open/switch to an OpenCode pane and work as usual ...
+# detach: ctrl+b q   (agents keep running)
+herdr            # reattach later — same panes, same sessions
+herdr server stop   # stop the server; a later `herdr` restores the layout and
+                    # OpenCode resumes its conversation (session snapshots ON by default)
+```
+
+**Integration file lifecycle (owned by Herdr — untracked):** `herdr integration install opencode`
+wrote these files into `~/.config/opencode/` (integration version 13 at the time of writing):
+
+| File | Role |
+|:---|:---|
+| `plugins/herdr-agent-state.js` | OpenCode plugin reporting lifecycle state (working/blocked/idle) + session IDs |
+| `herdr-tui-session.js` | TUI session bridge (pane ↔ server reporting) |
+| `herdr-opencode/tui.js` | V2 entrypoint shim (resolves the directory's TUI entrypoint; V1 uses the original file) |
+| `tui.jsonc` | Plugin registration (`{"plugin": ["./herdr-tui-session.js"]}`) |
+
+These files are **local and untracked** — this repository does not commit or edit them. Herdr owns
+their lifecycle:
+
+```bash
+herdr integration install opencode   # install / re-install (idempotent)
+herdr integration status             # show installed integrations + versions
+herdr integration uninstall opencode # remove the integration files
+herdr integration update             # update integrations after a Herdr upgrade
+```
+
+After (re-)installing the integration, restart OpenCode panes so they load the plugin.
+
+**Upgrades:** Herdr is **pinned** — do not run `herdr update`. To upgrade, bump `HERDR_VERSION` (and
+its `HERDR_BINARY_SHA256`) in `install.sh` and re-run it; then run `herdr integration update` if the
+new release ships a newer integration.
+
+**Security invariants (MADR-0005):**
+
+- **Pane screen history stays OFF.** Pane output may contain tokens, secrets, or personal data —
+  do not enable pane screen-history capture. Session snapshots and agent resume stay at their
+  defaults (ON): they preserve session identity, not pane screen content.
+- **Local only.** Herdr runs strictly on VIDAR over a local Unix socket (same trust model as tmux);
+  no SSH remote attach is configured.
+- Herdr's update/detection-manifest calls to herdr.dev carry version metadata only — no session
+  content leaves the machine.
+
+### 2.8 CI/CD Pipeline
 
 The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push and PR to `dev`:
 
@@ -201,7 +266,7 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 
 **Quality gate:** The pipeline must pass with **zero warnings and zero failures** before any merge.
 
-### 2.8 Troubleshooting
+### 2.9 Troubleshooting
 
 | Symptom | Likely Cause | Fix |
 |:---|:---|:---|
@@ -213,8 +278,11 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 | Wrong model used | `opencode.jsonc` has wrong `model` field | Check `opencode.jsonc` line 3 |
 | `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (it adds the source line) |
 | Secrets not in GUI apps | systemd user session doesn't have them | `systemctl --user import-environment OPENROUTER_HOME_API_KEY ...` |
+| `herdr: command not found` | Herdr binary not installed | Re-run `install.sh` (installs the pinned binary to `~/.local/bin/herdr`) |
+| OpenCode panes show no live state in the Herdr sidebar | Integration files missing or stale (e.g. after a Herdr upgrade) | `herdr integration install opencode`, then restart the OpenCode panes; verify with `herdr integration status` |
+| OpenCode conversation lost after `herdr server stop` | Session snapshots disabled or Herdr stopped uncleanly | Keep session snapshots at defaults (ON); restart with `herdr` — the layout restores and OpenCode resumes via its session ID |
 
-### 2.9 GitHub PAT Permissions Checklist
+### 2.10 GitHub PAT Permissions Checklist
 
 Minimum scopes for squad PATs (fine-grained; classic-PAT equivalent in parentheses). A missing scope causes #40-class multi-hour delivery blocks — check this list **first** when GitHub MCP tools or pushes suddenly fail with 403:
 

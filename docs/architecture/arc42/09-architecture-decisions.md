@@ -10,6 +10,7 @@
 | [MADR-0002](../../adr/0002-mcp-server-efficiency-baseline-toolset-scoping-per-agent-tool-denial-pinned-native-transport.md) | MCP server efficiency baseline: toolset scoping, per-agent tool denial, pinned native transport | accepted | 2026-09-21 |
 | [MADR-0003](../../adr/0003-proportionate-quality-gates-ci-and-harness-simplification.md) | Proportionate quality gates — CI and harness simplification (KIS/YAGNI) | accepted | 2026-09-21 |
 | [MADR-0004](../../adr/0004-allow-by-default-bash-permission-posture.md) | Allow-by-default bash permission posture with catastrophic-deny guardrails (supersedes the #123 allowlist policy) | accepted | 2026-10-03 |
+| [MADR-0005](../../adr/0005-adopt-herdr-agent-runtime.md) | Adopt Herdr agent runtime for OpenCode on VIDAR — pinned binary, default-on idempotent install, local-only | accepted | 2026-10-03 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
