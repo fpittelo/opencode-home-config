@@ -187,6 +187,7 @@ flowchart LR
 Run both pipelines in parallel, one for Rust core (`/core/`), one for Python MCP servers (`/mcp-servers/`).
 
 - **Zero-Tolerance Quality Gate:** Any warning or failure in any step strictly fails the pipeline.
+- **CVE & Secret Gates (MADR-0008, #194):** implement `@cyber-security` guardrails as CI gates; own dependency-audit (CVE) and gitleaks gates; report gate coverage to `@code-reviewer`.
 - **Image Registry Tagging:**
   - `dev` branch $\rightarrow$ `ghcr.io/fpittelo/<repo>:dev`
   - `qa` branch $\rightarrow$ `ghcr.io/fpittelo/<repo>:qa`

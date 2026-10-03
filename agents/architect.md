@@ -224,6 +224,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 - **Strict Schema Validation:** Rust: `serde` + `validator` crate with explicit field types. Python: Pydantic v2 with explicit field types and docstrings.
 - **Container Hardening:** Multi-stage builds, non-root user execution, and minimal base images (`docker-expert`). Rust: distroless/scratch. Python: slim.
 - **STRIDE Threat Modeling:** Apply threat modeling during backlog refinement for all new MCP tools and API integrations.
+- **Security Impact Routing (MADR-0008, #194):** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) MUST be reviewed by `@cyber-security` against arc42 §8 (cross-cutting security) & §11 (technical risks) BEFORE spec finalization; MADRs & specs handed to `@code-reviewer` as the review baseline.
 - **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
 
 ---
