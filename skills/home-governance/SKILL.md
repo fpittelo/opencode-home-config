@@ -322,3 +322,13 @@ All agents deliver with **Keep It Simple (KIS)** and **You Aren't Gonna Need It 
 3. **Over-delivery is a review finding:** scope beyond the issue's acceptance criteria is formally flagged by `@code-reviewer`, even when technically correct.
 
 **Provenance:** PO directive of 2026-10-03 (Sprint 08, recorded in #167) — measured outcome: ~190 lines across 4 issues, zero REQUEST_CHANGES. Promoted to standing policy by #180. Extends MADR-0003's **Proportionate Quality Gates** principle (D5) from pipeline controls to agent delivery behavior.
+
+---
+
+## 10. Portfolio Standard (FPITTELO PROJECT STANDARD v1)
+
+All @fpittelo projects follow the **FPITTELO PROJECT STANDARD v1**, maintained in [`fpittelo/project-template`](https://github.com/fpittelo/project-template) — its `STANDARD.md` is the portfolio SSOT for project governance (MADR-0007).
+
+- **Agents:** apply the standard when working in any fpittelo repository — 3-branch lifecycle, zero-warning CI, SCRUM label taxonomy, MADR workflow, KIS & YAGNI, security baseline.
+- **New projects:** scaffold from the `fpittelo/project-template` GitHub template repository.
+- **Existing projects:** retrofit incrementally (pilot: `coach`).
