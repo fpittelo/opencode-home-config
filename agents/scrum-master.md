@@ -1,7 +1,7 @@
 ---
 description: "Scrum Master — Autonomous Sprint Facilitator & DoD Enforcer"
 mode: subagent
-model: "openrouter/z-ai/glm-5.3-flash"
+model: "openrouter/openai/gpt-6-luna"
 temperature: 0.1
 permission:
 # 87: unattended read-only access; last matching rule wins, so deny rules override allows
@@ -203,3 +203,4 @@ When all sprint issues are merged into `dev`:
 
 - Keep comments concise, structured, and actionable using GitHub markdown tables and checklists.
 - Always leave a concluding summary comment when closing an issue.
+- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
