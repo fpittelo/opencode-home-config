@@ -37,7 +37,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Scan full git history (gitleaks v8.24.3, pinned image)
+      - name: Scan full git history (gitleaks v8.24.3, digest-pinned image)
         # Why not gitleaks-action? Verified in gitleaks-action v3.0.0
         # (src/index.js + src/gitleaks.js @ e0c47f4f): the action appends a
         # --log-opts commit range for push and pull_request events and only
@@ -45,9 +45,12 @@ jobs:
         # the qa -> main promotion trigger (push to main) it would therefore
         # scan ONLY the promotion commits - not full history. To get
         # identical full-history semantics on ALL three triggers, the
-        # version-pinned gitleaks binary is invoked directly (pinned Docker
-        # image tag - fixes the unpinned :latest usage MADR-0003 called
-        # out). With no --log-opts, gitleaks detect scans every commit
+        # version-pinned gitleaks binary is invoked directly. The image is
+        # digest-pinned (tag alone is mutable - #142 A5): the digest is the
+        # OCI image index (multi-arch manifest list) of zricethezav/gitleaks
+        # v8.24.3, resolved via the Docker Hub v2 API
+        # (hub.docker.com/v2/repositories/zricethezav/gitleaks/tags/v8.24.3).
+        # With no --log-opts, gitleaks detect scans every commit
         # reachable from HEAD. --redact keeps secret values out of the job
         # log while file/line/rule stay visible for triage.
         run: |
@@ -55,7 +58,7 @@ jobs:
             --network=none \
             -v "$PWD:/src:ro" \
             -w /src \
-            zricethezav/gitleaks:v8.24.3 \
+            zricethezav/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 \
             detect --source /src --verbose --redact
 
   docs-render-validation:

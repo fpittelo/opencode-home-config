@@ -58,7 +58,13 @@ jobs:
         with:
           context: ./harness/docker
           file: ./harness/docker/Dockerfile.python
-          push: ${{ github.event_name != 'pull_request' }}
+          # Literal true, not a condition (#142 A6): the former
+          # `push: ${{ github.event_name != 'pull_request' }}` was
+          # constant-true (this workflow only triggers on
+          # workflow_dispatch and harness-v* tag pushes - never
+          # pull_request). The literal is required because
+          # build-push-action defaults push to false.
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -96,7 +102,7 @@ jobs:
         with:
           context: ./harness/docker
           file: ./harness/docker/Dockerfile.rust
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true # dead condition removed, see build-python (#142 A6)
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -134,7 +140,7 @@ jobs:
         with:
           context: ./harness/docker
           file: ./harness/docker/Dockerfile.docs-validator
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true # dead condition removed, see build-python (#142 A6)
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
