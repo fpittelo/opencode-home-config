@@ -14,9 +14,10 @@
    - [Directory Structure](#24-directory-structure)
    - [3-Branch Git Lifecycle](#25-3-branch-git-lifecycle)
    - [MCP Servers](#26-mcp-servers)
-   - [CI/CD Pipeline](#27-cicd-pipeline)
-   - [Troubleshooting](#28-troubleshooting)
-   - [GitHub PAT Permissions Checklist](#29-github-pat-permissions-checklist)
+   - [Herdr Agent Runtime](#27-herdr-agent-runtime)
+   - [CI/CD Pipeline](#28-cicd-pipeline)
+   - [Troubleshooting](#29-troubleshooting)
+   - [GitHub PAT Permissions Checklist](#210-github-pat-permissions-checklist)
 3. [User Guide](#3-user-guide)
    - [Starting a Session](#31-starting-a-session)
    - [Agents](#32-agents)
@@ -25,6 +26,7 @@
    - [Models](#35-models)
    - [Daily Workflow](#36-daily-workflow)
    - [Dos and Donts](#37-dos-and-donts)
+   - [Permission Posture & Safety Guardrails](#38-permission-posture--safety-guardrails)
 4. [Switching Between HOME and WORK Profiles](#4-switching-between-home-and-work-profiles)
    - [How Profile Switching Works](#41-how-profile-switching-works)
    - [Switch to HOME Profile](#42-switch-to-home-profile)
@@ -77,11 +79,12 @@ chmod +x install.sh && ./install.sh
 | 1 | Symlink the agents directory | `~/.config/opencode/agents` → repo's `agents/` |
 | 1 | Symlink the skills directory | `~/.config/opencode/skills` → repo's `skills/` |
 | 2 | Install pinned `github-mcp-server` v1.12.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
-| 3 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
-| 4 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
-| 5 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
-| 5 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
-| 5 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
+| 3 | Install pinned `herdr` v0.9.3 binary — downloaded from the official Herdr release, SHA256-verified against the pinned release-asset digest (skipped if the pinned version is already installed) | `~/.local/bin/herdr` |
+| 4 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
+| 5 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
+| 6 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
+| 6 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
+| 6 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
 
 The installer is **idempotent** — running it again will update the symlinks but will NOT overwrite an existing `.secrets.env`.
 
@@ -189,7 +192,70 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
 - **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
 
-### 2.7 CI/CD Pipeline
+### 2.7 Herdr Agent Runtime
+
+*Since #148 (MADR-0005, 2026-10-03), VIDAR runs the **Herdr agent runtime** — a terminal
+multiplexer purpose-built for coding agents. Herdr hosts OpenCode TUI panes as real PTYs, so agent
+sessions survive terminal detach and Herdr server restarts, and a sidebar shows live agent state
+(working / blocked / idle) across all projects.*
+
+**Client / server model:**
+
+| Piece | What it is | How you use it |
+|:---|:---|:---|
+| Herdr server | Background process hosting the panes (auto-spawned on first `herdr` start — no systemd unit) | `herdr server stop` stops it; restarting restores the saved layout |
+| Herdr client (TUI) | The terminal UI you interact with | Start/reattach with `herdr` |
+| OpenCode panes | Real PTY panes running `opencode` (HOME SCRUM agents) | Detach with `ctrl+b q` — panes keep running; reattach later with `herdr` |
+| Integration plugins | Files Herdr wrote into `~/.config/opencode/` that report OpenCode session state + session IDs to the server over the local Unix socket `~/.config/herdr/herdr.sock` | Managed by Herdr — see lifecycle below |
+
+**Daily usage:**
+
+```bash
+herdr            # start (or reattach to) the Herdr TUI
+# ... open/switch to an OpenCode pane and work as usual ...
+# detach: ctrl+b q   (agents keep running)
+herdr            # reattach later — same panes, same sessions
+herdr server stop   # stop the server; a later `herdr` restores the layout and
+                    # OpenCode resumes its conversation (session snapshots ON by default)
+```
+
+**Integration file lifecycle (owned by Herdr — untracked):** `herdr integration install opencode`
+wrote these files into `~/.config/opencode/` (integration version 13 at the time of writing):
+
+| File | Role |
+|:---|:---|
+| `plugins/herdr-agent-state.js` | OpenCode plugin reporting lifecycle state (working/blocked/idle) + session IDs |
+| `herdr-tui-session.js` | TUI session bridge (pane ↔ server reporting) |
+| `herdr-opencode/tui.js` | V2 entrypoint shim (resolves the directory's TUI entrypoint; V1 uses the original file) |
+| `tui.jsonc` | Plugin registration (`{"plugin": ["./herdr-tui-session.js"]}`) |
+
+These files are **local and untracked** — this repository does not commit or edit them. Herdr owns
+their lifecycle:
+
+```bash
+herdr integration install opencode   # install / re-install (idempotent)
+herdr integration status             # show installed integrations + versions
+herdr integration uninstall opencode # remove the integration files
+herdr integration update             # update integrations after a Herdr upgrade
+```
+
+After (re-)installing the integration, restart OpenCode panes so they load the plugin.
+
+**Upgrades:** Herdr is **pinned** — do not run `herdr update`. To upgrade, bump `HERDR_VERSION` (and
+its `HERDR_BINARY_SHA256`) in `install.sh` and re-run it; then run `herdr integration update` if the
+new release ships a newer integration.
+
+**Security invariants (MADR-0005):**
+
+- **Pane screen history stays OFF.** Pane output may contain tokens, secrets, or personal data —
+  do not enable pane screen-history capture. Session snapshots and agent resume stay at their
+  defaults (ON): they preserve session identity, not pane screen content.
+- **Local only.** Herdr runs strictly on VIDAR over a local Unix socket (same trust model as tmux);
+  no SSH remote attach is configured.
+- Herdr's update/detection-manifest calls to herdr.dev carry version metadata only — no session
+  content leaves the machine.
+
+### 2.8 CI/CD Pipeline
 
 The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push and PR to `dev`:
 
@@ -200,7 +266,7 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 
 **Quality gate:** The pipeline must pass with **zero warnings and zero failures** before any merge.
 
-### 2.8 Troubleshooting
+### 2.9 Troubleshooting
 
 | Symptom | Likely Cause | Fix |
 |:---|:---|:---|
@@ -212,8 +278,11 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 | Wrong model used | `opencode.jsonc` has wrong `model` field | Check `opencode.jsonc` line 3 |
 | `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (it adds the source line) |
 | Secrets not in GUI apps | systemd user session doesn't have them | `systemctl --user import-environment OPENROUTER_HOME_API_KEY ...` |
+| `herdr: command not found` | Herdr binary not installed | Re-run `install.sh` (installs the pinned binary to `~/.local/bin/herdr`) |
+| OpenCode panes show no live state in the Herdr sidebar | Integration files missing or stale (e.g. after a Herdr upgrade) | `herdr integration install opencode`, then restart the OpenCode panes; verify with `herdr integration status` |
+| OpenCode conversation lost after `herdr server stop` | Session snapshots disabled or Herdr stopped uncleanly | Keep session snapshots at defaults (ON); restart with `herdr` — the layout restores and OpenCode resumes via its session ID |
 
-### 2.9 GitHub PAT Permissions Checklist
+### 2.10 GitHub PAT Permissions Checklist
 
 Minimum scopes for squad PATs (fine-grained; classic-PAT equivalent in parentheses). A missing scope causes #40-class multi-hour delivery blocks — check this list **first** when GitHub MCP tools or pushes suddenly fail with 403:
 
@@ -260,7 +329,7 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 | **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | GLM 5.2 | Yes | Yes |
 | **@coach** | Athletic Coach & Longevity Advisor — Zwift cycling, kettlebell, Intervals.icu analytics | Gemini 3.7 Flash | No | No |
 | **@code-reviewer** | PR Quality Gatekeeper — inspects pull requests and approves/rejects | GLM 5.2 | No | No |
-| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | Kimi K2.7 Code | No | No |
+| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | Kimi K2.7 Code | No | Yes |
 | **@developer** | Senior Developer — Rust + Python dual-stack, strict TDD, writes production code | Kimi K2.7 Code | Yes | Yes |
 | **@devops** | DevOps Engineer — CI/CD pipelines, Docker, release automation, infrastructure | Kimi K2.7 Code | Yes | Yes |
 | **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.2 | No | No |
@@ -271,6 +340,7 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 - **Primary agents** (architect, coach) are available directly in the main session.
 - **Subagents** (code-reviewer, cyber-security, developer, devops, scrum-master) are dispatched by the primary agent when their specialty is needed.
 - Each agent has a **temperature** setting (0.1–0.3) — lower means more deterministic, higher means more creative.
+- **Bash access (#158):** @architect, @developer, @devops and @cyber-security run bash **allow-by-default with catastrophic-deny guardrails** (ask-tier checkpoints on destructive-but-recoverable operations) — see §3.8. @code-reviewer is read-only and @scrum-master / @coach have no bash (separation of duties).
 
 ### 3.3 Skills
 
@@ -390,6 +460,28 @@ flowchart TD
 | ✅ Use OpenRouter for all AI models (HOME profile) | ❌ Add direct Google/Anthropic API keys |
 | ✅ Ask @architect to plan before @developer codes | ❌ Jump straight to coding without a plan |
 | ✅ Restart opencode after switching profiles | ❌ Keep an old session running with a stale profile |
+
+### 3.8 Permission Posture & Safety Guardrails
+
+*Since #158 (MADR-0004, 2026-10-03), the bash permission posture is **allow-by-default with catastrophic-deny guardrails**, replacing the former ask/deny-default + allowlist scheme (#86 → #89 → #123).*
+
+**How bash permissions work.** OpenCode evaluates the permission rules in order and the **last matching rule wins**. Compound commands (`&&`, `;`, `|`) are split, and **every segment** is evaluated — one denied segment blocks the whole command. The posture has three tiers:
+
+| Tier | Behaviour | Examples |
+|:---|:---|:---|
+| **Allow (default)** | Runs unprompted | `git *`, `python3 script.py`, `pytest*`, `bash harness/run-config-gate.sh`, everyday file operations |
+| **Ask (single checkpoint)** | One confirmation prompt | `rm *`, `pip install*`, `npm install -g*` / `npm i -g*`, `kill*` / `pkill*` / `killall*`, `chmod *`, `chown *`, `systemctl*` |
+| **Deny (hard block)** | Blocked, no prompt | Catastrophic / irreversible / bypass commands (below) |
+
+**Hard deny tail (catastrophic / irreversible / bypass):** `sudo*`; `rm -rf` on `/`, `~` or `$HOME`; disk and device tools (`mkfs*`, `dd *of=/dev/*`, `shred*`, `wipefs*`, `blockdev*`, `fdisk*` / `sfdisk*` / `gdisk*`, `parted*`, `truncate * /dev/*`); writes and moves to block devices (`* > /dev/sd*` and the nvme/mmcblk/vd/hd variants, `mv * /dev/…`); power-off (`shutdown*`, `reboot*`, `halt*`, `poweroff*`, `systemctl poweroff*` / `reboot*` / `halt*`); persistence (`crontab*`, `systemd-run*`); recursive permission changes on absolute paths (`chmod -R * /*`, `chown -R * /*`); bulk deletion (`find * -delete*`, `find * -exec rm*`); git history destruction (`git push --force*` / `-f*`, `git filter-branch*`, `git filter-repo*`, `git clean*`, `git reset --hard*`); network fetchers (`curl*`, `wget*`); inline-code interpreters (`bash -c *`, `sh *`, `python* -c*`, `node -e*` / `--eval*`, `perl -e*`, `ruby -e*`); environment and secret reads (`printenv*`, `env`, `cat *.secrets.env*`, `cat /proc/*/environ*`).
+
+**Unchanged by #158:**
+
+- File `read`/`edit` credential denies (`.secrets.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `cat *.secrets.env*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
+- `COACH_*` MCP denies (#150) — Coach tools remain @coach-only (see §3.4).
+- `@code-reviewer` keeps its read-only bash allowlist; `@scrum-master` and `@coach` keep zero-bash charters (separation of duties).
+
+**Reference:** MADR-0004 (`docs/adr/0004-allow-by-default-bash-permission-posture.md`) and arc42 §8.1.
 
 ---
 
