@@ -5,6 +5,12 @@ DEST="$HOME/.config/opencode"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$DEST"
 
+# Shared temp workspace for the pinned-binary downloads below: created once,
+# cleaned once by a single EXIT trap. Per-block traps overwrite each other,
+# leaking every TMP_DIR but the last (#168).
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
 # 1. Symlink runtime configuration, agents, and skills
 ln -sf "$SCRIPT_DIR/opencode.jsonc" "$DEST/opencode.jsonc"
 ln -sfn "$SCRIPT_DIR/agents" "$DEST/agents"
@@ -30,8 +36,6 @@ else
     echo "⏳  Installing github-mcp-server $GITHUB_MCP_VERSION (native binary, checksum-verified)..."
     # Platform guard: the pinned artifact is Linux x86_64 only (VIDAR target).
     [ "$(uname -s)/$(uname -m)" = "Linux/x86_64" ] || { echo "❌  Unsupported platform $(uname -s)/$(uname -m) — pinned artifact github-mcp-server_Linux_x86_64.tar.gz requires Linux x86_64." >&2; exit 1; }
-    TMP_DIR="$(mktemp -d)"
-    trap 'rm -rf "$TMP_DIR"' EXIT
     ARTIFACT="github-mcp-server_Linux_x86_64.tar.gz"
     RELEASE_URL="https://github.com/github/github-mcp-server/releases/download/v$GITHUB_MCP_VERSION"
     curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$TMP_DIR/$ARTIFACT" "$RELEASE_URL/$ARTIFACT"
@@ -84,8 +88,6 @@ else
     echo "⏳  Installing herdr $HERDR_VERSION (checksum-verified)..."
     # Platform guard: the pinned artifact is Linux x86_64 only (VIDAR target).
     [ "$(uname -s)/$(uname -m)" = "Linux/x86_64" ] || { echo "❌  Unsupported platform $(uname -s)/$(uname -m) — pinned artifact herdr-linux-x86_64 requires Linux x86_64." >&2; exit 1; }
-    TMP_DIR="$(mktemp -d)"
-    trap 'rm -rf "$TMP_DIR"' EXIT
     ARTIFACT="herdr-linux-x86_64"
     RELEASE_URL="https://github.com/herdrdev/herdr/releases/download/v$HERDR_VERSION"
     curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$TMP_DIR/$ARTIFACT" "$RELEASE_URL/$ARTIFACT"

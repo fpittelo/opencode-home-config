@@ -37,7 +37,7 @@ C4Context
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
 | LLM inference | HTTPS (OpenRouter API) | Model per agent via `openrouter/<model>` assignments. |
 | Herdr agent runtime (MADR-0005, #148) | Unix socket `~/.config/herdr/herdr.sock` + real PTY panes | Technology Layer node on VIDAR — hosts OpenCode TUI panes, reports agent lifecycle (working/blocked/idle); pinned v0.9.3 binary installed by `install.sh`; strictly local (no SSH remote). |
-| CI | GitHub Actions | JSONC validation + Gitleaks full-history scan. |
+| CI | GitHub Actions | JSONC validation + diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled deep-validation workflow (MADR-0003). |
 
 ## 3.3 Scope Decisions
 
