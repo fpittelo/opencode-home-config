@@ -404,7 +404,7 @@ The HOME profile uses **OpenRouter only** — no direct Google or Anthropic API 
 | `moonshotai/kimi-k2.7-code` | Kimi K2.7 Code | Available for selection |
 | `qwen/qwen3.8-2.4t-a95b` | Qwen 3.8 2.4T A95B | Available for selection |
 
-**How to change the default model:** Edit line 3 of `opencode.jsonc`:
+**How to change the default model:** Edit line 16 of `opencode.jsonc`:
 ```jsonc
 "model": "openrouter/google/gemini-3.8-flash",
 ```
@@ -525,7 +525,7 @@ The symlink also controls the `agents/` and `skills/` directories (via separate 
 | **MCP: GITHUB** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
 | **MCP: COACH** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
 | **AI providers** | OpenRouter only | EPFL AI + OpenRouter |
-| **Default model** | `kimi-k2.7-code` (via OpenRouter) | EPFL AI default |
+| **Default model** | `google/gemini-3.8-flash` (via OpenRouter) | EPFL AI default |
 | **Directory** | `~/projects/HOME/` | `~/projects/WORK/` |
 
 ### 4.2 Switch to HOME Profile
