@@ -348,16 +348,20 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 
 ### 3.3 Skills
 
-Skills are knowledge modules that activate automatically when the conversation matches their domain. The HOME profile has 10 skills:
+Skills are knowledge modules that activate automatically when the conversation matches their domain. The HOME profile has 14 skills:
 
 | Skill | What it does | When it activates |
 |:---|:---|:---|
+| **arc42-documentation** | arc42 documentation method: 12-section templates, Mermaid C4 standards, section update triggers | Authoring/updating `docs/architecture/arc42/`, design inception |
 | **coach** | Endurance training, Zwift cycling, kettlebell, Intervals.icu analytics | Athletic coaching questions, workout planning |
 | **docker-expert** | Docker containerization, multi-stage builds, security hardening | Container/Docker questions |
 | **fastmcp-builder** | Designing FastMCP servers, Pydantic v2 schemas, transport protocols | Building MCP tools |
 | **find-skills** | Discovers and installs new skills from the ecosystem | "How do I do X?" or "Find a skill for X" |
 | **github-scrum-board** | Sprint management, issue templates, DoD enforcement | GitHub issue/PR/milestone management |
+| **harness-engineering** | Containerized pre-push quality gate (`bash harness/run.sh python|rust`) | Before pushing any code; when a gate fails |
+| **herdr** | Controls Herdr, a terminal multiplexer for coding agents (panes, tabs, workspaces) | Explicit Herdr mention only; requires `HERDR_ENV=1` |
 | **home-governance** | HOME portfolio context, Swiss privacy rules, Git lifecycle, SCRUM governance | Session start, design inception |
+| **madr-adr** | MADR decision records: template, header schema, `new-adr.sh` scaffolding, arc42 §9 indexing | Architectural spikes, technology introductions |
 | **mermaid-diagrams** | Creating diagrams (C4, sequence, ERD, flowcharts) using Mermaid syntax | "Diagram", "visualize", "model", architecture diagrams |
 | **opentofu-iac** | Infrastructure as Code (OpenTofu/Terraform) for GCP/Azure | Cloud infrastructure, IaC questions |
 | **release-automation** | Semantic versioning, promotion gates, post-release board hygiene | Release coordination, `dev` → `qa` → `main` |
