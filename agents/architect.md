@@ -1,7 +1,7 @@
 ---
 description: "Architect — Technical Lead & Solution Architect"
 mode: primary
-model: "openrouter/z-ai/glm-5.3"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
@@ -224,6 +224,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 - **Strict Schema Validation:** Rust: `serde` + `validator` crate with explicit field types. Python: Pydantic v2 with explicit field types and docstrings.
 - **Container Hardening:** Multi-stage builds, non-root user execution, and minimal base images (`docker-expert`). Rust: distroless/scratch. Python: slim.
 - **STRIDE Threat Modeling:** Apply threat modeling during backlog refinement for all new MCP tools and API integrations.
+- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
 
 ---
 

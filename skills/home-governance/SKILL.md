@@ -310,3 +310,15 @@ jobs:
 
 Run both pipelines in parallel — one for Rust core (`/core/`), one for Python MCP servers
 (`/mcp-servers/`). Both must pass with zero warnings.
+
+---
+
+## 9. KIS & YAGNI Delivery Principle
+
+All agents deliver with **Keep It Simple (KIS)** and **You Aren't Gonna Need It (YAGNI)** discipline. Three tenets:
+
+1. **Minimal diffs:** deliver the smallest change that satisfies the issue's acceptance criteria — no speculative scope, no unrequested refactors or embellishments.
+2. **Brief evidence:** report gate results and proof concisely; evidence serves verification, not volume.
+3. **Over-delivery is a review finding:** scope beyond the issue's acceptance criteria is formally flagged by `@code-reviewer`, even when technically correct.
+
+**Provenance:** PO directive of 2026-10-03 (Sprint 08, recorded in #167) — measured outcome: ~190 lines across 4 issues, zero REQUEST_CHANGES. Promoted to standing policy by #180. Extends MADR-0003's **Proportionate Quality Gates** principle (D5) from pipeline controls to agent delivery behavior.
