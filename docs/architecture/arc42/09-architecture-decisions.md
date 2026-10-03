@@ -12,6 +12,7 @@
 | [MADR-0004](../../adr/0004-allow-by-default-bash-permission-posture.md) | Allow-by-default bash permission posture with catastrophic-deny guardrails (supersedes the #123 allowlist policy) | accepted | 2026-10-03 |
 | [MADR-0005](../../adr/0005-adopt-herdr-agent-runtime.md) | Adopt Herdr agent runtime for OpenCode on VIDAR — pinned binary, default-on idempotent install, local-only | accepted | 2026-10-03 |
 | [MADR-0006](../../adr/0006-sprint-09-model-roster-gpt-6-luna-introduction-and-per-agent-assignment-refresh.md) | Sprint 09 model roster refresh — GPT-6 Luna introduction and per-agent assignment refresh | accepted | 2026-10-03 |
+| [MADR-0007](../../adr/0007-portfolio-standardization-fpittelo-project-template.md) | Portfolio standardization — FPITTELO PROJECT TEMPLATE (FPITTELO PROJECT STANDARD v1) | accepted | 2026-10-03 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
