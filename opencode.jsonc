@@ -138,26 +138,44 @@
       },
       "enabled": false
     },
-    // #207 (MADR-0009): Playwright browser MCP for agent-driven user-journey
-    // verification against coach-web dev/qa lanes (epic coach-web#133). stdio
-    // via npx, pinned to the exact upstream version — no floating latest
-    // (MADR-0002); the pin and its integrity verification are owned by
-    // install.sh (same pattern as the pinned github-mcp-server tarball
-    // SHA256). Launch hardening per MADR-0009 Decision Outcome §2:
+    // #207 (MADR-0009), hardened by #219: Playwright browser MCP for
+    // agent-driven user-journey verification against coach-web dev/qa lanes
+    // (epic coach-web#133). stdio via npx, pinned to the exact upstream
+    // version — no floating latest (MADR-0002). Supply-chain honesty (#219
+    // AC4): npx re-resolves the package from the npm registry at every
+    // session start (TOCTOU) and the Chromium binary is downloaded unpinned;
+    // install.sh's SHA512 check is a pin-time registry audit, NOT the
+    // github-mcp-server native-binary pattern (installed once, never
+    // re-fetched). Launch hardening per MADR-0009 Decision Outcome §2
+    // (mandated flags machine-enforced by
+    // harness/config-validation/check_browser_launch_flags.py, #219 AC3):
     // --isolated keeps the browser profile in memory (ephemeral — no
-    // cookie/session persistence), --allowed-origins restricts navigation to
+    // cookie/session persistence); --no-webmcp stops pages registering
+    // tools exposed to the agent (tool-poisoning vector, #219 F2);
+    // --block-service-workers blocks service-worker registration (#219
+    // advisory F7); --image-responses omit keeps page screenshots out of
+    // the model context (nLPD data minimization — file-based screenshots
+    // still land in --output-dir); --allowed-origins restricts requests to
     // loopback origins (coach-web dev/qa lanes publish loopback-only; exact
     // lane ports live in the coach-web repo, so the flag's documented
-    // `host:*` wildcard-port syntax covers any lane port). Space-free name
-    // so BROWSER_* permission patterns are unambiguous (#108 precedent).
-    // Access scoping: global default-deny baseline below + allow for
-    // @developer/@devops only (defense-in-depth, #150 pattern).
+    // `host:*` wildcard-port syntax covers any lane port) — upstream
+    // documents it as NOT a security boundary (does not affect redirects),
+    // so arbitrary-origin navigation remains possible by design (#219 F1);
+    // --output-dir scopes automatically-named output files to a /tmp path
+    // (#219 F6). Space-free name so BROWSER_* permission patterns are
+    // unambiguous (#108 precedent). Access scoping: global default-deny
+    // baseline below + allow for @developer/@devops only
+    // (defense-in-depth, #150 pattern).
     "BROWSER": {
       "type": "local",
       "command": [
         "npx", "-y", "@playwright/mcp@0.0.83",
         "--isolated",
-        "--allowed-origins", "http://localhost:*;http://127.0.0.1:*"
+        "--no-webmcp",
+        "--block-service-workers",
+        "--image-responses", "omit",
+        "--allowed-origins", "http://localhost:*;http://127.0.0.1:*",
+        "--output-dir", "/tmp/opencode/playwright-output"
       ],
       "enabled": true
     },
@@ -277,6 +295,9 @@
     "max_bytes": 32768
   },
   "experimental": {
-    "mcp_timeout": 30000
+    // #219 (F8): aligned with the @playwright/mcp navigation timeout
+    // (default 60000 ms) so a slow lane navigation is not aborted
+    // mid-flight by a shorter MCP timeout.
+    "mcp_timeout": 60000
   }
 }
