@@ -71,4 +71,14 @@ python3 harness/config-validation/check_coach_exclusivity.py . || fail "check_co
 # stdlib unittest regression tests for check_coach_exclusivity.py — both
 # governed namespaces, negative cases per invariant layer, real-repo control.
 python3 harness/config-validation/test_check_coach_exclusivity.py || fail "test_check_coach_exclusivity.py failed"
-echo "PASS run-config-gate: all 10 gates green (${REPO_ROOT})"
+# 11/12 BROWSER launch-flag invariant (#219 AC3 / MADR-0009): the mcp.BROWSER
+# command array in opencode.jsonc carries the mandated hardening flags —
+# --isolated (ephemeral profile), --no-webmcp (WebMCP tool-poisoning vector),
+# a loopback --allowed-origins allowlist (localhost + 127.0.0.1), and a
+# scoped /tmp --output-dir.
+python3 harness/config-validation/check_browser_launch_flags.py . || fail "check_browser_launch_flags.py failed"
+# 12/12 BROWSER launch-flag checker regression suite (#142 A1 pattern):
+# stdlib unittest regression tests for check_browser_launch_flags.py —
+# negative cases per mandated flag and value shape, real-repo control.
+python3 harness/config-validation/test_check_browser_launch_flags.py || fail "test_check_browser_launch_flags.py failed"
+echo "PASS run-config-gate: all 12 gates green (${REPO_ROOT})"

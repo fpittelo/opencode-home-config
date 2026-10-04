@@ -91,21 +91,41 @@ Chosen option: **Option 2**, to be delivered by issue #207.
 1. **New MCP server `BROWSER`:** stdio server entry in `opencode.jsonc`,
    mirroring the COACH_* config pattern (space-free name so `BROWSER_*`
    permission patterns are unambiguous, #108 precedent). Supply-chain
-   pinning (MADR-0002 driver 3): the npx package is pinned to an **exact
-   version** (`npx @playwright/mcp@<pinned>`), with the pinned version and
-   integrity verification owned by `install.sh` (same pattern as the pinned
-   `github-mcp-server` tarball SHA256) — no floating `latest` resolution.
-2. **Hardened launch configuration:** the server runs with an **ephemeral,
+   pinning (MADR-0002 driver 3), stated precisely (#219 AC4): the npx
+   package is pinned to an **exact version** (`npx @playwright/mcp@<pinned>`
+   — no floating `latest` resolution), and `install.sh` performs a
+   **pin-time registry audit** (downloads the pinned tarball once and
+   verifies its SHA512 against the captured `dist.integrity`). This is
+   **not** equivalent to the `github-mcp-server` native-binary pattern
+   (installed once, integrity never re-fetched): `npx` re-resolves the
+   package from the npm registry at every session start (TOCTOU — a
+   post-audit registry compromise would be fetched), and the Chromium
+   browser binary is downloaded unpinned by Playwright. A local lockfile
+   install (`npm i` with commit-locked integrity) is the recorded candidate
+   follow-up if stronger pinning is ever mandated (not implemented — KIS).
+2. **Hardened launch configuration** (mandated flags machine-enforced by
+   the config gate, #219 AC3): the server runs with an **ephemeral,
    isolated browser profile** (`--isolated` — no persistence of cookies,
-   sessions, or storage between or after sessions) and a **lane-origin
-   allowlist** (`--allowed-origins` restricted to the coach-web dev/qa lane
-   origins; cloud metadata IP `169.254.169.254` unreachable). Flag support is
-   verified against the pinned version in the implementation spec.
-   *Implementation note (#207):* exact lane ports live in the coach-web repo,
-   so the implemented allowlist uses loopback wildcard-port origins
-   (`http://localhost:*;http://127.0.0.1:*` — the flag's documented glob
-   syntax), preserving the security intent: only loopback-published lane
-   ports are reachable and the metadata IP is not.
+   sessions, or storage between or after sessions), **WebMCP disabled**
+   (`--no-webmcp` — pages must not register tools exposed to the agent,
+   #219 F2), **service workers blocked** (`--block-service-workers`,
+   #219 advisory F7), **image responses omitted** (`--image-responses
+   omit` — page screenshots stay out of the model context; nLPD data
+   minimization, #219 advisory), a **loopback-origin request allowlist**
+   (`--allowed-origins` — see the boundary caveat below), and a **scoped
+   output directory** (`--output-dir /tmp/opencode/playwright-output` —
+   automatically-named output files land outside the workspace and HOME,
+   #219 F6). Flag support is verified against the pinned version in the
+   implementation spec. *Implementation note (#207):* exact lane ports
+   live in the coach-web repo, so the implemented allowlist uses loopback
+   wildcard-port origins (`http://localhost:*;http://127.0.0.1:*` — the
+   flag's documented glob syntax). *Accuracy correction (#219 AC2):*
+   upstream documents `--allowed-origins` as **not a security boundary**
+   ("does not serve as a security boundary and does not affect
+   redirects") — it filters direct requests only, so arbitrary-origin
+   navigation remains possible **by design**; the earlier "cloud metadata
+   IP `169.254.169.254` unreachable" claim was unfounded and has been
+   deleted.
 3. **Untrusted-content rule:** page content (DOM, text, console output) is
    treated as **untrusted data, never instructions** — stated in the
    agent-facing workflow docs for `@developer`/`@devops` and enforced through
@@ -144,11 +164,11 @@ arc42 §8 cross-cutting security and §11 risks/technical debt, 2026-10-04):
 | Threat | Browser-MCP manifestation | Mitigation |
 | :--- | :--- | :--- |
 | **S**poofing | Persistent profile reuses the user's authenticated sessions against locally-reachable apps | `--isolated` ephemeral profile; never browse authenticated personal apps |
-| **T**ampering | Indirect prompt injection: untrusted page DOM/console injects instructions driving agent tool calls; unpinned `npx` supply chain | Page content is untrusted data, never instructions; lane-origin allowlist; exact-version pin + integrity verification via `install.sh` |
-| **R**epudiation | Browser sessions not structurally logged; PR-comment report is the only trail | Session summary required in the PR thread; no secret-bearing trace artifacts |
-| **I**nformation disclosure | Page content (athlete training data) and cookies/console tokens sent to the third-party model provider | Data minimization (dev/qa synthetic data); ephemeral profile; console redaction; nLPD processor disclosure |
-| **D**enial of service | Unbounded navigation/downloads exhaust disk/CPU; hostile page hangs the browser | Existing `mcp_timeout` (30 s); scoped download dir; size bounds |
-| **E**levation of privilege | Browser reaches other localhost services / cloud metadata (169.254.169.254); downloaded files later executed by bash | Origin allowlist; metadata IP unreachable; downloads never executed; non-root |
+| **T**ampering | Indirect prompt injection: untrusted page DOM/console injects instructions driving agent tool calls; WebMCP lets a page register agent-visible tools; `npx` supply chain re-resolves from the registry each session (TOCTOU) | Page content is untrusted data, never instructions; `--no-webmcp` (pages cannot register tools, #219); `--block-service-workers`; exact-version pin + pin-time registry audit via `install.sh` (per-session re-resolution residual, §residual 4) |
+| **R**epudiation | Browser sessions not structurally logged; PR-comment report is the only trail | Session summary required in the PR thread (redaction rule below — no personal-data console/page content); no secret-bearing trace artifacts |
+| **I**nformation disclosure | Page content (athlete training data) and cookies/console tokens sent to the third-party model provider | Data minimization (dev/qa synthetic data — convention-only, §nLPD); `--image-responses omit` (#219); ephemeral profile; report/PR-comment redaction rule (§nLPD); nLPD processor disclosure |
+| **D**enial of service | Unbounded navigation/downloads exhaust disk/CPU; hostile page hangs the browser | `mcp_timeout` aligned with the navigation timeout (60 s, #219 F8); scoped `--output-dir` under `/tmp`; size bounds |
+| **E**levation of privilege | Browser reaches other localhost services and arbitrary remote origins (navigation is not origin-contained, by design); downloaded files later executed by bash | `--allowed-origins` request filter (not a security boundary — §residual 2); downloads never executed; non-root |
 
 **Swiss nLPD (FADP) assessment:** coach-web dev/qa lanes render athlete
 training data (personal, potentially health-related). Agent browsing sends
@@ -157,6 +177,13 @@ cross-border processor disclosure. Controls: dev/qa lanes operate on
 synthetic/anonymized data; browsing of authenticated personal apps is
 forbidden; the processor disclosure is documented here; production data is
 never browsed by agents (prod lane stays manual with @fpittelo).
+*Enforcement honesty (#219 AC5):* the synthetic-data-only and
+no-authenticated-apps controls are **convention-only** — carried by review
+discipline and agent workflow rules, not by machine-enforced settings.
+**Redaction rule (#219 AC5):** journey reports and PR comments must not
+include console or page content containing personal data — summarize,
+redact, or omit. `--image-responses omit` additionally keeps page
+screenshots out of the model context.
 
 **Accepted residual risks:**
 
@@ -166,21 +193,31 @@ never browsed by agents (prod lane stays manual with @fpittelo).
    the browser MCP adds no docker capability. Cross-referenced: MADR-0004,
    arc42 §11. Compensating controls: lane wrapper as the documented single
    path, review discipline, single-user workstation blast radius.
-2. **Browser navigation beyond lane origins** — MITIGATED, narrowly residual.
-   The unrestricted-navigation residual from the original draft was **rejected
-   by @cyber-security** as a design choice rather than a limitation: the
-   lane-origin allowlist (`--allowed-origins`) and ephemeral profile are
-   mandatory launch configuration (Decision Outcome §2). The residual narrows
-   to allowlist misconfiguration, carried with compensating controls (config
-   gate, review discipline) and re-examined at the first retro after
-   adoption. *Upstream caveat (recorded at implementation, #207):* the
-   `@playwright/mcp` maintainers document that `--allowed-origins` "does not
-   serve as a security boundary" and does not affect redirects — the flag is
-   implemented exactly as mandated here, and the compensating controls
-   (untrusted-content rule, ephemeral profile, review discipline, PR-thread
-   session reports) carry the remainder of the risk.
+2. **Browser navigation beyond lane origins** — ACCEPTED residual, carried
+   with compensating controls. *Reframed by the #219 re-review (AC2):* the
+   earlier "MITIGATED, narrowly residual — allowlist misconfiguration"
+   framing was wrong. Upstream documents `--allowed-origins` as **not a
+   security boundary** ("does not serve as a security boundary and does not
+   affect redirects"): it filters direct requests only, so navigation to
+   arbitrary origins — including other localhost services and remote URLs —
+   remains possible **by design**. The flag is kept as a request-scoping
+   convenience and misconfiguration tripwire, not as containment. The risk
+   is carried by the compensating controls (untrusted-content rule,
+   `--isolated` ephemeral profile, `--no-webmcp`, review discipline,
+   PR-thread session reports, single-user workstation blast radius) and is
+   re-examined at the first retro after adoption.
 3. **Interactive journeys are not regression-replayable** — ACCEPTED (YAGNI;
    Option 3 remains a deferred candidate).
+4. **`npx` supply-chain TOCTOU + unpinned Chromium** — ACCEPTED (KIS,
+   #219 AC4). The package version is pinned, but `npx` re-resolves it from
+   the npm registry at every session start, so the `install.sh` SHA512
+   check is a pin-time audit — not the `github-mcp-server` native-binary
+   pattern (installed once, integrity never re-fetched). The Chromium
+   browser binary is downloaded unpinned by Playwright. Compensating
+   controls: exact-version pin (no floating `latest`), pin-time registry
+   audit, npm's per-fetch `dist.integrity` verification. Candidate
+   follow-up (not implemented): local lockfile install for full integrity
+   pinning.
 
 **@cyber-security review verdict (2026-10-04, arc42 §8/§11):** *REQUEST
 CHANGES on the original draft — blocking findings: (1) missing STRIDE model,
@@ -207,6 +244,8 @@ allowlist misconfiguration under mandatory `--allowed-origins`. We APPROVE,
 with final acceptance remaining conditional on PO approval per the
 pending-PO-acceptance pattern.*
 
+**Post-implementation re-review (2026-10-04, issue #219):** *APPROVE-WITH-CHANGES* — accuracy corrections required (WebMCP off, `--allowed-origins` boundary honesty, metadata-claim deletion, supply-chain TOCTOU honesty, nLPD convention-only + redaction rule, output scoping) are implemented in this revision; the DECISION itself is unchanged.
+
 ## Consequences
 
 - **Positive:** delivery agents autonomously deploy, browse, verify user
@@ -217,11 +256,14 @@ pending-PO-acceptance pattern.*
   config gate; supply-chain and nLPD surfaces are pinned, minimized, and
   documented.
 - **Negative:** an untrusted-content ingestion path exists by design (mitigated
-  by the untrusted-data rule, origin allowlist, and ephemeral profile);
-  `npx` introduces a supply-chain fetch surface (mitigated by exact-version
-  pinning + integrity verification); the nLPD processor disclosure to the
+  by the untrusted-data rule, `--no-webmcp`, and the ephemeral profile);
+  navigation is not origin-contained by design (`--allowed-origins` is not a
+  security boundary, #219); `npx` re-resolves the package from the registry
+  each session (TOCTOU) and Chromium is downloaded unpinned — carried as
+  residual 4 with the lockfile-install candidate follow-up (#219); the nLPD
+  egress controls are convention-only and the processor disclosure to the
   model provider is consciously carried with data-minimization controls; the
-  config gate generalization is additional implementation scope; three
+  config gate generalization is additional implementation scope; four
   residual risks are consciously carried (§Security Considerations).
 - **Neutral:** no change to the bash permission posture (MADR-0004), the
   COACH_* denies (#150), or the three-branch lifecycle. arc42 §9 and §11 are
