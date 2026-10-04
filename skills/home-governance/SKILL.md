@@ -178,6 +178,11 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 7. **Autonomous Handoff & DoD Verification:** `@scrum-master` verifies all 5 DoD criteria, posts a closing summary comment, closes the issue, and immediately triggers the next prioritized `status::todo` issue.
 8. **Promotion & Release:** When all sprint deliverables are in `dev`, `@architect` & `@devops` coordinate staging to `qa` and release to `main` upon `@fpittelo` approvals.
 
+### Parallel-Session Governance
+
+- **Milestone attachment & WIP=1:** Every session — including parallel or emergency sessions — MUST attach delivered work to the active sprint milestone and respect WIP=1.
+- **Emergency exception:** Emergency security remediation MAY bypass the loop, but MUST be followed by mandatory post-hoc hygiene: retroactive milestone attachment (or an explicit unmilestoned note in the retro) + full DoD evidence before promotion. (Precedent: #219/#222, retro #230.)
+
 ---
 
 ## 7. Definition of Done (DoD)
