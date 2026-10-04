@@ -1,8 +1,8 @@
 # MADR-0009: Introduce Playwright browser MCP with agent access scoping
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-04
-- **Deciders:** @fpittelo (PO-approved grooming, 2026-10-03/04), @architect, @cyber-security (MADR-0008 quadrant-1 review — verdict recorded below)
+- **Deciders:** @fpittelo (PO approval 2026-10-04; grooming 2026-10-03/04), @architect, @cyber-security (MADR-0008 quadrant-1 review — verdicts recorded below)
 - **Driven by:** issue #207 · Epic: fpittelo/coach-web#133 (Autonomous Local Deployment & User-Journey Verification)
 
 ## Context
@@ -212,6 +212,7 @@ pending-PO-acceptance pattern.*
   config gate generalization is additional implementation scope; three
   residual risks are consciously carried (§Security Considerations).
 - **Neutral:** no change to the bash permission posture (MADR-0004), the
-  COACH_* denies (#150), or the three-branch lifecycle; arc42 §3/§5/§8/§9/§11
-  updates follow at acceptance per the arc42 update triggers (§11 gains a
-  browser-MCP attack-surface risk row).
+  COACH_* denies (#150), or the three-branch lifecycle. arc42 §9 and §11 are
+  indexed/updated at acceptance; the §3/§5/§8 component and cross-cutting
+  updates land with the implementation PR (AC2–AC4 of #207), when the
+  `BROWSER` server actually enters the config.
