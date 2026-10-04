@@ -45,8 +45,9 @@ pattern proven with the Coach MCP (#150): global default-deny baseline in
   no scripted E2E framework today.
 - **Supply-chain hygiene (MADR-0002):** externally-fetched tooling is pinned
   and integrity-verified.
-- **Swiss nLPD:** no personal data or secrets exposed through browser tooling,
-  page content, console logs, or session reports.
+- **Swiss nLPD:** no *real* personal data or secrets exposed through browser
+  tooling, page content, console logs, or session reports — dev/qa lanes run
+  synthetic data only (see nLPD assessment below).
 
 ## Considered Options
 
@@ -119,8 +120,9 @@ Chosen option: **Option 2**, to be delivered by issue #207.
    **generalized to cover both `COACH_*` and `BROWSER_*`** — global baseline
    deny, allow only in the designated agent specs, explicit deny in all other
    agent specs — so scoping drift fails the gate instead of surfacing silently
-   (closes the arc42 §11 risk "permission semantics verified by spec, not
-   runtime tests" for this namespace).
+   (once implemented, this closes the arc42 §11 risk "permission semantics
+   verified by spec, not runtime tests" for this namespace; the generalization
+   lands with AC2–AC4 of #207).
 7. **Docker permission posture unchanged (grooming Q12=B):** containment by
    convention — the lane wrapper (`scripts/lane.sh`, fixed compose project
    names, loopback-only publishing) is the documented single path, enforced
