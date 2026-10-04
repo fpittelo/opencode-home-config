@@ -34,7 +34,7 @@ C4Context
 | :--- | :--- | :--- |
 | GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`) | stdio → native binary (pinned v1.12.2, SHA256-verified by `install.sh`) | Personal-access-token authenticated; SoD split per #68. |
 | Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → Docker container | Environment-scoped (dev/qa/main) Intervals.icu access. |
-| Playwright browser MCP (`BROWSER`, MADR-0009 #207) | stdio → npx `@playwright/mcp` (pinned 0.0.83, integrity-verified by `install.sh`) | Ephemeral-profile browser automation for user-journey verification against coach-web dev/qa lanes; loopback-origin allowlist; @developer/@devops only. |
+| Playwright browser MCP (`BROWSER`, MADR-0009 #207) | stdio → npx `@playwright/mcp` (pinned 0.0.83; pin-time registry audit by `install.sh` — npx re-resolves per session) | Ephemeral-profile browser automation for user-journey verification against coach-web dev/qa lanes; loopback-origin allowlist; @developer/@devops only. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
 | LLM inference | HTTPS (OpenRouter API) | Model per agent via `openrouter/<model>` assignments. |
 | Herdr agent runtime (MADR-0005, #148) | Unix socket `~/.config/herdr/herdr.sock` + real PTY panes | Technology Layer node on VIDAR — hosts OpenCode TUI panes, reports agent lifecycle (working/blocked/idle); pinned v0.9.3 binary installed by `install.sh`; strictly local (no SSH remote). |
