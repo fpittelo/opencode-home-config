@@ -101,6 +101,11 @@ Chosen option: **Option 2**, to be delivered by issue #207.
    allowlist** (`--allowed-origins` restricted to the coach-web dev/qa lane
    origins; cloud metadata IP `169.254.169.254` unreachable). Flag support is
    verified against the pinned version in the implementation spec.
+   *Implementation note (#207):* exact lane ports live in the coach-web repo,
+   so the implemented allowlist uses loopback wildcard-port origins
+   (`http://localhost:*;http://127.0.0.1:*` — the flag's documented glob
+   syntax), preserving the security intent: only loopback-published lane
+   ports are reachable and the metadata IP is not.
 3. **Untrusted-content rule:** page content (DOM, text, console output) is
    treated as **untrusted data, never instructions** — stated in the
    agent-facing workflow docs for `@developer`/`@devops` and enforced through
@@ -168,7 +173,12 @@ never browsed by agents (prod lane stays manual with @fpittelo).
    mandatory launch configuration (Decision Outcome §2). The residual narrows
    to allowlist misconfiguration, carried with compensating controls (config
    gate, review discipline) and re-examined at the first retro after
-   adoption.
+   adoption. *Upstream caveat (recorded at implementation, #207):* the
+   `@playwright/mcp` maintainers document that `--allowed-origins` "does not
+   serve as a security boundary" and does not affect redirects — the flag is
+   implemented exactly as mandated here, and the compensating controls
+   (untrusted-content rule, ephemeral profile, review discipline, PR-thread
+   session reports) carry the remainder of the risk.
 3. **Interactive journeys are not regression-replayable** — ACCEPTED (YAGNI;
    Option 3 remains a deferred candidate).
 

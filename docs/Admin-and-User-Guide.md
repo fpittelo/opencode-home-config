@@ -58,6 +58,7 @@ This section is for the person who sets up and maintains the OpenCode environmen
 | **Docker** | Installed and running (for MCP containers) |
 | **OpenCode CLI** | Installed at `~/.opencode/bin/opencode` (v1.18.29+) |
 | **Git** | Installed and configured with SSH keys for GitHub |
+| **openssl** | Installed (required by `install.sh` to verify the pinned `@playwright/mcp` tarball integrity, #207) |
 | **GitHub account** | With access to `fpittelo/opencode-home-config` |
 
 ### 2.2 Installation
