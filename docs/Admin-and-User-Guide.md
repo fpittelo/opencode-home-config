@@ -175,7 +175,7 @@ fix/<issue-#>-<slug>        # Bug fixes
 
 ### 2.6 MCP Servers
 
-OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 5 local servers (plus the remote `openrouter` endpoint): the two GitHub servers run as a pinned native binary, the three Coach servers as Docker containers:
+OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 6 local servers (plus the remote `openrouter` endpoint): the two GitHub servers run as a pinned native binary, the three Coach servers as Docker containers, and the Playwright browser server via pinned `npx`:
 
 | MCP Server | Runtime | Environment Variables | Purpose |
 |:---|:---|:---|:---|
@@ -184,6 +184,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 | `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
 | `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
 | `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
+| `BROWSER` | `npx @playwright/mcp@0.0.83` (pinned; integrity-verified by `install.sh`) — launched with `--isolated` (ephemeral profile) and a loopback `--allowed-origins` allowlist | none | Browser automation for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
 
 **How they work:**
 - All servers communicate via stdin/stdout (stdio transport).
@@ -191,6 +192,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - The Coach servers are started with `docker run -i --rm`; containers are automatically removed (`--rm`) when the session ends.
 - Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
 - **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
+- **Availability (#207, MADR-0009):** Browser MCP tools (`BROWSER_*`) are exposed exclusively to the `@developer` and `@devops` agents — `opencode.jsonc` sets a global default-deny baseline (`BROWSER_*`: deny) and every other SCRUM agent denies them explicitly (see §3.4).
 
 ### 2.7 Herdr Agent Runtime
 
@@ -373,7 +375,7 @@ Skills are knowledge modules that activate automatically when the conversation m
 
 ### 3.4 MCP Tools
 
-MCP tools connect OpenCode to external services. The HOME profile defines 6 MCP servers: the two GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), and `openrouter` as a remote endpoint:
+MCP tools connect OpenCode to external services. The HOME profile defines 7 MCP servers: the two GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), the Playwright browser server via pinned `npx`, and `openrouter` as a remote endpoint:
 
 | MCP Tool | Runtime | What it provides |
 |:---|:---|:---|
@@ -382,11 +384,14 @@ MCP tools connect OpenCode to external services. The HOME profile defines 6 MCP 
 | **COACH_DEV** | Docker container `ghcr.io/fpittelo/coach:dev` | Training plan management (dev branch of coach service — experimental) |
 | **COACH_QA** | Docker container `ghcr.io/fpittelo/coach:qa` | Training plan management (qa staging — disabled; enabled by toggling, see §2.6) |
 | **COACH_MAIN** | Docker container `ghcr.io/fpittelo/coach:latest` | Training plan management (production coach service — disabled; enabled by toggling, see §2.6) |
+| **BROWSER** | `npx @playwright/mcp@0.0.83` (pinned; `--isolated` ephemeral profile + loopback `--allowed-origins` allowlist) | Browser automation (navigate, click, accessibility-tree snapshots, console output) for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
 | **openrouter** | Remote endpoint (`mcp.openrouter.ai`) | Model catalog & docs lookup via OpenRouter |
 
 The coach containers connect to Intervals.icu for workout analytics, training plans, and athlete data.
 
 **Coach MCP availability (#150):** Coach tools (`COACH_DEV_*`, `COACH_QA_*`, `COACH_MAIN_*`) are exclusively available to the **@coach** agent. A global default-deny baseline in `opencode.jsonc` denies all three Coach namespaces for every other persona — including built-in subagents (`explore`, `general`, `task`) — and each SCRUM agent re-states the deny explicitly in its spec. This keeps personal biometric and training data (Intervals.icu) isolated to the coaching workflow. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`, run locally via `bash harness/run-config-gate.sh` and in CI).
+
+**Browser MCP availability (#207, MADR-0009):** Browser tools (`BROWSER_*`) are available to the **@developer** and **@devops** agents only. The same global default-deny baseline (`BROWSER_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every other SCRUM agent re-states the deny explicitly in its spec. The server runs with an ephemeral in-memory profile (`--isolated`) and a loopback-origin allowlist (`--allowed-origins`), and the pinned `@playwright/mcp` version is integrity-verified by `install.sh`. The namespace-exclusivity invariant (COACH_* and BROWSER_*) is machine-enforced by the same config gate.
 
 ### 3.5 Models
 
@@ -547,7 +552,7 @@ cd ~/projects/opencode-home-config && ./install.sh
 **After switching to HOME:**
 - **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
 - **10 skills** available (coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, home-governance, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
-- **6 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER as native binaries, COACH_DEV as the active Coach container, openrouter remote; COACH_QA/COACH_MAIN disabled)
+- **7 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER as native binaries, COACH_DEV as the active Coach container, BROWSER via pinned npx, openrouter remote; COACH_QA/COACH_MAIN disabled)
 - **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
 - **Use for:** personal projects under `~/projects/HOME/`
 
