@@ -101,7 +101,35 @@ else
     echo "✅  herdr $HERDR_VERSION installed at $BIN_PATH (SHA256 verified)."
 fi
 
-# 4. Pre-pull the pinned coach image (idempotent: docker pull is a no-op when the
+# 4. Verify the pinned @playwright/mcp package (MADR-0009, #207)
+#    The BROWSER MCP server runs via `npx @playwright/mcp@<version>` (stdio,
+#    opencode.jsonc). npx itself re-verifies every download against the
+#    registry's published dist.integrity on each launch; this check closes
+#    the remaining gap — registry metadata for the pinned version drifting
+#    from what we pinned (pin-drift / compromised-registry detection). The
+#    SHA512 below is the dist.integrity of playwright-mcp-<version>.tgz as
+#    published by the npm registry for @playwright/mcp@<version>, captured
+#    at pin time (npm view @playwright/mcp@<version> dist.integrity) and
+#    re-verified against the freshly downloaded registry tarball. Read-only
+#    and idempotent: nothing is installed here — npx resolves the pinned
+#    version at session start. Fail hard on any mismatch.
+PLAYWRIGHT_MCP_VERSION="0.0.83"
+PLAYWRIGHT_MCP_INTEGRITY="sha512-oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg==" # dist.integrity of playwright-mcp-0.0.83.tgz, per registry.npmjs.org metadata for @playwright/mcp@0.0.83
+if ! command -v openssl >/dev/null 2>&1; then
+    echo "❌  openssl not found — required to verify @playwright/mcp ${PLAYWRIGHT_MCP_VERSION}." >&2
+    exit 1
+fi
+echo "⏳  Verifying pinned @playwright/mcp ${PLAYWRIGHT_MCP_VERSION}..."
+PLAYWRIGHT_MCP_ARTIFACT="mcp-${PLAYWRIGHT_MCP_VERSION}.tgz"
+curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$TMP_DIR/$PLAYWRIGHT_MCP_ARTIFACT" "https://registry.npmjs.org/@playwright/mcp/-/$PLAYWRIGHT_MCP_ARTIFACT"
+PLAYWRIGHT_MCP_ACTUAL_INTEGRITY="sha512-$(openssl dgst -sha512 -binary "$TMP_DIR/$PLAYWRIGHT_MCP_ARTIFACT" | openssl base64 -A)"
+if [ "$PLAYWRIGHT_MCP_ACTUAL_INTEGRITY" != "$PLAYWRIGHT_MCP_INTEGRITY" ]; then
+    echo "❌  Registry tarball integrity $PLAYWRIGHT_MCP_ACTUAL_INTEGRITY differs from pinned $PLAYWRIGHT_MCP_INTEGRITY — aborting (pin drift or compromised registry)." >&2
+    exit 1
+fi
+echo "✅  @playwright/mcp ${PLAYWRIGHT_MCP_VERSION} verified (registry tarball SHA512 matches pin)."
+
+# 5. Pre-pull the pinned coach image (idempotent: docker pull is a no-op when the
 #    image is already present locally, so session start never waits on a registry
 #    fetch — MADR-0002 decision point 3, #107). Coach stays containerized (#109):
 #    the github-mcp-server Docker image is no longer used (native binary above).
@@ -110,7 +138,7 @@ echo "⏳  Pre-pulling pinned coach image..."
 docker pull "$COACH_DEV_IMAGE"
 echo "✅  Coach image pre-pulled (coach:dev)."
 
-# 5. Generate secrets template if absent
+# 6. Generate secrets template if absent
 SECRETS_FILE="$DEST/.secrets.env"
 if [ ! -f "$SECRETS_FILE" ]; then
     cat << 'EOF' > "$SECRETS_FILE"
@@ -124,7 +152,7 @@ EOF
     echo "⚠️  Created $SECRETS_FILE. Please populate your secrets."
 fi
 
-# 6. Propagate secrets to interactive shells and GUI desktop sessions
+# 7. Propagate secrets to interactive shells and GUI desktop sessions
 # Shell profiles
 if ! grep -q "source $SECRETS_FILE" "$HOME/.bashrc" 2>/dev/null; then
     echo "[ -f $SECRETS_FILE ] && source $SECRETS_FILE" >> "$HOME/.bashrc"
