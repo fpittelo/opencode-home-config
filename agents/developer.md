@@ -123,6 +123,11 @@ permission:
   COACH_DEV_*: deny
   COACH_QA_*: deny
   COACH_MAIN_*: deny
+  # 207 (MADR-0009): Playwright browser MCP — @developer browses coach-web
+  # dev/qa lanes for user-journey verification during TDD; this allow
+  # backstops the global default-deny baseline (opencode.jsonc permission
+  # BROWSER_*: deny).
+  BROWSER_*: allow
   openrouter_*: deny
 ---
 
