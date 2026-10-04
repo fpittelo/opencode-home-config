@@ -123,6 +123,20 @@ jobs:
         # unittest only, < 1 s.
         run: python3 harness/config-validation/test_check_coach_exclusivity.py
 
+      - name: Enforce BROWSER MCP launch-flag invariant (#219)
+        # AC3 of #219 (MADR-0009): the mcp.BROWSER command array in
+        # opencode.jsonc must carry the mandated hardening flags —
+        # --isolated (ephemeral profile), --no-webmcp (WebMCP tool-poisoning
+        # vector), a loopback --allowed-origins allowlist covering localhost
+        # and 127.0.0.1, and a scoped /tmp --output-dir.
+        run: python3 harness/config-validation/check_browser_launch_flags.py .
+
+      - name: BROWSER launch-flag checker regression tests (unittest)
+        # Regression suite for check_browser_launch_flags.py (#142 A1
+        # pattern): negative cases per mandated flag and value shape,
+        # real-repo positive control. stdlib unittest only, < 1 s.
+        run: python3 harness/config-validation/test_check_browser_launch_flags.py
+
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
           python3 harness/docs-validation/check_links.py .
