@@ -118,6 +118,12 @@ When a story's acceptance criteria are all fulfilled **except** a pending-PO one
 
 **Guard:** this allowance must NOT weaken the 5-criteria DoD gate — a closeout genuinely lacking DoD evidence (no merged PR, no formal `@code-reviewer` `APPROVE`, failing CI) is still **rejected**.
 
+### MCP Write-Verification Pattern
+
+- **Separated calls:** `GITHUB_issue_write` updates MUST use separated calls (state-only first, then labels-only); combined label+state+state_reason update calls are prohibited — known silent-failure mode (3 occurrences: #218, #221, #229).
+- **Fresh-read verification:** Every write MUST be verified with a fresh read before reporting success.
+- **`parent_issue_number`:** valid on `create` only.
+
 ---
 
 ## 6. Post-Merge Board Hygiene Protocol (Triggered on Release to `main`)
