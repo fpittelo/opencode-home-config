@@ -138,6 +138,29 @@
       },
       "enabled": false
     },
+    // #207 (MADR-0009): Playwright browser MCP for agent-driven user-journey
+    // verification against coach-web dev/qa lanes (epic coach-web#133). stdio
+    // via npx, pinned to the exact upstream version — no floating latest
+    // (MADR-0002); the pin and its integrity verification are owned by
+    // install.sh (same pattern as the pinned github-mcp-server tarball
+    // SHA256). Launch hardening per MADR-0009 Decision Outcome §2:
+    // --isolated keeps the browser profile in memory (ephemeral — no
+    // cookie/session persistence), --allowed-origins restricts navigation to
+    // loopback origins (coach-web dev/qa lanes publish loopback-only; exact
+    // lane ports live in the coach-web repo, so the flag's documented
+    // `host:*` wildcard-port syntax covers any lane port). Space-free name
+    // so BROWSER_* permission patterns are unambiguous (#108 precedent).
+    // Access scoping: global default-deny baseline below + allow for
+    // @developer/@devops only (defense-in-depth, #150 pattern).
+    "BROWSER": {
+      "type": "local",
+      "command": [
+        "npx", "-y", "@playwright/mcp@0.0.83",
+        "--isolated",
+        "--allowed-origins", "http://localhost:*;http://127.0.0.1:*"
+      ],
+      "enabled": true
+    },
     "openrouter": {
       "type": "remote",
       "url": "https://mcp.openrouter.ai/mcp",
@@ -152,6 +175,12 @@
     "COACH_DEV_*": "deny",
     "COACH_QA_*": "deny",
     "COACH_MAIN_*": "deny",
+    // #207 (MADR-0009): global default-deny baseline for the Playwright browser
+    // MCP namespace — built-in subagents (explore, general, task) and any
+    // unconfigured persona inherit zero browser access. @developer/@devops
+    // re-allow in their specs and every other SCRUM agent re-states the deny
+    // explicitly (defense in depth, #150 pattern).
+    "BROWSER_*": "deny",
     // #158 (MADR-0004): allow-by-default bash posture with catastrophic-deny
     // guardrails (PO directive 2026-10-03) — supersedes the #86-era ask-default +
     // short allowlist. Last matching rule wins: broad rules first, deny rules
