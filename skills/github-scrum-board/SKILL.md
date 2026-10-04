@@ -124,6 +124,14 @@ When a story's acceptance criteria are all fulfilled **except** a pending-PO one
 - **Fresh-read verification:** Every write MUST be verified with a fresh read before reporting success.
 - **`parent_issue_number`:** valid on `create` only.
 
+### Closeout-Fallback
+
+- **Fallback rule:** If `@scrum-master` write tooling fails during DoD closeout, the closeout falls back to `@architect` (precedent 2×: Sprint 13 pre-promotion remediation of #218/#221/#229; Sprint 14 #236 closeout).
+- **Correct tool usage notes:**
+  - `GITHUB_add_issue_comment` takes `body` only — never combine with `comment_id`.
+  - Remote branch deletion is a bash operation (`git push origin --delete <branch>`), not an MCP tool.
+  - All writes follow the MCP Write-Verification Pattern (separated calls + fresh-read verification).
+
 ---
 
 ## 6. Post-Merge Board Hygiene Protocol (Triggered on Release to `main`)
