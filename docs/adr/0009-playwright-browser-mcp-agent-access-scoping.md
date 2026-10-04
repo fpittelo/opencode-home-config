@@ -125,7 +125,12 @@ Chosen option: **Option 2**, to be delivered by issue #207.
    redirects") — it filters direct requests only, so arbitrary-origin
    navigation remains possible **by design**; the earlier "cloud metadata
    IP `169.254.169.254` unreachable" claim was unfounded and has been
-   deleted.
+   deleted. *Host prerequisite (#229):* the default `chrome` channel requires
+   Google Chrome on the host — installed 2026-10-04 per PO decision (#229)
+   after the first `browser_navigate` failed with `Chromium distribution
+   'chrome' is not found at /opt/google/chrome/chrome`; the launch
+   configuration is intentionally unchanged and all hardening flags are
+   unaffected.
 3. **Untrusted-content rule:** page content (DOM, text, console output) is
    treated as **untrusted data, never instructions** — stated in the
    agent-facing workflow docs for `@developer`/`@devops` and enforced through
