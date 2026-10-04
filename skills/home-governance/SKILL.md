@@ -183,6 +183,11 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 - **Milestone attachment & WIP=1:** Every session — including parallel or emergency sessions — MUST attach delivered work to the active sprint milestone and respect WIP=1.
 - **Emergency exception:** Emergency security remediation MAY bypass the loop, but MUST be followed by mandatory post-hoc hygiene: retroactive milestone attachment (or an explicit unmilestoned note in the retro) + full DoD evidence before promotion. (Precedent: #219/#222, retro #230.)
 
+### Subagent-Resilience Protocol
+
+- **Continue-after-failure:** Dispatched subagents MUST continue executing their remaining steps after a single tool failure rather than aborting the whole task.
+- **On failure:** apply the workaround if one exists, record the failure, and report partial progress with per-step status — never stop at the first error when later steps are independent.
+
 ---
 
 ## 7. Definition of Done (DoD)
