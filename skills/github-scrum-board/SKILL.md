@@ -11,7 +11,8 @@ This skill is the operational playbook for **`@scrum-master`** and **`@architect
 
 ## 1. GitHub SCRUM Cadence & Structure
 
-- **Sprint Length:** 2-week fixed iterations.
+- **Sprint Length:** 2-week nominal iterations.
+- **Demand-Driven Cadence (PO decision A, 2026-10-04, #216):** Sprints execute on demand (often same-day). The date windows in milestone titles are **labels only, not planning commitments** — early/same-day execution is **conformant, not a deviation** (resolves the cadence-honesty flags carried in #201, #215, #216).
 - **Milestone Naming Convention:** `Sprint XX — YYYY-MM-DD to YYYY-MM-DD` (e.g., `Sprint 01 — 2026-08-22 to 2026-09-05`).
 - **Issue Execution:** Sequential issue-by-issue handoff into `dev` via squash merge.
 
@@ -110,6 +111,12 @@ When closing an issue upon squash merge into `dev`, **`@scrum-master`** posts th
 
 **Status:** Completed and verified. Issue closed.
 ```
+
+### Pending-PO Closeout Precedent (#180, #181)
+
+When a story's acceptance criteria are all fulfilled **except** a pending-PO one-click acceptance (e.g. a template flag toggle, a CI glance), **`@scrum-master`** must **close the issue** with an explicit `pending-PO` note referencing the one-click item (precedent: #180, #181), rather than holding the closeout (the #190 deviation).
+
+**Guard:** this allowance must NOT weaken the 5-criteria DoD gate — a closeout genuinely lacking DoD evidence (no merged PR, no formal `@code-reviewer` `APPROVE`, failing CI) is still **rejected**.
 
 ---
 
