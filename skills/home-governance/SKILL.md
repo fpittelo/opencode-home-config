@@ -166,6 +166,9 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 - **`@cyber-security`:** Cyber Security Specialist (threat modeling, secret scanning, Swiss nLPD compliance).
 
 ### Autonomous Sprint Execution Protocol
+
+**Sprint cadence (PO decision A, 2026-10-04, #216):** sprints are demand-driven (often same-day); the nominal 2-week windows in milestone titles are **labels only**, not planning commitments — early/same-day execution is conformant, not a deviation (codified in the `github-scrum-board` skill §1).
+
 1. **Backlog Refinement & Sprint Planning:** `@architect` and `@scrum-master` groom atomic GitHub issues with acceptance criteria, assigned to a 2-week Sprint Milestone.
 2. **Remote Sync & Branching:** Always pull latest `dev` (`git checkout dev && git pull --ff-only origin dev`) before creating a feature branch.
 3. **TDD Cycle (Red-Green-Refactor):** `@developer` writes failing tests first, watches them fail, writes minimal passing code, and refactors.
@@ -185,6 +188,8 @@ An issue is **Done** and may only be closed when:
 3. GitHub Actions CI pipeline completed with **0 warnings and 0 failures**.
 4. `@code-reviewer` approval is explicitly documented on the PR.
 5. Deliverable and PR link are documented in the closing summary comment on the GitHub issue.
+
+**Pending-PO exception:** a pending-PO one-click acceptance does not hold DoD closeout — close with an explicit `pending-PO` note per the `github-scrum-board` skill §5 (precedent #180/#181); the five criteria above remain the rejection gate for closeouts lacking DoD evidence.
 
 ---
 
