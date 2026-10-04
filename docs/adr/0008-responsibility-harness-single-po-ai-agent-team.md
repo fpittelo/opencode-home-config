@@ -127,5 +127,7 @@ AC pattern**.
 - **Neutral:** upstream candidates noted, no code changes in this decision — the GitHub MCP
   comment-tool quirk and the label-create tooling gap are recorded as upstream candidates for
   https://github.com/github/github-mcp-server. Closeout precedent: the pending-PO acceptance
-  pattern (an issue stays open until the PO confirms acceptance) is standard and unaffected by
-  this harness.
+  pattern (a story with all acceptance criteria fulfilled except a pending-PO one-click
+  acceptance is closed with an explicit `pending-PO` note rather than held open; the PO
+  acceptance gate itself is unchanged) is codified in `skills/github-scrum-board/SKILL.md` §5
+  and unaffected by this harness.
