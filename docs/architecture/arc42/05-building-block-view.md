@@ -26,6 +26,7 @@ C4Container
         Container(mcp_github, "GITHUB MCP", "Native binary process", "Board & repo operations as @fpittelo")
         Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Native binary process", "Formal PR reviews as @devfpittelo (SoD)")
         Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
+        Container(mcp_browser, "BROWSER MCP", "npx @playwright/mcp (pinned, stdio)", "Ephemeral-profile browser automation, loopback-origin allowlist (MADR-0009)")
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
     }
 
@@ -35,6 +36,7 @@ C4Container
     Rel(agents, mcp_github, "Board ops via", "GITHUB_* tools")
     Rel(agents, mcp_reviewer, "Reviews via (code-reviewer only)", "GITHUB_CODE_REVIEWER_*")
     Rel(agents, mcp_coach, "Coaching via (coach only)", "COACH_* tools")
+    Rel(agents, mcp_browser, "Journey verification via (developer/devops only)", "BROWSER_* tools")
     Rel(agents, mcp_openrouter, "Model catalog via", "openrouter_* tools")
     Rel(agents, openrouter_api, "LLM inference via", "HTTPS")
     Rel(mcp_github, github, "Operates", "REST API")
@@ -56,7 +58,7 @@ C4Container
 | `skills/*/SKILL.md` (14) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode`; installs the pinned `github-mcp-server` and Herdr binaries (SHA256-verified, idempotent) | Bash, systemd env import |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled `deep-validation.yml` (MADR-0003) | GitHub Actions |
-| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker) / streamable-HTTP (remote) |
+| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker / npx) / streamable-HTTP (remote) |
 | Herdr runtime (MADR-0005) | Hosts OpenCode TUI panes as real PTYs; reports agent lifecycle (working/blocked/idle); sessions survive detach (`ctrl+b q` → `herdr`) and server restarts | `herdr` CLI (client/server), Unix socket `~/.config/herdr/herdr.sock`, integration plugins in `~/.config/opencode/` (untracked, Herdr-owned) |
 
 **Permission model invariants (enforced since #68, extended by #108, #150):**
@@ -66,7 +68,9 @@ C4Container
 - `@coach` only: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: allow — Coach MCP is coach-only (SoD); `agents/coach.md` is the sole allow whitelist.
 - All other agents: `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny (explicit per-agent backstop of the global baseline).
 - `@architect` and `@coach` only: `openrouter_*: allow`; all other agents `openrouter_*: deny` (supersedes #67's "all agents" rule).
-- The coach-exclusivity invariant is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 8/8 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
+- Global default-deny baseline (#207, MADR-0009): `opencode.jsonc` denies `BROWSER_*` at the root `permission` level — built-in subagents (`explore`, `general`, `task`) and any unconfigured persona inherit zero browser access.
+- `@developer` and `@devops` only: `BROWSER_*: allow` — Playwright browser MCP (ephemeral profile, loopback-origin allowlist) for coach-web dev/qa user-journey verification; all other agents `BROWSER_*: deny` (explicit per-agent backstop).
+- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9/10 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`), with a stdlib unittest regression suite as gate 10/10.
 
 **Mode gating invariants (enforced since #149):**
 - `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).
