@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "${REPO_ROOT}"
 fail() { echo "FAIL run-config-gate: $1" >&2; exit 1; }
-# 1/9 opencode.jsonc parses as JSON after comment stripping (port of ci.yml's
+# 1/10 opencode.jsonc parses as JSON after comment stripping (port of ci.yml's
 # validator; quoted heredoc = no bash expansion, so plain Python quoting).
 python3 - <<'PY' || fail "opencode.jsonc is not valid JSONC"
 import json, sys
@@ -40,29 +40,35 @@ with open("opencode.jsonc", encoding="utf-8") as handle:
         sys.exit(f"Invalid JSONC: {exc}")
 print("PASS run-config-gate: opencode.jsonc is valid JSONC")
 PY
-# 2/9 install.sh must be valid bash.
+# 2/10 install.sh must be valid bash.
 bash -n install.sh || fail "install.sh fails 'bash -n'"
 echo "PASS run-config-gate: install.sh syntax OK"
-# 3/9 all 7 agent files exist.
+# 3/10 all 7 agent files exist.
 for agent in architect coach code-reviewer cyber-security developer devops scrum-master; do
   test -f "agents/${agent}.md" || fail "missing agents/${agent}.md"
 done
 echo "PASS run-config-gate: agent files present"
-# 4/9 all 14 skill directories exist (exact list from ci.yml).
+# 4/10 all 14 skill directories exist (exact list from ci.yml).
 for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering herdr home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
   test -f "skills/${skill}/SKILL.md" || fail "missing skills/${skill}/SKILL.md"
 done
 echo "PASS run-config-gate: skill directories present"
-# 5-7/9 native docs validators (links, MADR schema, mermaid syntax).
+# 5-7/10 native docs validators (links, MADR schema, mermaid syntax).
 python3 harness/docs-validation/check_links.py . || fail "check_links.py failed"
 python3 harness/docs-validation/check_madr.py . || fail "check_madr.py failed"
 python3 harness/docs-validation/check_mermaid.py --syntax . || fail "check_mermaid.py --syntax failed"
-# 8/9 mermaid syntax checker regression suite (#142 A1): stdlib unittest
+# 8/10 mermaid syntax checker regression suite (#142 A1): stdlib unittest
 # regression tests for check_mermaid.py --syntax (defect classes from #134,
 # advisory from the #138 review - the suite was not executed by any gate).
 python3 harness/docs-validation/test_check_mermaid_syntax.py || fail "test_check_mermaid_syntax.py failed"
-# 9/9 coach-exclusivity permission invariant (#150 AC1-AC3): global default-deny
-# baseline for the COACH_* MCP namespaces in opencode.jsonc, explicit per-agent
-# denies in agents/, and agents/coach.md as the sole COACH_* allow whitelist.
+# 9/10 namespace-exclusivity permission invariant (#150 AC1-AC3, #207 AC3 /
+# MADR-0009): global default-deny baselines for the COACH_* and BROWSER_* MCP
+# namespaces in opencode.jsonc, explicit per-agent restatement in agents/,
+# and the sole allow whitelists (agents/coach.md for COACH_*; agents/
+# developer.md + agents/devops.md for BROWSER_*).
 python3 harness/config-validation/check_coach_exclusivity.py . || fail "check_coach_exclusivity.py failed"
-echo "PASS run-config-gate: all 9 gates green (${REPO_ROOT})"
+# 10/10 namespace-exclusivity checker regression suite (#142 A1 pattern):
+# stdlib unittest regression tests for check_coach_exclusivity.py — both
+# governed namespaces, negative cases per invariant layer, real-repo control.
+python3 harness/config-validation/test_check_coach_exclusivity.py || fail "test_check_coach_exclusivity.py failed"
+echo "PASS run-config-gate: all 10 gates green (${REPO_ROOT})"

@@ -36,6 +36,10 @@ permission:
   COACH_MAIN_*: allow
   COACH_QA_*: allow
   COACH_DEV_*: allow
+  # 207 (MADR-0009): Playwright browser MCP is @developer/@devops-only — this
+  # explicit deny backstops the global default-deny baseline (opencode.jsonc
+  # permission BROWSER_*: deny).
+  BROWSER_*: deny
   openrouter_*: allow
 ---
 
