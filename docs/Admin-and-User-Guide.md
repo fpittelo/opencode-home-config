@@ -185,7 +185,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 | `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
 | `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
 | `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
-| `BROWSER` | `npx @playwright/mcp@0.0.83` (pinned; integrity-verified by `install.sh`) — launched with `--isolated` (ephemeral profile) and a loopback `--allowed-origins` allowlist | none | Browser automation for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
+| `BROWSER` | `npx @playwright/mcp@0.0.83` (pinned; pin-time registry audit by `install.sh` — npx re-resolves per session) — launched with `--isolated`, `--no-webmcp`, `--block-service-workers`, `--image-responses omit`, a loopback `--allowed-origins` allowlist, and a scoped `--output-dir` | none | Browser automation for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
 
 **How they work:**
 - All servers communicate via stdin/stdout (stdio transport).
@@ -385,14 +385,14 @@ MCP tools connect OpenCode to external services. The HOME profile defines 7 MCP 
 | **COACH_DEV** | Docker container `ghcr.io/fpittelo/coach:dev` | Training plan management (dev branch of coach service — experimental) |
 | **COACH_QA** | Docker container `ghcr.io/fpittelo/coach:qa` | Training plan management (qa staging — disabled; enabled by toggling, see §2.6) |
 | **COACH_MAIN** | Docker container `ghcr.io/fpittelo/coach:latest` | Training plan management (production coach service — disabled; enabled by toggling, see §2.6) |
-| **BROWSER** | `npx @playwright/mcp@0.0.83` (pinned; `--isolated` ephemeral profile + loopback `--allowed-origins` allowlist) | Browser automation (navigate, click, accessibility-tree snapshots, console output) for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
+| **BROWSER** | `npx @playwright/mcp@0.0.83` (pinned; `--isolated` ephemeral profile, `--no-webmcp`, `--block-service-workers`, `--image-responses omit`, loopback `--allowed-origins` allowlist, scoped `--output-dir`) | Browser automation (navigate, click, accessibility-tree snapshots, console output) for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
 | **openrouter** | Remote endpoint (`mcp.openrouter.ai`) | Model catalog & docs lookup via OpenRouter |
 
 The coach containers connect to Intervals.icu for workout analytics, training plans, and athlete data.
 
 **Coach MCP availability (#150):** Coach tools (`COACH_DEV_*`, `COACH_QA_*`, `COACH_MAIN_*`) are exclusively available to the **@coach** agent. A global default-deny baseline in `opencode.jsonc` denies all three Coach namespaces for every other persona — including built-in subagents (`explore`, `general`, `task`) — and each SCRUM agent re-states the deny explicitly in its spec. This keeps personal biometric and training data (Intervals.icu) isolated to the coaching workflow. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`, run locally via `bash harness/run-config-gate.sh` and in CI).
 
-**Browser MCP availability (#207, MADR-0009):** Browser tools (`BROWSER_*`) are available to the **@developer** and **@devops** agents only. The same global default-deny baseline (`BROWSER_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every other SCRUM agent re-states the deny explicitly in its spec. The server runs with an ephemeral in-memory profile (`--isolated`) and a loopback-origin allowlist (`--allowed-origins`), and the pinned `@playwright/mcp` version is integrity-verified by `install.sh`. The namespace-exclusivity invariant (COACH_* and BROWSER_*) is machine-enforced by the same config gate.
+**Browser MCP availability (#207, MADR-0009):** Browser tools (`BROWSER_*`) are available to the **@developer** and **@devops** agents only. The same global default-deny baseline (`BROWSER_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every other SCRUM agent re-states the deny explicitly in its spec. The server runs with an ephemeral in-memory profile (`--isolated`), WebMCP disabled (`--no-webmcp`), service workers blocked (`--block-service-workers`), image responses omitted (`--image-responses omit`), a loopback-origin allowlist (`--allowed-origins` — upstream documents it as not a security boundary), and a scoped `--output-dir`; the pinned `@playwright/mcp` version is audited at pin time by `install.sh` (npx re-resolves from the registry each session). The namespace-exclusivity invariant (COACH_* and BROWSER_*) and the mandated launch flags are machine-enforced by the same config gate.
 
 ### 3.5 Models
 
