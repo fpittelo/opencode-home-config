@@ -14,6 +14,7 @@
 | [MADR-0006](../../adr/0006-sprint-09-model-roster-gpt-6-luna-introduction-and-per-agent-assignment-refresh.md) | Sprint 09 model roster refresh — GPT-6 Luna introduction and per-agent assignment refresh | accepted | 2026-10-03 |
 | [MADR-0007](../../adr/0007-portfolio-standardization-fpittelo-project-template.md) | Portfolio standardization — FPITTELO PROJECT TEMPLATE (FPITTELO PROJECT STANDARD v1) | accepted | 2026-10-03 |
 | [MADR-0008](../../adr/0008-responsibility-harness-single-po-ai-agent-team.md) | Responsibility harness — four-quadrant agent collaboration, PO Gate Inventory, agent-probe verification (single PO, AI-agent SCRUM team) | accepted | 2026-10-03 |
+| [MADR-0009](../../adr/0009-playwright-browser-mcp-agent-access-scoping.md) | Playwright browser MCP (`BROWSER`) with agent access scoping — @developer/@devops only, hardened launch config, generalized namespace-exclusivity gate | accepted | 2026-10-04 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
