@@ -183,6 +183,18 @@ pinning, generalized namespace-exclusivity gate, nLPD assessment); final
 acceptance remains conditional on PO approval per the pending-PO-acceptance
 pattern.*
 
+**@cyber-security re-review verdict (2026-10-04, commit 08a2195):** *We
+re-reviewed the revised MADR-0009 and confirm all six blocking findings and
+both residual rulings are resolved — STRIDE model, untrusted-content rule,
+`--isolated` ephemeral profile, exact-version pinning with `install.sh`
+integrity verification, generalized `COACH_*`/`BROWSER_*`
+namespace-exclusivity gate, and the nLPD data-minimization/processor
+disclosure are all present, with the raw-docker residual correctly carried as
+pre-existing MADR-0004 posture and the navigation residual narrowed to
+allowlist misconfiguration under mandatory `--allowed-origins`. We APPROVE,
+with final acceptance remaining conditional on PO approval per the
+pending-PO-acceptance pattern.*
+
 ## Consequences
 
 - **Positive:** delivery agents autonomously deploy, browse, verify user
