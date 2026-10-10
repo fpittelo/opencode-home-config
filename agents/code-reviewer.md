@@ -30,6 +30,9 @@ permission:
     "*": deny
     "git status *": allow
     "git diff *": allow
+    # 251: read-only object/ref inspection for byte-identity verification
+    "git rev-parse *": allow
+    "git cat-file *": allow
     "cat *": allow
     "grep *": allow
     "ls *": allow
