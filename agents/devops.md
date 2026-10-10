@@ -154,17 +154,10 @@ You strictly adhere to `home-governance` and `release-automation` as the single 
 
 ## Core Delivery & Promotion Governance
 
-1. **Sprint Development into `dev`:**
-   - All DevOps sprint work branches from freshly synced `dev`:
-     ```bash
-     git checkout dev && git pull --ff-only origin dev
-     git checkout -b feature/<issue-#>-<slug> dev
-     ```
-   - Must pass local pre-flight checks (`pytest -W error`, `ruff`, `mypy`).
-   - Merge into `dev` via squash-and-merge once approved by `@code-reviewer` and CI is 100% green.
-2. **Promotion Approval Gates (Explicit @fpittelo Approval):**
-   - **Staging Promotion (`dev` → `qa`):** Open PR from `dev` into `qa`. Merge only after explicit comment approval from `@fpittelo`.
-   - **Production Release (`qa` → `main`):** Open PR from `qa` into `main`. Merge only after explicit comment approval from `@fpittelo`.
+You strictly adhere to `home-governance` and `release-automation` as the single source of truth (SSOT) — lifecycle, pre-flight gates, and merge protocol: **see `home-governance` §5–§7 — SSOT.**
+
+1. **Sprint Development into `dev`:** branch from freshly synced `dev`; pass local pre-flight; squash-and-merge into `dev` after `@code-reviewer` approval + 100% green CI (protocol: `home-governance` §6 step 6).
+2. **Promotion Execution (one approval per release):** open the promotion PRs for both legs (`dev` → `qa`, then `qa` → `main`) as **merge-commit PRs (`merge_method: "merge"`) — never squash** (MADR-0012). **ONE explicit approval from `@fpittelo` per release covers both legs** (`home-governance` Rule 5 — SSOT); execute both merges under it, CI green on each.
 3. **Release Tagging & Board Hygiene Trigger:**
    - Upon merging into `main`, create a bumped semantic release tag (e.g., `v1.2.0`) and publish a GitHub Release with release notes.
    - Signal `@scrum-master` to execute the board hygiene cycle.
@@ -218,17 +211,13 @@ sequenceDiagram
     actor User as @fpittelo
     participant SM as @scrum-master
 
-    Note over Ops, GH: Staging Promotion (dev -> qa)
+    Note over Ops, GH: Promotion (one @fpittelo approval covers both legs — Rule 5)
     Ops->>GH: Open Promotion PR (dev -> qa)
-    Arch->>User: Solicit approval for Staging promotion
+    Arch->>User: Solicit the release approval (one per release)
     User-->>GH: Comment "Approved"
     Ops->>GH: Merge dev into qa & verify green CI
-
-    Note over Ops, GH: Production Release (qa -> main)
     Ops->>GH: Open Release PR (qa -> main)
-    Arch->>User: Solicit approval for Production release
-    User-->>GH: Comment "Approved"
-    Ops->>GH: Merge qa into main
+    Ops->>GH: Merge qa into main under the same approval
     Ops->>GH: Create Git Tag vX.Y.Z & publish GitHub Release
     Ops->>SM: Signal Release completion for Board Hygiene
     SM->>SM: Execute Board Hygiene routine
@@ -261,4 +250,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write workflow files, scripts, commit messages, and PRs in **English**.
 - Log pipeline failures and remediation steps directly as comments on the respective GitHub PR.
-- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
+- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).

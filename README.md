@@ -8,7 +8,7 @@ This repository implements the **Golden Architecture v3.1** — fully decoupled 
 
 ```
 opencode-home-config/
-├── .github/workflows/ci.yml   # JSONC validation + Gitleaks scan
+├── .github/workflows/ci.yml   # Native quality gate + Gitleaks scan
 ├── .gitignore
 ├── install.sh                 # Idempotent Linux/WSL bootstrap
 ├── opencode.jsonc            # Global default profile for HOME
@@ -20,17 +20,32 @@ opencode-home-config/
 │   ├── developer.md
 │   ├── devops.md
 │   └── scrum-master.md
-└── skills/                   # Personal Skills (10)
-    ├── coach/
-    ├── docker-expert/
-    ├── fastmcp-builder/
-    ├── find-skills/
-    ├── github-scrum-board/
-    ├── home-governance/
-    ├── mermaid-diagrams/
-    ├── opentofu-iac/
-    ├── release-automation/
-    └── test-driven-development/
+├── docs/                     # arc42 architecture, MADRs (11), and history/
+│   ├── adr/
+│   ├── architecture/arc42/
+│   └── history/
+├── harness/                  # SSOT quality gate runner, config & docs validators
+│   ├── config-validation/
+│   ├── docs-validation/
+│   ├── run.sh
+│   └── run-config-gate.sh
+├── skills/                   # Personal Skills (14)
+│   ├── arc42-documentation/
+│   ├── coach/
+│   ├── docker-expert/
+│   ├── fastmcp-builder/
+│   ├── find-skills/
+│   ├── github-scrum-board/
+│   ├── harness-engineering/
+│   ├── herdr/
+│   ├── home-governance/
+│   ├── madr-adr/
+│   ├── mermaid-diagrams/
+│   ├── opentofu-iac/
+│   ├── release-automation/
+│   └── test-driven-development/
+└── tests/                    # Regression test suites (per-pane profile selection)
+    └── test_per_pane_profile_selection.py
 ```
 
 ## Installation
@@ -120,7 +135,7 @@ never scrape pane content.
     └── my-epfl-service/
 ```
 
-See the [Migration Plan v3.1](docs/opencode-config-migration-plan-v3.1.md), Section 5 for details on how the WORK profile is activated inside `~/projects/WORK/` projects.
+See the [Migration Plan v3.1 (historical)](docs/history/opencode-config-migration-plan-v3.1.md), Section 5 for details on how the WORK profile is activated inside `~/projects/WORK/` projects.
 
 ## Security
 

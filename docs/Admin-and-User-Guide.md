@@ -82,16 +82,15 @@ chmod +x install.sh && ./install.sh
 | 2 | Install pinned `github-mcp-server` v1.12.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
 | 3 | Install pinned `herdr` v0.9.3 binary — downloaded from the official Herdr release, SHA256-verified against the pinned release-asset digest (skipped if the pinned version is already installed) | `~/.local/bin/herdr` |
 | 4 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
-| 5 | Create secrets template (if absent) | `~/.config/opencode/.secrets.env` (chmod 600) |
-| 6 | Add sourcing to `~/.bashrc` | Sources `.secrets.env` in new terminal sessions |
-| 6 | Add sourcing to `~/.profile` | Sources `.secrets.env` in login shells |
-| 6 | Import to systemd user session | `systemctl --user import-environment` (for GUI apps) |
+| 5 | Migrate secrets to the profile-scoped file (if absent) | `~/.config/opencode/.secrets-home.env` (chmod 600, umask 077) |
+| 6 | Provision `profiles.sh` with the `oc-home()` wrapper (appended without clobbering `oc-work()`) | `~/.config/opencode/profiles.sh` |
+| 7 | Retire the legacy mechanism: remove `.secrets.env` sourcing from `~/.bashrc` / `~/.profile`, unset the systemd user environment (verified secret-free), remove the legacy `/AI_OS_ROOT` switcher | `~/.bashrc`, `~/.profile`, systemd user session |
 
-The installer is **idempotent** — running it again will update the symlinks but will NOT overwrite an existing `.secrets.env`.
+The installer is **idempotent** — running it again will update the symlinks but will NOT overwrite existing secrets files (`.secrets-home.env`).
 
 ### 2.3 Secrets Management
 
-The secrets file lives at `~/.config/opencode/.secrets.env` (never committed to Git, chmod 600).
+Secrets live in the profile-scoped file `~/.config/opencode/.secrets-home.env` (never committed to Git, chmod 600, umask 077). They are loaded **per pane** by the `oc-home` wrapper subshell (MADR-0010) — there is no global rc sourcing and no systemd import. Bare `opencode` is unsupported for secret-bearing work: always launch a profile via `oc-home` (or `oc-work` for the EPFL profile).
 
 **Required environment variables (HOME profile):**
 
@@ -106,7 +105,7 @@ The secrets file lives at `~/.config/opencode/.secrets.env` (never committed to 
 
 ```bash
 # Edit the file (created by install.sh)
-nano ~/.config/opencode/.secrets.env
+nano ~/.config/opencode/.secrets-home.env
 
 # Fill in your keys (replace the <...> placeholders):
 # export OPENROUTER_HOME_API_KEY="<your-openrouter-key>"
@@ -115,19 +114,20 @@ nano ~/.config/opencode/.secrets.env
 # export INTERVALS_ATHLETE_ID="<your-athlete-id>"
 
 # Verify permissions
-ls -la ~/.config/opencode/.secrets.env
-# Should show: -rw------- ... .secrets.env
+ls -la ~/.config/opencode/.secrets-home.env
+# Should show: -rw------- ... .secrets-home.env
 
-# Reload in current session
-source ~/.config/opencode/.secrets.env
+# Load secrets by launching the profile wrapper (secrets are confined to the
+# wrapper subshell — they do not persist in the pane shell after exit)
+oc-home
 
-# Verify all 4 keys are populated (without printing values)
+# Verify all 4 keys are populated inside the pane (without printing values)
 for v in OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN INTERVALS_API_KEY INTERVALS_ATHLETE_ID; do
     echo "$v: $([ -n "${!v}" ] && echo 'OK' || echo 'EMPTY')"
 done
 ```
 
-> **Security:** Never print secret values. Never commit `.secrets.env`. The `.gitignore` already excludes it. Gitleaks scans every push in CI.
+> **Security:** Never print secret values. Never commit `.secrets-home.env`. The `.gitignore` already excludes it. Gitleaks scans every push in CI.
 
 ### 2.4 Directory Structure
 
@@ -157,8 +157,8 @@ dev (integration) → qa (staging) → main (production)
 | Branch | Purpose | Who can merge into it? |
 |:---|:---|:---|
 | `dev` | Integration — all feature branches merge here | Any squad member via PR |
-| `qa` | Staging — promoted from `dev` with @fpittelo approval | @architect (with explicit approval) |
-| `main` | Production — promoted from `qa` with @fpittelo approval | @architect (with explicit approval) |
+| `qa` | Staging — promoted from `dev` under the single release approval | @architect (with explicit approval) |
+| `main` | Production — promoted from `qa` under the same single release approval | @architect (with explicit approval) |
 
 **Feature branches** are created from `dev`:
 
@@ -167,12 +167,7 @@ feature/<issue-#>-<slug>    # New features
 fix/<issue-#>-<slug>        # Bug fixes
 ```
 
-**Rules:**
-- Never commit directly to `dev`, `qa`, or `main` — always use a feature branch + PR.
-- Feature branches can ONLY merge into `dev` — never directly into `qa` or `main`.
-- Every merge requires a 100% clean CI pipeline (0 warnings, 0 failures).
-- `dev` → `qa` and `qa` → `main` promotions require **explicit approval from @fpittelo**.
-- Merging to `main` creates a versioned release tag (`vX.Y.Z`) and triggers board hygiene.
+**Rules:** see `home-governance` §5 — SSOT (three persistent branches, feature-branch isolation, zero-warning CI, promotion approval, release & board hygiene). Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5). Promotions are **merge-commit PRs, never squash** (MADR-0012).
 
 ### 2.6 MCP Servers
 
@@ -191,7 +186,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - All servers communicate via stdin/stdout (stdio transport).
 - The GitHub servers spawn the native binary directly (`~/.local/bin/github-mcp-server stdio`, #109) — millisecond startup vs ~0.6 s per container spawn (#106 baseline). The binary version is pinned and its SHA256 checksum is verified against the release checksums file by `install.sh`.
 - The Coach servers are started with `docker run -i --rm`; containers are automatically removed (`--rm`) when the session ends.
-- Environment variables are injected from `~/.config/opencode/.secrets.env` via `{env:VAR}` interpolation.
+- Environment variables are injected from the profile-scoped secrets file (`.secrets-home.env` / `.secrets-work.env`) sourced by the `oc-home` / `oc-work` wrapper subshell, via `{env:VAR}` interpolation (MADR-0010).
 - **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
 - **Availability (#207, MADR-0009):** Browser MCP tools (`BROWSER_*`) are exposed exclusively to the `@developer` and `@devops` agents — `opencode.jsonc` sets a global default-deny baseline (`BROWSER_*`: deny) and every other SCRUM agent denies them explicitly (see §3.4).
 
@@ -277,14 +272,14 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push a
 
 | Symptom | Likely Cause | Fix |
 |:---|:---|:---|
-| `opencode` fails to start | `OPENROUTER_HOME_API_KEY` empty | `source ~/.config/opencode/.secrets.env` |
+| `opencode` fails to start | `OPENROUTER_HOME_API_KEY` empty | Populate `~/.config/opencode/.secrets-home.env`, then launch via `oc-home` |
 | MCP tools not available | Docker not running (Coach servers) or binary missing (GitHub servers) | `systemctl --user start docker`; re-run `install.sh` to (re)install `~/.local/bin/github-mcp-server` |
 | MCP Coach image pull fails | Network or GHCR auth issue | `docker pull ghcr.io/fpittelo/coach:dev` to test |
 | Agents not loading | Broken symlink in `~/.config/opencode/agents` | Re-run `install.sh` |
 | Skills not activating | Broken symlink in `~/.config/opencode/skills` | Re-run `install.sh` |
 | Wrong model used | `opencode.jsonc` has wrong `model` field | Check `opencode.jsonc` line 3 |
-| `.secrets.env` not sourced | `~/.bashrc` or `~/.profile` missing the source line | Re-run `install.sh` (it adds the source line) |
-| Secrets not in GUI apps | systemd user session doesn't have them | `systemctl --user import-environment OPENROUTER_HOME_API_KEY ...` |
+| Secrets not loaded in a pane | `oc-home` / `oc-work` wrapper missing from `profiles.sh`, or secrets file absent | Re-run `install.sh` (provisions `profiles.sh` and `.secrets-home.env`) |
+| `oc-home()` missing after a WORK install | WORK installer (work repo #177) rewrites `profiles.sh` wholesale | Re-run HOME `install.sh` to restore `oc-home()` (mirrored fix tracked in the work repo) |
 | `herdr: command not found` | Herdr binary not installed | Re-run `install.sh` (installs the pinned binary to `~/.local/bin/herdr`) |
 | OpenCode panes show no live state in the Herdr sidebar | Integration files missing or stale (e.g. after a Herdr upgrade) | `herdr integration install opencode`, then restart the OpenCode panes; verify with `herdr integration status` |
 | OpenCode conversation lost after `herdr server stop` | Session snapshots disabled or Herdr stopped uncleanly | Keep session snapshots at defaults (ON); restart with `herdr` — the layout restores and OpenCode resumes via its session ID |
@@ -470,11 +465,11 @@ flowchart TD
 | ✅ Use feature branches (`feature/<issue-#>-<slug>`) | ❌ Commit directly to `dev`, `qa`, or `main` |
 | ✅ Reference the issue in your PR (`Resolves #<issue-#>`) | ❌ Open a PR without an issue |
 | ✅ Run `install.sh` after cloning the repo | ❌ Manually edit symlinks (use `install.sh`) |
-| ✅ Keep `.secrets.env` at chmod 600 | ❌ Share or print secret values |
+| ✅ Keep `.secrets-home.env` / `.secrets-work.env` at chmod 600 | ❌ Share or print secret values |
 | ✅ Verify CI is green before merging | ❌ Merge a PR with failing CI |
 | ✅ Use OpenRouter for all AI models (HOME profile) | ❌ Add direct Google/Anthropic API keys |
 | ✅ Ask @architect to plan before @developer codes | ❌ Jump straight to coding without a plan |
-| ✅ Restart opencode after switching profiles | ❌ Keep an old session running with a stale profile |
+| ✅ Launch panes via `oc-home` / `oc-work` | ❌ Run secret-bearing work with bare `opencode` |
 
 ### 3.8 Permission Posture & Safety Guardrails
 
@@ -629,10 +624,22 @@ This means even if a project under `~/projects/WORK/` somehow had access to the 
 
 | Warning | Why |
 |:---|:---|
-| ⚠️ **Do NOT mix profiles** | Running the HOME profile while working in `~/projects/WORK/` could expose personal MCP tools (GITHUB, COACH) in an EPFL context. Always switch to WORK before working on EPFL projects. |
-| ⚠️ **Restart opencode after switching** | OpenCode loads the config at session start. If you switch profiles, you must restart `opencode` (quit and relaunch) to pick up the new config. |
-| ⚠️ **Secrets are shared** | Both profiles use the same `~/.config/opencode/.secrets.env` file. The API keys don't change — only the config (agents, skills, MCPs, models) changes. |
+| ⚠️ **Do NOT mix profiles** | Launch each context in its own pane via its wrapper (`oc-home` / `oc-work`); never run EPFL work from a HOME pane or personal work from a WORK pane. |
+| ⚠️ **Profile is fixed at pane launch** | OpenCode loads the config at session start; a pane's profile is fixed by the wrapper that launched it. To change profile, close the pane and relaunch with the other wrapper. |
+| ⚠️ **Secrets are per-pane, but residuals remain** | Each profile sources its own secrets file (`.secrets-home.env` / `.secrets-work.env`, mode 600) inside the wrapper subshell — no global rc sourcing, no systemd import. The cross-profile residual risks below are accepted (STRIDE review #253 / MADR-0010). |
 | ⚠️ **Don't edit the symlink directly** | Use `install.sh` or the `ln -sf` commands above. Manually editing the symlink can break the path. |
+
+**Cross-profile residual risks (mirror of README §"Residual risks", RR1–RR9):**
+
+1. Same-UID `/proc/<pid>/environ` exposure of a running pane's environment (RR1).
+2. Shared `~/.local/share/opencode/` (`auth.json`, `mcp-auth.json`, session DB, logs, tool output) — **explicit PO risk-acceptance (@fpittelo, 2026-10-10)**: provider OAuth logins are global; switching profiles does not switch identities (RR2).
+3. Config-merge key leakage across profiles via the global base layer (RR3) — mitigated by the `{env:}`-only invariant (CI-enforced).
+4. Herdr screen history must stay OFF — re-verify after Herdr or opencode upgrades (RR4).
+5. Pane children inherit that pane's profile secrets — never run untrusted code from a profile pane (RR5).
+6. The systemd user environment must be secret-free post-migration — `install.sh` unsets and verifies; re-check after upgrades (RR6).
+7. Secrets files live outside any repo — host backups and dotfile copies are secret-bearing; keep them out of any synced store (RR7).
+8. The legacy shared `.secrets.env` is emptied/removed after migration — do not recreate it; the wrappers no longer read it (RR8).
+9. The WORK installer (work repo #177) still rewrites `profiles.sh` wholesale and removes `oc-home()`; re-run HOME `install.sh` to restore it (RR9).
 
 ---
 
@@ -640,7 +647,7 @@ This means even if a project under `~/projects/WORK/` somehow had access to the 
 
 | Resource | Location | Description |
 |:---|:---|:---|
-| Migration Plan v3.1 | `docs/opencode-config-migration-plan-v3.1.md` | Full migration plan from Google Drive to Git-tracked repos |
+| Migration Plan v3.1 (historical) | `docs/history/opencode-config-migration-plan-v3.1.md` | Full migration plan from Google Drive to Git-tracked repos (historical record) |
 | README | `README.md` | Quick-start and repository structure |
 | WORK Guide | GitLab `isgov/ea/opencode-work-config` → `docs/Admin-and-User-Guide.md` | Admin and User Guide for the WORK (EPFL) profile |
 

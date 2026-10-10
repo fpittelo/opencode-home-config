@@ -188,10 +188,10 @@ flowchart TD
         S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S1
     end
 
-    subgraph Promotion_Gates ["Promotion Gates (Explicit @fpittelo Approval)"]
+    subgraph Promotion_Gates ["Promotion Gates (One @fpittelo Approval per Release)"]
         P1["All sprint deliverables merged in dev"]
-        P2["@fpittelo approval -> @devops merges dev into qa"]
-        P3["@fpittelo approval -> @devops merges qa into main"]
+        P2["One @fpittelo approval per release (home-governance Rule 5)"]
+        P3["@devops merges dev into qa, then qa into main"]
         P4["Git tag vX.Y.Z + Release notes -> @scrum-master board hygiene"]
     end
 
@@ -200,12 +200,8 @@ flowchart TD
 ```
 
 ### Core Branching Rules (SSOT: `home-governance`)
-1. **Three Persistent Branches:** Repositories maintain `dev` (integration), `qa` (staging), and `main` (production).
-2. **Feature Branch Isolation:** All work occurs on feature branches (`feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`) branched from `dev`. Never commit directly to `dev`, `qa`, or `main`.
-3. **Merge Destination Constraint:** Feature branches **can ONLY merge into `dev`**. Promotion follows strictly: `dev` → `qa` → `main`.
-4. **Zero-Tolerance Quality Gate:** Every merge requires a **100% clean GitHub Actions pipeline with ZERO warnings and ZERO failures**.
-5. **Promotion Approval Gate:** Merges from `dev` → `qa` and `qa` → `main` require **mandatory explicit approval from @fpittelo**.
-6. **Main Release & Board Hygiene:** Merging to `main` creates a bumped release tag (`vX.Y.Z`) and triggers `@scrum-master` board hygiene.
+
+Lifecycle & promotion rules — three persistent branches, feature-branch isolation, merge-destination constraint, zero-tolerance quality gate, promotion approval, main release & board hygiene: **see `home-governance` §5 — SSOT.** Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5).
 
 ---
 
@@ -234,7 +230,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 - **Container Hardening:** Multi-stage builds, non-root user execution, and minimal base images (`docker-expert`). Rust: distroless/scratch. Python: slim.
 - **STRIDE Threat Modeling:** Apply threat modeling during backlog refinement for all new MCP tools and API integrations.
 - **Security Impact Routing (MADR-0008, #194):** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) MUST be reviewed by `@cyber-security` against arc42 §8 (cross-cutting security) & §11 (technical risks) BEFORE spec finalization; MADRs & specs handed to `@code-reviewer` as the review baseline.
-- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
+- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 
