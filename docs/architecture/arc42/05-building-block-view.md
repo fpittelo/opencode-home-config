@@ -25,6 +25,8 @@ C4Container
     Container_Boundary(mcp_servers, "MCP Servers (native binary / Docker / remote)") {
         Container(mcp_github, "GITHUB MCP", "Native binary process", "Board & repo operations as @fpittelo")
         Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Native binary process", "Formal PR reviews as @devfpittelo (SoD)")
+        Container(mcp_actions, "GITHUB_ACTIONS MCP", "Native binary process", "CI/CD & Actions workflows (MADR-0011)")
+        Container(mcp_security, "GITHUB_SECURITY MCP", "Native binary process", "Code/secret/dependency alerts, read-only (MADR-0011)")
         Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
         Container(mcp_browser, "BROWSER MCP", "npx @playwright/mcp (pinned, stdio)", "Ephemeral-profile browser automation, loopback-origin allowlist (MADR-0009)")
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
@@ -35,6 +37,8 @@ C4Container
     Rel(fpittelo, agents, "Owns & approves")
     Rel(agents, mcp_github, "Board ops via", "GITHUB_* tools")
     Rel(agents, mcp_reviewer, "Reviews via (code-reviewer only)", "GITHUB_CODE_REVIEWER_*")
+    Rel(agents, mcp_actions, "CI/CD triage via (devops full, developer read-only)", "GITHUB_ACTIONS_*")
+    Rel(agents, mcp_security, "Alert triage via (cyber-security read-only)", "GITHUB_SECURITY_*")
     Rel(agents, mcp_coach, "Coaching via (coach only)", "COACH_* tools")
     Rel(agents, mcp_browser, "Journey verification via (developer/devops only)", "BROWSER_* tools")
     Rel(agents, mcp_openrouter, "Model catalog via", "openrouter_* tools")
@@ -70,7 +74,10 @@ C4Container
 - `@architect` and `@coach` only: `openrouter_*: allow`; all other agents `openrouter_*: deny` (supersedes #67's "all agents" rule).
 - Global default-deny baseline (#207, MADR-0009): `opencode.jsonc` denies `BROWSER_*` at the root `permission` level — built-in subagents (`explore`, `general`, `task`) and any unconfigured persona inherit zero browser access.
 - `@developer` and `@devops` only: `BROWSER_*: allow` — Playwright browser MCP (ephemeral profile, loopback-origin allowlist) for coach-web dev/qa user-journey verification; all other agents `BROWSER_*: deny` (explicit per-agent backstop).
-- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9/10 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`), with a stdlib unittest regression suite as gate 10/10.
+- Global default-deny baseline (MADR-0011): `opencode.jsonc` denies `GITHUB_ACTIONS_*` and `GITHUB_SECURITY_*` at the root `permission` level.
+- `GITHUB_ACTIONS_*`: `@devops` only for write operations (`actions_run_trigger`); `@developer` receives read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with explicit deny on `actions_run_trigger`; all other agents deny.
+- `GITHUB_SECURITY_*`: `@cyber-security` only, with `--read-only` flag enforced at process startup and raw secret redaction rules; all other agents deny.
+- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_ACTIONS_* / GITHUB_SECURITY_* MADR-0011) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
 
 **Mode gating invariants (enforced since #149):**
 - `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).
