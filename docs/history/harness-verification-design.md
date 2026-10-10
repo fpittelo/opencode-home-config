@@ -3,7 +3,9 @@
 **Issue:** fpittelo/opencode-home-config#35  
 **Author:** @developer  
 **Date:** 2026-09-07  
-**Status:** Design / Ready for Review
+**Status:** SUPERSEDED  
+
+> **SUPERSEDED** by `skills/harness-engineering` + MADR-0003 (exit-code gate, no result schemas). Kept as a historical record.
 
 ---
 

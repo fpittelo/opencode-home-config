@@ -2,7 +2,7 @@
 
 Architecture documentation for the **HOME OpenCode configuration** (`opencode-home-config`), following the **arc42** template (v8.0) as operationalized by the `arc42-documentation` skill.
 
-**Document status:** seeded in Sprint 03 (STORY-02, issue #59). §9 MADR index is wired by STORY-03 (issue #60).
+**Document status:** active — §9 MADR index is live with 11 accepted ADRs.
 
 ## Index
 
@@ -16,7 +16,7 @@ Architecture documentation for the **HOME OpenCode configuration** (`opencode-ho
 | 6. Runtime View | [06-runtime-view.md](06-runtime-view.md) | seeded (sprint loop) |
 | 7. Deployment View | [07-deployment-view.md](07-deployment-view.md) | seeded |
 | 8. Cross-cutting Concepts | [08-cross-cutting-concepts.md](08-cross-cutting-concepts.md) | seeded |
-| 9. Architecture Decisions (MADR index) | [09-architecture-decisions.md](09-architecture-decisions.md) | placeholder — wired by #60 |
+| 9. Architecture Decisions (MADR index) | [09-architecture-decisions.md](09-architecture-decisions.md) | live (11 accepted ADRs) |
 | 10. Quality Requirements | [10-quality-requirements.md](10-quality-requirements.md) | seeded |
 | 11. Risks & Technical Debt | [11-risks-and-technical-debt.md](11-risks-and-technical-debt.md) | seeded |
 | 12. Glossary | [12-glossary.md](12-glossary.md) | seeded |
