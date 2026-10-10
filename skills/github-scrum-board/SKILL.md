@@ -136,7 +136,7 @@ When a story's acceptance criteria are all fulfilled **except** a pending-PO one
 
 ## 6. Post-Merge Board Hygiene Protocol (Triggered on Release to `main`)
 
-When all sprint deliverables are promoted and merged into `main`:
+When all sprint deliverables are promoted and merged into `main` (promotions are **merge-commit PRs, never squash** — MADR-0012):
 
 1. **Board Audit:** Verify all issues assigned to the active Sprint Milestone are closed with `status::done`.
 2. **Clear Stale Labels:** Remove lingering `blocker::active` or intermediate status labels.

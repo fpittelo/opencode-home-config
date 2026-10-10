@@ -190,7 +190,7 @@ When unsure which language a project uses, check the project's ADRs or ask `@arc
 
 - **Strict Test-Driven Development (TDD):** Red-Green-Refactor discipline, 100% test coverage for critical paths, zero warnings.
 - **Security Best Practices:** Zero hardcoded secrets (`gitleaks`), clean dependency audits, strict input validation.
-- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
+- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 

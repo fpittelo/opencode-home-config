@@ -145,6 +145,15 @@ jobs:
         # security flags. stdlib unittest only, < 1 s.
         run: python3 harness/config-validation/test_harness_run.py
 
+      - name: Per-pane profile selection regression tests (unittest)
+        # TDD regression suite for dual-profile coexistence and per-pane
+        # secrets isolation (#244, wired into the gates by #263): profiles.sh
+        # provisioning, oc-home wrapper semantics, secrets split/migration,
+        # legacy switcher cleanup, permission hardening, MADR-0010 record,
+        # README documentation, .gitignore coverage. stdlib unittest only,
+        # runs install.sh against a sandboxed fake $HOME, < 1 s.
+        run: python3 tests/test_per_pane_profile_selection.py
+
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
           python3 harness/docs-validation/check_links.py .

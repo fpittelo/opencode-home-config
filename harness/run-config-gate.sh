@@ -87,4 +87,10 @@ python3 harness/config-validation/test_check_browser_launch_flags.py || fail "te
 # project .venv (never host PATH), and exits 3 when the venv or a required
 # tool is missing; the container fallback keeps its security flags.
 python3 harness/config-validation/test_harness_run.py || fail "test_harness_run.py failed"
-echo "PASS run-config-gate: all 13 gates green (${REPO_ROOT})"
+# 14/14 per-pane profile selection regression suite (#263, #244): stdlib
+# unittest TDD suite for dual-profile coexistence and per-pane secrets
+# isolation — profiles.sh provisioning, oc-home wrapper semantics, secrets
+# split/migration, legacy switcher cleanup, permission hardening, MADR-0010
+# record, README documentation, .gitignore coverage. Sandboxed fake $HOME.
+python3 tests/test_per_pane_profile_selection.py || fail "test_per_pane_profile_selection.py failed"
+echo "PASS run-config-gate: all 14 gates green (${REPO_ROOT})"

@@ -162,7 +162,7 @@ This split prevents flaky tests caused by external network availability and clos
 - **Minimal base images:** `python:3.12-slim-bookworm` and `rust:1.81.0-slim-bookworm`.
 - **Zero hardcoded secrets:** credentials are injected via GitHub Actions `secrets.GITHUB_TOKEN` and `{env:VAR}` interpolation.
 - **Read-only root filesystem:** runtime root is read-only; only `/workspace`, `/tmp`, and named cache volumes are writable.
-- **HOME 3-branch lifecycle:** image builds follow `dev` → `qa` → `main` promotions with explicit `@fpittelo` approval gates.
+- **HOME 3-branch lifecycle:** image builds follow `dev` → `qa` → `main` promotions under the single explicit `@fpittelo` release approval covering both legs (`home-governance` Rule 5).
 
 ---
 
@@ -214,4 +214,10 @@ The harness native-gate regression suite (stdlib `unittest`) guards `run.sh` too
 
 ```bash
 python3 harness/config-validation/test_harness_run.py
+```
+
+The per-pane profile selection regression suite (stdlib `unittest`, gate 14 of 14, wired into both gates by #263) guards the dual-profile coexistence and per-pane secrets isolation delivered by #244 — profiles.sh provisioning and the `oc-home` wrapper semantics, the secrets split/migration (`.secrets-home.env`, shared `.secrets.env` retirement), legacy `/AI_OS_ROOT` switcher cleanup, permission hardening (700 config dir, mode-600 secrets, fail-closed assertion), the MADR-0010 decision record, README documentation, and `.gitignore` coverage. Every behavioral test runs `install.sh` against a sandboxed fake `$HOME` with stubbed `systemctl`/`docker`/`curl`/`openssl` — never the real home directory, never the network:
+
+```bash
+python3 tests/test_per_pane_profile_selection.py
 ```
