@@ -640,7 +640,7 @@ This means even if a project under `~/projects/WORK/` somehow had access to the 
 
 | Resource | Location | Description |
 |:---|:---|:---|
-| Migration Plan v3.1 | `docs/opencode-config-migration-plan-v3.1.md` | Full migration plan from Google Drive to Git-tracked repos |
+| Migration Plan v3.1 (historical) | `docs/history/opencode-config-migration-plan-v3.1.md` | Full migration plan from Google Drive to Git-tracked repos (historical record) |
 | README | `README.md` | Quick-start and repository structure |
 | WORK Guide | GitLab `isgov/ea/opencode-work-config` → `docs/Admin-and-User-Guide.md` | Admin and User Guide for the WORK (EPFL) profile |
 
