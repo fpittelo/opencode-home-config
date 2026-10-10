@@ -30,11 +30,19 @@ permission:
     "*": deny
     "git status *": allow
     "git diff *": allow
+    # 251: read-only object/ref inspection for byte-identity verification
+    "git rev-parse *": allow
+    "git cat-file *": allow
     "cat *": allow
     "grep *": allow
     "ls *": allow
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
+  # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
+  # (explicit denies backstop the global default-deny baseline,
+  # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
+  GITHUB_ACTIONS_*: deny
+  GITHUB_SECURITY_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

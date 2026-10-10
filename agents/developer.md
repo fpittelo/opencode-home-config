@@ -117,6 +117,17 @@ permission:
     "*.key*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  # 252 (MADR-0011): extended GitHub MCP namespaces (C3) — @developer gets
+  # read-only CI triage: the namespace wildcard is denied first (last matching
+  # rule wins), the monolithic actions_run_trigger (dispatch/cancel/log-delete
+  # in one tool) stays explicitly denied, and only the three read-only triage
+  # tools are re-allowed. GITHUB_SECURITY_* is @cyber-security-only (C2).
+  GITHUB_ACTIONS_*: deny
+  GITHUB_ACTIONS_actions_run_trigger: deny
+  GITHUB_ACTIONS_actions_get: allow
+  GITHUB_ACTIONS_actions_list: allow
+  GITHUB_ACTIONS_get_job_logs: allow
+  GITHUB_SECURITY_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

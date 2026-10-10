@@ -76,6 +76,48 @@
       },
       "enabled": true
     },
+    // #252 (MADR-0011): dedicated namespaced servers for the extended GitHub
+    // toolsets (C1) — the shared GITHUB server keeps its default toolsets, so
+    // per-agent permission scoping stays possible and schemas stay lean for
+    // agents that do not need extended capabilities. Tool names verified
+    // against the pinned v1.12.2 binary: --toolsets=actions exposes exactly
+    // actions_get, actions_list, actions_run_trigger, get_job_logs (namespaced
+    // GITHUB_ACTIONS_*). Write-capable server: @devops holds the full
+    // namespace; @developer is pinned to the read-only triage tools with the
+    // monolithic actions_run_trigger (dispatch/cancel/log-delete in one tool)
+    // explicitly denied (C3); every other agent denies the namespace.
+    "GITHUB_ACTIONS": {
+      "type": "local",
+      "command": [
+        "{env:HOME}/.local/bin/github-mcp-server",
+        "stdio",
+        "--toolsets=actions"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "enabled": true
+    },
+    // #252 (MADR-0011): security-alert triage server (C2) — code scanning,
+    // secret scanning, and dependabot alerts, launched with --read-only so
+    // write operations are impossible at the process level. @cyber-security
+    // holds the namespace exclusively (raw secret payloads must be redacted
+    // before recording in issue/PR threads); every other agent denies it.
+    // projects/discussions toolsets rejected per C9 (YAGNI #180) — no broad
+    // `project` PAT scope on the host credential.
+    "GITHUB_SECURITY": {
+      "type": "local",
+      "command": [
+        "{env:HOME}/.local/bin/github-mcp-server",
+        "stdio",
+        "--toolsets=code_security,secret_protection,dependabot",
+        "--read-only"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      },
+      "enabled": true
+    },
     // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
     // duplicate tool schemas are not injected into every LLM turn. To switch
     // environments, set "enabled": true on the target and false on the others.
@@ -199,6 +241,15 @@
     // re-allow in their specs and every other SCRUM agent re-states the deny
     // explicitly (defense in depth, #150 pattern).
     "BROWSER_*": "deny",
+    // #252 (MADR-0011): global default-deny baseline for the extended GitHub
+    // MCP namespaces — built-in subagents (explore, general, task) and any
+    // unconfigured persona inherit zero access. @devops re-allows
+    // GITHUB_ACTIONS_* and @cyber-security re-allows GITHUB_SECURITY_* in
+    // their specs; @developer holds the governed partial allow (read-only
+    // triage tools, actions_run_trigger denied); every other SCRUM agent
+    // re-states the denies explicitly (defense in depth, #150 pattern).
+    "GITHUB_ACTIONS_*": "deny",
+    "GITHUB_SECURITY_*": "deny",
     // #158 (MADR-0004): allow-by-default bash posture with catastrophic-deny
     // guardrails (PO directive 2026-10-03) — supersedes the #86-era ask-default +
     // short allowlist. Last matching rule wins: broad rules first, deny rules

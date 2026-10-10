@@ -138,8 +138,82 @@ echo "⏳  Pre-pulling pinned coach image..."
 docker pull "$COACH_DEV_IMAGE"
 echo "✅  Coach image pre-pulled (coach:dev)."
 
-# 6. Generate secrets template if absent
-SECRETS_FILE="$DEST/.secrets.env"
+# 6. Per-pane profile selection snippet (issue #244, MC1/F1).
+#    Sourced from .bashrc/.profile. Defines shell functions only: nothing
+#    here exports secrets into the pane shell — the wrapper sources the
+#    profile-scoped secrets file inside a subshell (set -a / set +a around
+#    the source so {env:} interpolation and MCP servers see the values) and
+#    ends in exec opencode "$@" so no subshell lingers and no secret
+#    persists in the pane environment.
+#    CONVERGENCE INVARIANT (MC3/F9): the WORK profile installer (#177) may
+#    already have provisioned profiles.sh with oc-work(). oc-home() is
+#    appended only when absent — existing content (oc-work) is never
+#    clobbered. Re-runs are idempotent (no duplicate oc-home).
+PROFILES_SH="$DEST/profiles.sh"
+if ! grep -q "^oc-home()" "$PROFILES_SH" 2>/dev/null; then
+    cat >> "$PROFILES_SH" << 'EOF'
+
+# profiles.sh — per-pane profile selection for the HOME profile (issue #244).
+# Shell functions only; secrets are never exported into the pane shell.
+oc-home() {
+    (
+        set -a
+        if [ -f "$HOME/.config/opencode/.secrets-home.env" ]; then
+            # shellcheck disable=SC1090
+            source "$HOME/.config/opencode/.secrets-home.env"
+        fi
+        set +a
+        OPENCODE_CONFIG="$HOME/projects/opencode-home-config/opencode.jsonc" \
+        OPENCODE_CONFIG_DIR="$HOME/projects/opencode-home-config" \
+            exec opencode "$@"
+    )
+}
+EOF
+    echo "✅  Added oc-home() to $PROFILES_SH (per-pane HOME profile, issue #244)."
+fi
+
+# 7. Profile-scoped secrets (issue #244, MC2/MC9). The shared .secrets.env is
+#    RETIRED: HOME secrets live in .secrets-home.env (mode 600), sourced only
+#    by the oc-home wrapper. The shared file is no longer created, sourced,
+#    or imported into the systemd user environment.
+SECRETS_FILE="$DEST/.secrets-home.env"
+OLD_SECRETS_FILE="$DEST/.secrets.env"
+
+umask 077
+
+# 7a. Migrate a populated shared .secrets.env into the home-scoped file,
+#     then remove it. Populated = at least one assignment with a non-empty
+#     value. Mode 600 is preserved via install -m 600; secret values are
+#     never printed.
+migrate_shared_secrets() {
+    local old="$OLD_SECRETS_FILE" new="$SECRETS_FILE"
+    [ -f "$old" ] || return 0
+    if ! grep -Eq '^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*=("[^"]|[^[:space:]#"])' "$old"; then
+        rm -f "$old"
+        echo "🧹 Removed the unpopulated shared secrets template $old (retired, issue #244)."
+        return 0
+    fi
+    if [ ! -f "$new" ]; then
+        install -m 600 "$old" "$new"
+    else
+        # Name-anchored append: never overwrite populated values in the home file.
+        while IFS= read -r line; do
+            case "$line" in '' | '#'*) continue ;; esac
+            var="$(printf '%s\n' "$line" | sed -E 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/')"
+            if [ -n "$var" ] && ! grep -qE "^(export[[:space:]]+)?${var}=" "$new"; then
+                printf '%s\n' "$line" >> "$new"
+            fi
+        done < "$old"
+        chmod 600 "$new"
+    fi
+    : > "$old"
+    rm -f "$old"
+    echo "🔁 Migrated populated secrets into $new (mode 600); shared file removed (issue #244)."
+}
+migrate_shared_secrets
+
+# 7b. Fresh home secrets template (created only if the migration above did
+#     not already produce one).
 if [ ! -f "$SECRETS_FILE" ]; then
     cat << 'EOF' > "$SECRETS_FILE"
 export OPENROUTER_HOME_API_KEY=""
@@ -152,22 +226,73 @@ EOF
     echo "⚠️  Created $SECRETS_FILE. Please populate your secrets."
 fi
 
-# 7. Propagate secrets to interactive shells and GUI desktop sessions
-# Shell profiles
-if ! grep -q "source $SECRETS_FILE" "$HOME/.bashrc" 2>/dev/null; then
-    echo "[ -f $SECRETS_FILE ] && source $SECRETS_FILE" >> "$HOME/.bashrc"
+umask 022
+
+# 8. Shell integration — retire the shared-secrets sourcing from BOTH rc
+#    files (MC2/F2), remove the legacy /AI_OS_ROOT switcher dead code
+#    (AC4/MC6), then source the per-pane profiles snippet instead.
+for rc in "$HOME/.bashrc" "$HOME/.profile"; do
+    if [ -f "$rc" ] && grep -qF ".secrets.env" "$rc" 2>/dev/null; then
+        sed -i '/\.secrets\.env/d' "$rc"
+    fi
+done
+
+# Legacy switcher removal (AC4/MC6): the block spans from its banner comment
+# through the closing brace of opencode-status(). Handles both the live
+# uncommented variant and a commented-out variant. Idempotent.
+if [ -f "$HOME/.bashrc" ] && grep -q "opencode-switch-context" "$HOME/.bashrc" 2>/dev/null; then
+    tmp_rc="$(mktemp)"
+    awk '
+        /^# OPENCODE UNIFIED STORAGE & PROFILE MANAGER/ { skip = 1 }
+        /^# OpenCode Dynamic Context Switcher/ { skip = 1 }
+        skip && /^function opencode-status\(\)/ { seen_status = 1 }
+        skip && seen_status && /^\}/ { skip = 0; next }
+        skip && seen_status && /^# \}/ { skip = 0; next }
+        skip { next }
+        { print }
+    ' "$HOME/.bashrc" > "$tmp_rc" && cat "$tmp_rc" > "$HOME/.bashrc" && rm -f "$tmp_rc"
 fi
-if ! grep -q "source $SECRETS_FILE" "$HOME/.profile" 2>/dev/null; then
-    echo "[ -f $SECRETS_FILE ] && source $SECRETS_FILE" >> "$HOME/.profile"
+# Defensive second pass: any residual switcher references (e.g. stray
+# commented lines outside the block) are dropped line-wise.
+if [ -f "$HOME/.bashrc" ] && grep -qE "opencode-switch-context|opencode-status|/AI_OS_ROOT" "$HOME/.bashrc" 2>/dev/null; then
+    tmp_rc="$(mktemp)"
+    grep -vE "opencode-switch-context|opencode-status|/AI_OS_ROOT" "$HOME/.bashrc" > "$tmp_rc" \
+        && cat "$tmp_rc" > "$HOME/.bashrc" && rm -f "$tmp_rc"
 fi
 
-# Systemd user session (allows GUI application launcher to inherit tokens)
+for rc in "$HOME/.bashrc" "$HOME/.profile"; do
+    if ! grep -qF "source $PROFILES_SH" "$rc" 2>/dev/null; then
+        echo "[ -f $PROFILES_SH ] && source $PROFILES_SH" >> "$rc"
+    fi
+done
+
+# 9. Systemd user session — the GUI-launcher secret-var import is RETIRED
+#    (issue #244, MC2): importing secret variables into the systemd user
+#    environment was a broader export surface than the shell sourcing and
+#    stale values persisted across installs. Previously imported secret
+#    variables are unset instead, then verified absent (post-migration
+#    verification).
 if command -v systemctl >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
-    set -a
-    # shellcheck disable=SC1090
-    source "$SECRETS_FILE"
-    systemctl --user import-environment OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN GITHUB_TOKEN_CODE_REVIEWER INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
-    set +a
+    systemctl --user unset-environment OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN GITHUB_TOKEN_CODE_REVIEWER INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
+    if systemctl --user show-environment 2>/dev/null | grep -qE '^(OPENROUTER_HOME_API_KEY|GITHUB_PERSONAL_ACCESS_TOKEN|GITHUB_TOKEN_CODE_REVIEWER|INTERVALS_API_KEY|INTERVALS_ATHLETE_ID)='; then
+        echo "❌ FATAL: the systemd user environment still carries secret variables." >&2
+        echo "   Remediate with: systemctl --user unset-environment <VARIABLE>" >&2
+        exit 1
+    fi
 fi
 
-echo "✅ VIDAR Home OpenCode configured successfully (CLI & Desktop)."
+# 10. Fail-closed permission assertion (issue #244, MC9): no secrets file
+#     may ever be group/world-readable.
+LEAKED_FILES="$(find "$DEST" -maxdepth 1 -name '.secrets-*.env' -perm /044 -print 2>/dev/null)"
+if [ -n "$LEAKED_FILES" ]; then
+    echo "❌ FATAL: secrets files must never be group/world-readable:" >&2
+    echo "$LEAKED_FILES" >&2
+    exit 1
+fi
+
+# 11. Idempotent config-dir hardening (issue #244, MC9): the OpenCode config
+#     directory holds the profile-scoped secrets files — owner-only access.
+chmod 700 "$DEST"
+
+echo "✅ VIDAR Home OpenCode configured successfully (per-pane profile selection, issue #244)."
+echo "   Launch OpenCode with the HOME profile via: oc-home (coexists with oc-work)."

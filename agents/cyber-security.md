@@ -123,6 +123,13 @@ permission:
     "*.key*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  # 252 (MADR-0011): extended GitHub MCP namespaces — @cyber-security holds
+  # GITHUB_SECURITY_* exclusively (C2; the server itself runs --read-only and
+  # raw secret payloads must be redacted before recording in issue/PR threads)
+  # and has zero Actions access (C3; this deny backstops the global
+  # default-deny baseline).
+  GITHUB_ACTIONS_*: deny
+  GITHUB_SECURITY_*: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
