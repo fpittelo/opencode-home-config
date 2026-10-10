@@ -15,6 +15,7 @@
 | [MADR-0007](../../adr/0007-portfolio-standardization-fpittelo-project-template.md) | Portfolio standardization — FPITTELO PROJECT TEMPLATE (FPITTELO PROJECT STANDARD v1) | accepted | 2026-10-03 |
 | [MADR-0008](../../adr/0008-responsibility-harness-single-po-ai-agent-team.md) | Responsibility harness — four-quadrant agent collaboration, PO Gate Inventory, agent-probe verification (single PO, AI-agent SCRUM team) | accepted | 2026-10-03 |
 | [MADR-0009](../../adr/0009-playwright-browser-mcp-agent-access-scoping.md) | Playwright browser MCP (`BROWSER`) with agent access scoping — @developer/@devops only, hardened launch config, generalized namespace-exclusivity gate | accepted | 2026-10-04 |
+| [MADR-0010](../../adr/0010-per-pane-profile-selection-and-secrets-isolation.md) | Per-pane dual-profile coexistence and secrets isolation — `oc-home`/`oc-work` wrappers (subshell + exec), profile-scoped secrets, shared `.secrets.env` + systemd import retired, PO risk-acceptance for shared provider OAuth tokens | accepted | 2026-10-10 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
