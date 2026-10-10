@@ -12,3 +12,5 @@
 | Review integrity | Reviews attributed to `@fpittelo` by `@code-reviewer` | 0 — all reviews under `@devfpittelo` (SoD) |
 | Documentation freshness | Architectural change without same-PR arc42 update | 0 occurrences |
 | Agent permission integrity | Cross-impersonation capability between agent identities | 0 (deny rules verified per change) |
+
+*Quality-gate and DoD canon: `home-governance` §4/§7 — SSOT.*

@@ -8,7 +8,7 @@ The architecture follows four strategic pillars:
 
 2. **Skills as knowledge modules.** Domain knowledge (governance, SCRUM board operations, diagramming, IaC, TDD, …) lives in `skills/<name>/SKILL.md` and is activated contextually. This keeps agent prompts lean and knowledge versioned. CI enforces the skill inventory.
 
-3. **MCP as the only integration layer.** Agents never touch platforms directly; all platform access (GitHub, Intervals.icu, OpenRouter) flows through scoped MCP servers with explicit per-agent permission patterns (allow/deny, last-match-wins). Secrets are provisioned via `{env:VAR}` interpolation from `.secrets.env` (systemd-imported), never stored in the repo.
+3. **MCP as the only integration layer.** Agents never touch platforms directly; all platform access (GitHub, Intervals.icu, OpenRouter) flows through scoped MCP servers with explicit per-agent permission patterns (allow/deny, last-match-wins). Secrets are provisioned via `{env:VAR}` interpolation from profile-scoped files (`.secrets-home.env` / `.secrets-work.env`, mode 600) sourced inside the `oc-home` / `oc-work` wrapper subshells (MADR-0010) — no global rc sourcing, no systemd import — and never stored in the repo. Bare `opencode` is unsupported for secret-bearing work.
 
 4. **Board-as-SSOT delivery.** The SCRUM process is encoded in agent specs (`github-scrum-board` skill + #58 state machine) and executed against GitHub Issues/labels/milestones. The autonomous loop delivers into `dev`; humans gate promotions.
 

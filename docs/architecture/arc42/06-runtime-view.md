@@ -1,6 +1,6 @@
 # 6. Runtime View
 
-*Status: seeded (Sprint 03, STORY-02 #59).*
+*Status: seeded (Sprint 03, STORY-02 #59). Lifecycle & DoD canon: `home-governance` §5–§7 — SSOT.*
 
 ## 6.1 Scenario: Autonomous Issue-by-Issue Delivery Loop
 
@@ -33,8 +33,8 @@ sequenceDiagram
 
 **Trigger:** all sprint deliverables merged into `dev`.
 
-1. @fpittelo explicitly approves → @devops merges `dev` → `qa` (CI must be green).
-2. @fpittelo explicitly approves → @devops merges `qa` → `main`.
+1. @fpittelo grants the release approval — **one approval per release covers both legs** (`home-governance` Rule 5 — SSOT).
+2. @devops merges `dev` → `qa`, then `qa` → `main` under that approval, as **merge-commit PRs (never squash — MADR-0012)**; CI must be green on each.
 3. Release tag `vX.Y.Z` + GitHub Release; @scrum-master runs board hygiene (audit, label cleanup, milestone close, retrospective, next-sprint initialization).
 
 ## 6.3 Scenario: Architecture Change → Documentation Update

@@ -2,8 +2,10 @@
 **Strategy:** Fully Decoupled Repositories with Native Workspace Scoping, WSL2 Server Engine, and Zero-Switch Coherence  
 **Author:** `@architect` (HOME SCRUM Squad)  
 **Target Workstations:** `VIDAR` (Home / Linux & WSL) & `SCXPITTELOUDF` (Office / Windows 11 & WSL2)  
-**Status:** Approved for Implementation  
+**Status:** HISTORICAL RECORD  
 **Date:** 2026-09-07  
+
+> **HISTORICAL RECORD** — mechanisms superseded by MADR-0010 (#244); do not implement from this document. Kept as a historical record.
 
 ---
 
