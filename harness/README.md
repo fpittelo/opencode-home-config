@@ -182,16 +182,16 @@ docker run --rm ghcr.io/fpittelo/harness-runner-rust:dev rustc --version
 
 ## 8. Native Fast Path & Config-Repo Gate (MADR-0003, #131)
 
-`run.sh` is **native-first**: when the host provides the required toolchain, the gates run directly on the host (no Docker cold start, no image pull, no volume warm-up). If **any** required tool is missing, the run falls back to the container path above, unchanged (same security flags, same two-phase deps/gate design, same coverage threshold). Every phase prints which path it took and why.
+`run.sh` is **native-first**: when the host can provision the project toolchain (`uv` present) or the project `.venv` already exists, the gates run directly on the host against the **project-pinned** `.venv` toolchain (no Docker cold start, no image pull, no volume warm-up). The native gate resolves every tool from `${REPO_ROOT}/.venv/bin` and **never** silently falls back to lookalike host-PATH tools: a missing `.venv` or a missing required tool is a hard failure (exit 3) with an actionable message (#256 AC2/AC3). Only when the host has neither `uv` nor a project `.venv` does the run fall back to the container path above, unchanged (same security flags, same two-phase deps/gate design, same coverage threshold). Every phase prints which path it took and why.
 
-| Stack | Native gate requires on `PATH` | Native deps requires |
+| Stack | Native gate requires in the project `.venv` | Native deps requires |
 | :--- | :--- | :--- |
-| `python` | `ruff`, `black`, `isort`, `mypy`, `pytest` | `uv` (only when `pyproject.toml` exists) |
-| `rust` | `cargo` | `cargo` (only when `Cargo.toml` exists) |
+| `python` | `ruff`, `black`, `isort`, `mypy`, `pytest`, `pytest-cov` | `uv` (only when `pyproject.toml` exists) |
+| `rust` | `cargo`, `rustfmt`, `clippy-driver` on `PATH` | `cargo` (only when `Cargo.toml` exists) |
 
-The gate command chains are identical in both paths (`pytest --cov-fail-under=80` included). The network-off guarantee of the gate phase is container-only; native runs execute on the host under the operator's own controls.
+The Python deps phase runs `uv sync --all-extras` so the dev extras (the gate toolchain) are retained in the project `.venv` (#256 AC1). The gate command chains are identical in both paths (`pytest --cov-fail-under=80` included). The network-off guarantee of the gate phase is container-only; native runs execute on the host under the operator's own controls.
 
-`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, the namespace-exclusivity permission invariant (#150 COACH_*, #207 BROWSER_*, `harness/config-validation/check_coach_exclusivity.py`) plus its stdlib unittest regression suite, and the three native docs validators (links, MADR, mermaid syntax). Zero Docker, fail-fast, well under 5 s:
+`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, the namespace-exclusivity permission invariant (#150 COACH_*, #207 BROWSER_*, `harness/config-validation/check_coach_exclusivity.py`) plus its stdlib unittest regression suite, the three native docs validators (links, MADR, mermaid syntax), and the harness native-gate toolchain-pinning regression suite (#256). Zero Docker, fail-fast, well under 5 s:
 
 ```bash
 bash harness/run-config-gate.sh            # this repo (default root)
@@ -208,4 +208,10 @@ The namespace-exclusivity regression suite (stdlib `unittest`) guards `check_coa
 
 ```bash
 python3 harness/config-validation/test_check_coach_exclusivity.py
+```
+
+The harness native-gate regression suite (stdlib `unittest`) guards `run.sh` toolchain pinning (#256) — deps retains dev extras, the native gate resolves tools from the project `.venv` (never host PATH) and exits 3 when the venv or a required tool is missing, and the container fallback keeps its security flags:
+
+```bash
+python3 harness/config-validation/test_harness_run.py
 ```
