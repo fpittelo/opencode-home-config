@@ -25,4 +25,5 @@ Architecture documentation for the **HOME OpenCode configuration** (`opencode-ho
 
 - Update triggers per section: see the `arc42-documentation` skill §4.
 - An architectural change and its arc42 update travel in the **same PR**.
+- A MADR that changes an operational mechanism MUST update arc42 + README in the same PR (#264).
 - Governance SSOT remains the `home-governance` skill; this documentation describes, it does not govern.
