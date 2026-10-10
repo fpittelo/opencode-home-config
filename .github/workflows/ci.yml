@@ -202,7 +202,10 @@ jobs:
           # Label is read LIVE from the API: the event snapshot is frozen at PR
           # creation, so a label added seconds later was invisible to the first
           # run (#287, retro #282 finding 3 — forced empty-commit re-triggers).
-          if ! gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" --jq '.[].name' | grep -qx 'requires-architecture'; then
+          # The API call is a separate statement: under set -e a gh failure must
+          # fail the step loudly, never silently route to the trivial pass.
+          LABELS="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" --jq '.[].name')"
+          if ! echo "$LABELS" | grep -qx 'requires-architecture'; then
             echo "NOTE: PR does not carry the 'requires-architecture' label - architecture gate passes trivially."
             exit 0
           fi
