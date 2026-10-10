@@ -416,8 +416,8 @@ Here's a simple step-by-step for working on a project:
 
 ```mermaid
 flowchart TD
-    A["1. Switch to HOME profile (if needed)"] --> B["2. cd to your project"]
-    B --> C["3. Start opencode"]
+    A["1. Open a terminal or Herdr pane"] --> B["2. cd to your project"]
+    B --> C["3. Launch oc-home (HOME profile + secrets)"]
     C --> D["4. Ask @architect to plan the work"]
     D --> E["5. @developer creates a feature branch"]
     E --> F["6. @developer implements (TDD: Red → Green → Refactor)"]
@@ -429,20 +429,18 @@ flowchart TD
 
 **Step-by-step:**
 
-1. **Switch to the HOME profile** (if you were in WORK mode):
-   ```bash
-   ln -sf ~/projects/opencode-home-config/opencode.jsonc ~/.config/opencode/opencode.jsonc
-   ```
+1. **Open a terminal or Herdr pane** — one pane per context; HOME and WORK can run simultaneously in separate panes (MADR-0010).
 
 2. **Navigate to your project:**
    ```bash
    cd ~/projects/HOME/my-personal-project
    ```
 
-3. **Start OpenCode:**
+3. **Launch the HOME profile:**
    ```bash
-   opencode
+   oc-home
    ```
+   The wrapper sources the profile-scoped secrets and starts OpenCode with the HOME config (MADR-0010). Never use bare `opencode` for secret-bearing work.
 
 4. **Ask @architect to plan the work:** Describe what you want to build. The architect will create or groom GitHub issues, define acceptance criteria, and assign work to the right agents.
 
@@ -499,22 +497,18 @@ flowchart TD
 
 ## 4. Switching Between HOME and WORK Profiles
 
-The OpenCode configuration supports **two profiles**: HOME (personal projects, this repo) and WORK (EPFL projects, GitLab repo). Only one profile is active at a time.
+The OpenCode configuration supports **two profiles**: HOME (personal projects, this repo) and WORK (EPFL projects, GitLab repo). Since MADR-0010, profiles run **per pane**: HOME and WORK instances coexist simultaneously (one Herdr pane each), each pane's profile fixed by the wrapper that launched it (`oc-home` / `oc-work`).
 
-### 4.1 How Profile Switching Works
+### 4.1 How Profile Selection Works
 
-The active profile is determined by a **single symlink**:
+A pane's profile is determined by the **wrapper that launched it** (defined in `~/.config/opencode/profiles.sh`):
 
-```
-~/.config/opencode/opencode.jsonc → <repo>/opencode.jsonc
-```
-
-| If the symlink points to... | Active profile | Use case |
+| Wrapper launched | Pane profile | Use case |
 |:---|:---|:---|
-| `~/projects/opencode-home-config/opencode.jsonc` | **HOME** | Personal projects under `~/projects/HOME/` |
-| `~/projects/opencode-work-config/opencode.jsonc` | **WORK** | EPFL projects under `~/projects/WORK/` |
+| `oc-home` | **HOME** | Personal projects under `~/projects/HOME/` |
+| `oc-work` | **WORK** | EPFL projects under `~/projects/WORK/` |
 
-The symlink also controls the `agents/` and `skills/` directories (via separate symlinks created by `install.sh`). Each profile has its own agents, skills, models, and MCP configuration.
+Each wrapper sources its profile-scoped secrets file (`.secrets-home.env` / `.secrets-work.env`, mode 600) inside a subshell and starts OpenCode with the profile config. The global symlink (`~/.config/opencode/opencode.jsonc`) remains the **base layer** for bare `opencode`, which is unsupported for secret-bearing work. Each profile has its own agents, skills, models, and MCP configuration.
 
 **Profile comparison:**
 
@@ -522,7 +516,7 @@ The symlink also controls the `agents/` and `skills/` directories (via separate 
 |:---|:---|:---|
 | **Repo** | `fpittelo/opencode-home-config` (GitHub) | `isgov/ea/opencode-work-config` (GitLab) |
 | **Agents** | 7 | 8 |
-| **Skills** | 10 | 20 |
+| **Skills** | 14 | 20 |
 | **MCP: GITHUB** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
 | **MCP: COACH** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
 | **AI providers** | OpenRouter only | EPFL AI + OpenRouter |
@@ -531,44 +525,42 @@ The symlink also controls the `agents/` and `skills/` directories (via separate 
 
 ### 4.2 Switch to HOME Profile
 
-Run this command to switch to the HOME profile:
+Launch the HOME profile in a pane (from your project directory):
 
 ```bash
-ln -sf ~/projects/opencode-home-config/opencode.jsonc ~/.config/opencode/opencode.jsonc
-ln -sfn ~/projects/opencode-home-config/agents ~/.config/opencode/agents
-ln -sfn ~/projects/opencode-home-config/skills ~/.config/opencode/skills
+cd ~/projects/HOME/my-personal-project
+oc-home
 ```
 
-Or simply re-run the HOME installer (it does all three symlinks):
+The wrapper sources the HOME secrets and starts OpenCode with the HOME profile (MADR-0010). To re-provision the wrapper or secrets files, re-run the HOME installer:
 
 ```bash
 cd ~/projects/opencode-home-config && ./install.sh
 ```
 
-**After switching to HOME:**
+**HOME pane profile:**
 - **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
-- **10 skills** available (coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, home-governance, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
+- **14 skills** available (arc42-documentation, coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, harness-engineering, herdr, home-governance, madr-adr, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
 - **7 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER as native binaries, COACH_DEV as the active Coach container, BROWSER via pinned npx, openrouter remote; COACH_QA/COACH_MAIN disabled)
 - **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
 - **Use for:** personal projects under `~/projects/HOME/`
 
 ### 4.3 Switch to WORK Profile
 
-Run this command to switch to the WORK profile:
+Launch the WORK profile in a separate pane (from your EPFL project directory):
 
 ```bash
-ln -sf ~/projects/opencode-work-config/opencode.jsonc ~/.config/opencode/opencode.jsonc
-ln -sfn ~/projects/opencode-work-config/agents ~/.config/opencode/agents
-ln -sfn ~/projects/opencode-work-config/skills ~/.config/opencode/skills
+cd ~/projects/WORK/my-epfl-project
+oc-work
 ```
 
-Or re-run the WORK installer:
+The wrapper sources the WORK secrets and starts OpenCode with the WORK profile (mirrored mechanism, work repo #177). To re-provision, re-run the WORK installer:
 
 ```bash
 cd ~/projects/opencode-work-config && ./install.sh
 ```
 
-**After switching to WORK:**
+**WORK pane profile:**
 - **8 agents** available (includes EPFL-specific agents)
 - **20 skills** available (includes all HOME skills + EPFL-specific skills)
 - **GITHUB + COACH MCPs are disabled** (deep-merge shielding sets `"enabled": false`)
@@ -577,7 +569,13 @@ cd ~/projects/opencode-work-config && ./install.sh
 
 ### 4.4 Verify Active Profile
 
-To check which profile is currently active:
+A pane's profile is fixed by the wrapper that launched it — check the running instances:
+
+```bash
+herdr agent list
+```
+
+To inspect the global **base-layer** symlink (used only by bare `opencode`, unsupported for secret-bearing work):
 
 ```bash
 ls -la ~/.config/opencode/opencode.jsonc
@@ -585,17 +583,10 @@ ls -la ~/.config/opencode/opencode.jsonc
 
 **Output examples:**
 
-| Output | Active profile |
+| Output | Base layer |
 |:---|:---|
-| `→ ~/projects/opencode-home-config/opencode.jsonc` | HOME |
-| `→ ~/projects/opencode-work-config/opencode.jsonc` | WORK |
-
-You can also check the agents and skills directories:
-
-```bash
-ls -la ~/.config/opencode/agents   # Shows symlink target
-ls -la ~/.config/opencode/skills   # Shows symlink target
-```
+| `→ ~/projects/opencode-home-config/opencode.jsonc` | HOME config |
+| `→ ~/projects/opencode-work-config/opencode.jsonc` | WORK config |
 
 ### 4.5 Project-Level Overrides (Deep-Merge Shielding)
 
@@ -627,7 +618,7 @@ This means even if a project under `~/projects/WORK/` somehow had access to the 
 | ⚠️ **Do NOT mix profiles** | Launch each context in its own pane via its wrapper (`oc-home` / `oc-work`); never run EPFL work from a HOME pane or personal work from a WORK pane. |
 | ⚠️ **Profile is fixed at pane launch** | OpenCode loads the config at session start; a pane's profile is fixed by the wrapper that launched it. To change profile, close the pane and relaunch with the other wrapper. |
 | ⚠️ **Secrets are per-pane, but residuals remain** | Each profile sources its own secrets file (`.secrets-home.env` / `.secrets-work.env`, mode 600) inside the wrapper subshell — no global rc sourcing, no systemd import. The cross-profile residual risks below are accepted (STRIDE review #253 / MADR-0010). |
-| ⚠️ **Don't edit the symlink directly** | Use `install.sh` or the `ln -sf` commands above. Manually editing the symlink can break the path. |
+| ⚠️ **Don't edit the symlink directly** | The global base-layer symlink is managed by `install.sh` only. Manually editing it can break the path. |
 
 **Cross-profile residual risks (mirror of README §"Residual risks", RR1–RR9):**
 
