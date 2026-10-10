@@ -485,7 +485,7 @@ flowchart TD
 
 **Unchanged by #158:**
 
-- File `read`/`edit` credential denies (`.secrets.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `*.env*` / `*.pem*` / `*.key*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
+- File `read`/`edit` credential denies (`.secrets-*.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `*.env*` / `*.pem*` / `*.key*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
 - `COACH_*` MCP denies (#150) — Coach tools remain @coach-only (see §3.4).
 - `@code-reviewer` keeps its read-only bash allowlist; `@scrum-master` and `@coach` keep zero-bash charters (separation of duties).
 
