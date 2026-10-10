@@ -123,8 +123,8 @@ Every repository continuously maintains exactly three persistent branches:
 
 ### Rule 3: Merge Destination Constraints
 - Feature branches **can ONLY be merged into `dev`** via squash merge (`merge_method: "squash"`).
-- Merges to `qa` can only originate from `dev`.
-- Merges to `main` can only originate from `qa`.
+- Merges to `qa` can only originate from `dev`; merges to `main` can only originate from `qa`.
+- **Promotion merge method (MADR-0012):** promotion PRs (`dev` → `qa`, `qa` → `main`) use **merge commits (`merge_method: "merge"`) — never squash** — so `qa`/`main` trees stay byte-identical to their source and the per-release reconcile-PR class stays retired.
 
 ### Rule 4: Zero-Tolerance Clean Pipeline Gate
 - Any merge into `dev`, `qa`, or `main` requires a **100% clean GitHub Actions pipeline (0 warnings, 0 failures)**.

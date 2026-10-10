@@ -34,7 +34,7 @@ sequenceDiagram
 **Trigger:** all sprint deliverables merged into `dev`.
 
 1. @fpittelo grants the release approval — **one approval per release covers both legs** (`home-governance` Rule 5 — SSOT).
-2. @devops merges `dev` → `qa`, then `qa` → `main` under that approval (CI must be green on each).
+2. @devops merges `dev` → `qa`, then `qa` → `main` under that approval, as **merge-commit PRs (never squash — MADR-0012)**; CI must be green on each.
 3. Release tag `vX.Y.Z` + GitHub Release; @scrum-master runs board hygiene (audit, label cleanup, milestone close, retrospective, next-sprint initialization).
 
 ## 6.3 Scenario: Architecture Change → Documentation Update
