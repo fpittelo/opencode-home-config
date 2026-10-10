@@ -145,7 +145,7 @@ Every repository continuously maintains exactly three persistent branches:
 - If any warning, lint error, or test failure occurs, merge is strictly blocked.
 
 ### Rule 5: Promotion Approval Gate
-- Merges from `dev` → `qa` and `qa` → `main` require **mandatory explicit approval from @fpittelo**.
+- Promotions `dev` → `qa` → `main` require **one mandatory explicit approval from @fpittelo per release, covering both legs** (`dev` → `qa` and `qa` → `main`) — the PO decides once; `@devops` executes both merges under it (MADR-0008, PO gate inventory (a)). **This is the normative statement of the promotion approval protocol; all other documents point here.**
 
 ### Rule 6: Main Release & Board Hygiene
 - Merges into `main` require creating a bumped semantic release (Git tag `vX.Y.Z` + GitHub Release).
@@ -176,7 +176,7 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 5. **Self-Remediation Circuit Breaker:** Agents are capped at **3 consecutive attempts** to fix pre-flight or CI failures before escalating with `blocker::active`.
 6. **Single-Owner PR Merge Protocol:** Assigned agent opens PR targeting `dev` (`status::review`). Once `@code-reviewer` gives formal approval on GitHub and CI is green, the PR author merges into `dev` via squash-and-merge and sets `status::done`.
 7. **Autonomous Handoff & DoD Verification:** `@scrum-master` verifies all 5 DoD criteria, posts a closing summary comment, closes the issue, and immediately triggers the next prioritized `status::todo` issue.
-8. **Promotion & Release:** When all sprint deliverables are in `dev`, `@architect` & `@devops` coordinate staging to `qa` and release to `main` upon `@fpittelo` approvals.
+8. **Promotion & Release:** When all sprint deliverables are in `dev`, `@architect` & `@devops` coordinate staging to `qa` and release to `main` upon the single `@fpittelo` release approval (Rule 5 — one approval covers both legs).
 
 ### Parallel-Session Governance
 

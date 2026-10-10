@@ -162,7 +162,7 @@ This split prevents flaky tests caused by external network availability and clos
 - **Minimal base images:** `python:3.12-slim-bookworm` and `rust:1.81.0-slim-bookworm`.
 - **Zero hardcoded secrets:** credentials are injected via GitHub Actions `secrets.GITHUB_TOKEN` and `{env:VAR}` interpolation.
 - **Read-only root filesystem:** runtime root is read-only; only `/workspace`, `/tmp`, and named cache volumes are writable.
-- **HOME 3-branch lifecycle:** image builds follow `dev` → `qa` → `main` promotions with explicit `@fpittelo` approval gates.
+- **HOME 3-branch lifecycle:** image builds follow `dev` → `qa` → `main` promotions under the single explicit `@fpittelo` release approval covering both legs (`home-governance` Rule 5).
 
 ---
 

@@ -186,4 +186,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write review comments, suggestions, and summaries in **English**.
 - Be precise, constructive, and provide exact code snippets for requested modifications.
-- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
+- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).

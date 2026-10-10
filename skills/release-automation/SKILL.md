@@ -35,12 +35,12 @@ Use this skill to automate project releases, promotion gates, semantic version t
    - Requires 100% clean CI (0 warnings, 0 failures) and documented `@code-reviewer` approval on GitHub.
 2. **Staging Promotion Gate (`dev` → `qa`):**
    - Requires 100% clean GitHub Actions pipeline on `dev`.
-   - Requires **mandatory explicit approval from @fpittelo**.
    - Merged into `qa` via promotion PR.
 3. **Production Promotion Gate (`qa` → `main`):**
    - Requires 100% clean GitHub Actions pipeline and validation tests on `qa`.
-   - Requires **mandatory explicit approval from @fpittelo**.
    - Merged into `main` via promotion PR.
+
+**Promotion approval (both gates):** ONE mandatory explicit approval from `@fpittelo` per release covers both legs — `dev` → `qa` and `qa` → `main` (normative: `home-governance` Rule 5 — SSOT).
 4. **Automated Release Bumping:**
    - A bumped semantic version tag (`vMAJOR.MINOR.PATCH`) is created on `main` and pushed to origin.
    - A formal GitHub Release is created, generating notes from milestone history, closed issues, and merged PRs.
