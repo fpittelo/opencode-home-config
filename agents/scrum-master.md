@@ -104,6 +104,8 @@ stateDiagram-v2
    - [ ] 5. Deliverable and PR link are documented in the issue closing comment.
 4. **Post Closing Summary & Immediate Next Handoff:**
    - Post a structured closing summary comment referencing the merged PR using `GITHUB_add_issue_comment`.
+     - **Parameter guidance (#251):** call with ONLY `owner`, `repo`, `issue_number`, `body` — NEVER `comment_id` (that parameter belongs to the pull-request-comment reply tool; combining them is the known 3× failure mode).
+     - On tooling failure, the Closeout-Fallback clause (`skills/github-scrum-board/SKILL.md`) applies.
    - Close the issue (`state: "closed"`).
    - **Immediately query for the next `status::todo` issue in the milestone and trigger the loop.**
 
