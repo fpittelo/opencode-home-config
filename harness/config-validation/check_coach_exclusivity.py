@@ -13,15 +13,28 @@ pass per namespace:
   3. Sole allow whitelists: only the designated agent specs may allow a
      namespace; every other agent must deny it explicitly.
 
-Governed namespaces (#150 for COACH_*, #207/MADR-0009 for BROWSER_*):
+Governed namespaces (#150 for COACH_*, #207/MADR-0009 for BROWSER_*, #252 /
+MADR-0011 for the extended GitHub MCP namespaces):
 
-  ===========  ==============================  ============================
-  Namespace    Canonical patterns              Sole allow whitelist
-  ===========  ==============================  ============================
-  COACH_*      COACH_DEV_*, COACH_QA_*,        coach.md
-               COACH_MAIN_*
-  BROWSER_*    BROWSER_*                       developer.md, devops.md
-  ===========  ==============================  ============================
+  ==================  ==========================  ============================
+  Namespace           Canonical patterns          Sole allow whitelist
+  ==================  ==========================  ============================
+  COACH_*             COACH_DEV_*, COACH_QA_*,    coach.md
+                      COACH_MAIN_*
+  BROWSER_*           BROWSER_*                   developer.md, devops.md
+  GITHUB_ACTIONS_*    GITHUB_ACTIONS_*            devops.md; developer.md holds
+                                                  the governed partial allow
+                                                  (read-only triage tools,
+                                                  actions_run_trigger denied)
+  GITHUB_SECURITY_*   GITHUB_SECURITY_*           cyber-security.md
+  ==================  ==========================  ============================
+
+Partial-allow posture (#252, MADR-0011 C3): one designated agent may hold
+specific tool-level permission keys inside an otherwise denied namespace
+(``PARTIAL_ALLOW_POLICIES``). Those keys are required verbatim for that
+agent and exempt from pattern drift; any other tool-level key — for the
+partial-allow agent or anyone else — is pattern drift, so ad-hoc tool
+grants outside the governed posture are rejected.
 
 Any permission key outside the canonical namespace patterns is a pattern-drift
 error (legacy server-name-as-key keys such as "COACH MAIN" must not return —
@@ -40,7 +53,8 @@ FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 
 # Governed namespaces: canonical permission patterns plus the only agent
 # specs allowed to carry "allow" (#150 for COACH_*, #207/MADR-0009 for the
-# Playwright browser MCP namespace).
+# Playwright browser MCP namespace, #252/MADR-0011 for the extended GitHub
+# MCP namespaces).
 NAMESPACE_POLICIES = {
     "COACH": {
         "keys": ("COACH_DEV_*", "COACH_QA_*", "COACH_MAIN_*"),
@@ -51,6 +65,34 @@ NAMESPACE_POLICIES = {
         "keys": ("BROWSER_*",),
         "allow_agents": frozenset({"developer.md", "devops.md"}),
         "provenance": "#207 (MADR-0009)",
+    },
+    "GITHUB_ACTIONS": {
+        "keys": ("GITHUB_ACTIONS_*",),
+        "allow_agents": frozenset({"devops.md"}),
+        "provenance": "#252 (MADR-0011)",
+    },
+    "GITHUB_SECURITY": {
+        "keys": ("GITHUB_SECURITY_*",),
+        "allow_agents": frozenset({"cyber-security.md"}),
+        "provenance": "#252 (MADR-0011)",
+    },
+}
+
+# Governed partial-allow postures (#252, MADR-0011 C3): namespace -> agent
+# file -> tool-level permission keys required verbatim inside an otherwise
+# denied namespace. @developer keeps read-only CI triage (actions_get,
+# actions_list, get_job_logs — the exact tool set exposed by the pinned
+# v1.12.2 binary's actions toolset) while the monolithic actions_run_trigger
+# (dispatch/cancel/log-delete in one tool) stays explicitly denied; every
+# other tool of the namespace remains covered by the GITHUB_ACTIONS_* deny.
+PARTIAL_ALLOW_POLICIES: dict[str, dict[str, dict[str, str]]] = {
+    "GITHUB_ACTIONS": {
+        "developer.md": {
+            "GITHUB_ACTIONS_actions_get": "allow",
+            "GITHUB_ACTIONS_actions_list": "allow",
+            "GITHUB_ACTIONS_get_job_logs": "allow",
+            "GITHUB_ACTIONS_actions_run_trigger": "deny",
+        },
     },
 }
 
@@ -154,18 +196,36 @@ def check_agent_specs(root: Path, failures: list[str]) -> None:
                         f"(every agent must state its {namespace} posture "
                         f"explicitly, {policy['provenance']})"
                     )
-            for key, value in rules.items():
-                if key not in policy["keys"]:
+                elif rules[key] != expected:
+                    failures.append(
+                        f"{rel}: '{key}' must be '{expected}' "
+                        f"(namespace-exclusivity invariant, "
+                        f"{policy['provenance']}); found '{rules[key]}'"
+                    )
+            # #252 (MADR-0011 C3): governed partial-allow posture — the
+            # designated agent's tool-level keys are required verbatim and
+            # exempt from pattern drift below; any other tool-level key is
+            # drift, for the partial-allow agent and everyone else.
+            partial = PARTIAL_ALLOW_POLICIES.get(namespace, {}).get(agent.name, {})
+            for key, value in partial.items():
+                if key not in rules:
+                    failures.append(
+                        f"{rel}: missing required partial-allow key '{key}' "
+                        f"(governed partial-allow posture, "
+                        f"{policy['provenance']})"
+                    )
+                elif rules[key] != value:
+                    failures.append(
+                        f"{rel}: '{key}' must be '{value}' "
+                        f"(governed partial-allow posture, "
+                        f"{policy['provenance']}); found '{rules[key]}'"
+                    )
+            for key in rules:
+                if key not in policy["keys"] and key not in partial:
                     failures.append(
                         f"{rel}: unexpected {namespace} permission key '{key}' "
                         f"— only {', '.join(policy['keys'])} are canonical "
                         f"(pattern drift, see #108)"
-                    )
-                elif value != expected:
-                    failures.append(
-                        f"{rel}: '{key}' must be '{expected}' "
-                        f"(namespace-exclusivity invariant, "
-                        f"{policy['provenance']}); found '{value}'"
                     )
 
 
@@ -191,7 +251,10 @@ def main(argv: list[str]) -> int:
     print(
         f"PASS check_coach_exclusivity: global default-deny baselines + "
         f"{agent_count} agent spec(s) verified — COACH_* is @coach-only "
-        f"(#150), BROWSER_* is @developer/@devops-only (#207)"
+        f"(#150), BROWSER_* is @developer/@devops-only (#207), "
+        f"GITHUB_ACTIONS_* is @devops-only with the @developer read-only "
+        f"partial allow and GITHUB_SECURITY_* is @cyber-security-only "
+        f"(#252, MADR-0011)"
     )
     return 0
 
