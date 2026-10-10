@@ -157,8 +157,8 @@ dev (integration) → qa (staging) → main (production)
 | Branch | Purpose | Who can merge into it? |
 |:---|:---|:---|
 | `dev` | Integration — all feature branches merge here | Any squad member via PR |
-| `qa` | Staging — promoted from `dev` with @fpittelo approval | @architect (with explicit approval) |
-| `main` | Production — promoted from `qa` with @fpittelo approval | @architect (with explicit approval) |
+| `qa` | Staging — promoted from `dev` under the single release approval | @architect (with explicit approval) |
+| `main` | Production — promoted from `qa` under the same single release approval | @architect (with explicit approval) |
 
 **Feature branches** are created from `dev`:
 
@@ -167,12 +167,7 @@ feature/<issue-#>-<slug>    # New features
 fix/<issue-#>-<slug>        # Bug fixes
 ```
 
-**Rules:**
-- Never commit directly to `dev`, `qa`, or `main` — always use a feature branch + PR.
-- Feature branches can ONLY merge into `dev` — never directly into `qa` or `main`.
-- Every merge requires a 100% clean CI pipeline (0 warnings, 0 failures).
-- `dev` → `qa` and `qa` → `main` promotions require **explicit approval from @fpittelo**.
-- Merging to `main` creates a versioned release tag (`vX.Y.Z`) and triggers board hygiene.
+**Rules:** see `home-governance` §5 — SSOT (three persistent branches, feature-branch isolation, zero-warning CI, promotion approval, release & board hygiene). Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5).
 
 ### 2.6 MCP Servers
 
