@@ -4,7 +4,7 @@
 
 ## 8.1 Security & Privacy (Swiss nLPD)
 
-- **Zero secrets in repo:** all credentials referenced as `{env:VAR}` in `opencode.jsonc`; actual values live in `~/.config/opencode/.secrets.env`, imported into the systemd user environment. Gitleaks scans the **PR diff on every pull request** (pinned action) and the **full git history weekly and at every qa → main promotion** (MADR-0003; the per-PR full-history scan introduced by #68 is retired).
+- **Zero secrets in repo:** all credentials referenced as `{env:VAR}` in `opencode.jsonc`; actual values live in the profile-scoped files `~/.config/opencode/.secrets-home.env` / `.secrets-work.env` (mode 600 under a 700 directory), sourced inside the `oc-home` / `oc-work` wrapper subshells (MADR-0010) — the shared `.secrets.env` + systemd user-environment import is retired and verified secret-free post-install. Gitleaks scans the **PR diff on every pull request** (pinned action) and the **full git history weekly and at every qa → main promotion** (MADR-0003; the per-PR full-history scan introduced by #68 is retired).
 - **Segregation of duties:** PR reviews are performed by machine account `@devfpittelo` through the dedicated `GITHUB_CODE_REVIEWER` MCP server; cross-impersonation is denied in both directions via permission patterns (#68).
 - **Least privilege:** per-agent permission rules scope MCP tool access (e.g. Coach tools for `@coach` only; reviewer tools denied to all other agents).
 - **MCP namespace scoping (#150, #207/MADR-0009, MADR-0011):** scoped MCP namespaces follow the defense-in-depth pattern — a global default-deny baseline in `opencode.jsonc` plus explicit per-agent restatement in `agents/*.md`, with `allow` reserved to designated whitelist agents. `COACH_*` (Intervals.icu training data) is @coach-only; `BROWSER_*` (Playwright browser automation — ephemeral profile, loopback-origin allowlist, pinned `@playwright/mcp`) is @developer/@devops-only; `GITHUB_ACTIONS_*` (CI/CD operations) is @devops-only for writes (`actions_run_trigger`) with read-only triage granted to @developer; `GITHUB_SECURITY_*` (code scanning, secret scanning, dependabot alerts — read-only) is @cyber-security-only under raw secret redaction rules; built-in subagents (`explore`, `general`, `task`) inherit zero access to all scoped namespaces. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`).
@@ -28,7 +28,7 @@
 
 - Single runtime config `opencode.jsonc` (JSONC, schema: https://opencode.ai/config.json).
 - `enabled_providers: ["openrouter"]` — all model assignments route via OpenRouter (`openrouter/<model>` per agent frontmatter).
-- Secrets: `.secrets.env` → systemd user environment → `{env:VAR}` interpolation. OAuth flows (e.g. OpenRouter MCP) are interactive; no tokens stored in the repo.
+- Secrets: profile-scoped `.secrets-home.env` / `.secrets-work.env` (mode 600, umask 077) → sourced in the `oc-home` / `oc-work` wrapper subshell (`set -a` / `set +a`, ending in `exec opencode`) → `{env:VAR}` interpolation. The shared `.secrets.env` + systemd import is retired (MADR-0010); bare `opencode` is unsupported for secret-bearing work (MC8). OAuth flows (e.g. OpenRouter MCP) are interactive; no tokens stored in the repo.
 
 ## 8.4 Language & Communication Policy
 

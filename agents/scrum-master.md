@@ -101,12 +101,7 @@ stateDiagram-v2
    - Wait for the assigned agent to pass local pre-flights, push the feature branch, open a PR targeting `dev`, and obtain formal `APPROVE` from `@code-reviewer`.
    - The PR author executes the squash-and-merge into `dev` and sets `status::done`.
 3. **Definition of Done (DoD) Verification & Closeout:**
-   Verify all 5 DoD criteria:
-   - [ ] 1. All acceptance criteria in the issue description are fulfilled.
-   - [ ] 2. Code is merged into `dev` via PR using **squash-and-merge** (`merge_method: "squash"`).
-   - [ ] 3. GitHub Actions CI pipeline completed with **0 warnings and 0 failures**.
-   - [ ] 4. `@code-reviewer` approval is explicitly documented on the PR.
-   - [ ] 5. Deliverable and PR link are documented in the issue closing comment.
+   Verify all 5 DoD criteria — **see `home-governance` §7 — SSOT** (ACs fulfilled; squash-and-merge into `dev`; CI 0 warnings / 0 failures; `@code-reviewer` approval documented; closing summary with PR link).
 4. **Post Closing Summary & Immediate Next Handoff:**
    - Post a structured closing summary comment referencing the merged PR using `GITHUB_add_issue_comment`.
      - **Parameter guidance (#251):** call with ONLY `owner`, `repo`, `issue_number`, `body` — NEVER `comment_id` (that parameter belongs to the pull-request-comment reply tool; combining them is the known 3× failure mode).
@@ -190,7 +185,7 @@ If you or any squad agent encounters an issue, failure, or limitation with the *
 
 When all sprint issues are merged into `dev`:
 1. Notify `@architect` and `@devops` that all sprint backlog items are delivered in `dev`.
-2. Support `@devops` in soliciting `@fpittelo` approvals for `dev` → `qa` and `qa` → `main` promotions.
+2. Support `@devops` in soliciting the single `@fpittelo` release approval — **one approval per release covers both promotion legs** (`home-governance` Rule 5 — SSOT).
 3. **Board Hygiene upon `main` merge:**
    - Audit the milestone and ensure all sprint issues are closed.
    - Close the completed Sprint Milestone.
@@ -214,4 +209,4 @@ When all sprint issues are merged into `dev`:
 
 - Keep comments concise, structured, and actionable using GitHub markdown tables and checklists.
 - Always leave a concluding summary comment when closing an issue.
-- **KIS & YAGNI (#180):** minimal diff satisfying the acceptance criteria; brief evidence; no speculative scope — over-delivery is a defect, not a bonus (MADR-0003 D5 extended to delivery behavior).
+- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).

@@ -17,6 +17,7 @@
 | [MADR-0009](../../adr/0009-playwright-browser-mcp-agent-access-scoping.md) | Playwright browser MCP (`BROWSER`) with agent access scoping — @developer/@devops only, hardened launch config, generalized namespace-exclusivity gate | accepted | 2026-10-04 |
 | [MADR-0010](../../adr/0010-per-pane-profile-selection-and-secrets-isolation.md) | Per-pane dual-profile coexistence and secrets isolation — `oc-home`/`oc-work` wrappers (subshell + exec), profile-scoped secrets, shared `.secrets.env` + systemd import retired, PO risk-acceptance for shared provider OAuth tokens | accepted | 2026-10-10 |
 | [MADR-0011](../../adr/0011-curated-github-mcp-toolset-expansion-and-per-agent-permission-scoping.md) | Curated GitHub MCP toolset expansion and per-agent permission scoping — dedicated `GITHUB_ACTIONS` and `GITHUB_SECURITY` (read-only) servers, actions access for @devops/@developer, alert access for @cyber-security, projects/discussions rejected (YAGNI) | accepted | 2026-10-10 |
+| [MADR-0012](../../adr/0012-promotion-topology-eliminate-per-release-reconcile-prs.md) | Promotion topology — retain three branches, promote with merge commits (never squash); per-release reconcile PRs retired | accepted | 2026-10-10 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
