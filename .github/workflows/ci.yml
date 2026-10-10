@@ -195,10 +195,17 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          EVENT_FILE: ${{ github.event_path }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if ! jq -e 'any(.pull_request.labels[]?; .name == "requires-architecture")' "$EVENT_FILE" >/dev/null; then
+          # Label is read LIVE from the API: the event snapshot is frozen at PR
+          # creation, so a label added seconds later was invisible to the first
+          # run (#287, retro #282 finding 3 — forced empty-commit re-triggers).
+          # The API call is a separate statement: under set -e a gh failure must
+          # fail the step loudly, never silently route to the trivial pass.
+          LABELS="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" --jq '.[].name')"
+          if ! echo "$LABELS" | grep -qx 'requires-architecture'; then
             echo "NOTE: PR does not carry the 'requires-architecture' label - architecture gate passes trivially."
             exit 0
           fi
