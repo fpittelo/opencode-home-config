@@ -167,7 +167,7 @@ feature/<issue-#>-<slug>    # New features
 fix/<issue-#>-<slug>        # Bug fixes
 ```
 
-**Rules:** see `home-governance` §5 — SSOT (three persistent branches, feature-branch isolation, zero-warning CI, promotion approval, release & board hygiene). Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5).
+**Rules:** see `home-governance` §5 — SSOT (three persistent branches, feature-branch isolation, zero-warning CI, promotion approval, release & board hygiene). Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5). Promotions are **merge-commit PRs, never squash** (MADR-0012).
 
 ### 2.6 MCP Servers
 

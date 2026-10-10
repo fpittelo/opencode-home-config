@@ -35,10 +35,10 @@ Use this skill to automate project releases, promotion gates, semantic version t
    - Requires 100% clean CI (0 warnings, 0 failures) and documented `@code-reviewer` approval on GitHub.
 2. **Staging Promotion Gate (`dev` → `qa`):**
    - Requires 100% clean GitHub Actions pipeline on `dev`.
-   - Merged into `qa` via promotion PR.
+   - Merged into `qa` via promotion PR using a **merge commit (`merge_method: "merge"`) — never squash** (MADR-0012).
 3. **Production Promotion Gate (`qa` → `main`):**
    - Requires 100% clean GitHub Actions pipeline and validation tests on `qa`.
-   - Merged into `main` via promotion PR.
+   - Merged into `main` via promotion PR using a **merge commit (`merge_method: "merge"`) — never squash** (MADR-0012).
 
 **Promotion approval (both gates):** ONE mandatory explicit approval from `@fpittelo` per release covers both legs — `dev` → `qa` and `qa` → `main` (normative: `home-governance` Rule 5 — SSOT).
 4. **Automated Release Bumping:**

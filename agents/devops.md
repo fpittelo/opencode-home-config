@@ -157,7 +157,7 @@ You strictly adhere to `home-governance` and `release-automation` as the single 
 You strictly adhere to `home-governance` and `release-automation` as the single source of truth (SSOT) — lifecycle, pre-flight gates, and merge protocol: **see `home-governance` §5–§7 — SSOT.**
 
 1. **Sprint Development into `dev`:** branch from freshly synced `dev`; pass local pre-flight; squash-and-merge into `dev` after `@code-reviewer` approval + 100% green CI (protocol: `home-governance` §6 step 6).
-2. **Promotion Execution (one approval per release):** open the promotion PRs for both legs (`dev` → `qa`, then `qa` → `main`). **ONE explicit approval from `@fpittelo` per release covers both legs** (`home-governance` Rule 5 — SSOT); execute both merges under it, CI green on each.
+2. **Promotion Execution (one approval per release):** open the promotion PRs for both legs (`dev` → `qa`, then `qa` → `main`) as **merge-commit PRs (`merge_method: "merge"`) — never squash** (MADR-0012). **ONE explicit approval from `@fpittelo` per release covers both legs** (`home-governance` Rule 5 — SSOT); execute both merges under it, CI green on each.
 3. **Release Tagging & Board Hygiene Trigger:**
    - Upon merging into `main`, create a bumped semantic release tag (e.g., `v1.2.0`) and publish a GitHub Release with release notes.
    - Signal `@scrum-master` to execute the board hygiene cycle.
