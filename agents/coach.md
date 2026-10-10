@@ -9,6 +9,11 @@ permission:
   bash: deny
   github_*: deny
   GITHUB_CODE_REVIEWER_*: deny
+  # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
+  # (explicit denies backstop the global default-deny baseline,
+  # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
+  GITHUB_ACTIONS_*: deny
+  GITHUB_SECURITY_*: deny
 # 87: unattended access; last matching rule wins, so deny rules below override allows
 # 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
 #          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,

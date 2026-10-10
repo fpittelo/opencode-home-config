@@ -81,4 +81,10 @@ python3 harness/config-validation/check_browser_launch_flags.py . || fail "check
 # stdlib unittest regression tests for check_browser_launch_flags.py —
 # negative cases per mandated flag and value shape, real-repo control.
 python3 harness/config-validation/test_check_browser_launch_flags.py || fail "test_check_browser_launch_flags.py failed"
-echo "PASS run-config-gate: all 12 gates green (${REPO_ROOT})"
+# 13/13 harness native-gate toolchain pinning regression suite (#256 AC5):
+# stdlib unittest regression tests for harness/run.sh — deps retains dev
+# extras (uv sync --all-extras), the native gate resolves tools from the
+# project .venv (never host PATH), and exits 3 when the venv or a required
+# tool is missing; the container fallback keeps its security flags.
+python3 harness/config-validation/test_harness_run.py || fail "test_harness_run.py failed"
+echo "PASS run-config-gate: all 13 gates green (${REPO_ROOT})"

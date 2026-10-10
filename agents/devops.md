@@ -120,6 +120,13 @@ permission:
     "*.key*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
+  # 252 (MADR-0011): extended GitHub MCP namespaces — @devops owns CI/CD
+  # operations end to end (full GITHUB_ACTIONS_* allow, backstopping the
+  # global default-deny baseline; workflow cancellation and log deletion are
+  # documented accepted residuals, MADR-0011) and has zero security-alert
+  # access (GITHUB_SECURITY_* is @cyber-security-only, C2).
+  GITHUB_ACTIONS_*: allow
+  GITHUB_SECURITY_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

@@ -54,12 +54,19 @@ Phases — `harness/run.sh <python|rust> [deps|gate|all]` (see [harness/run.sh](
 
 | Phase | Network | What it does |
 | :---- | :------ | :----------- |
-| `deps` | ON | Resolve dependencies (`uv sync` / `cargo fetch`) |
+| `deps` | ON | Resolve dependencies (`uv sync --all-extras` / `cargo fetch`) |
 | `gate` | OFF | Lint, format, type-check, tests — fail-fast |
 | `all`  | both | `deps` then `gate` (default) |
 
+The Python `deps` phase runs `uv sync --all-extras` so the dev extras (the gate
+toolchain) stay in the project `.venv`. The native gate resolves every tool from
+the project `.venv` and never silently falls back to host-PATH tools: a missing
+`.venv` or required tool is a hard failure (exit 3) — run
+`bash harness/run.sh python deps` first (#256). When the host has neither `uv`
+nor a project `.venv`, the gate falls back to the hardened container.
+
 The `gate` phase runs the language-specific pre-flight commands inside the hardened
-container — Python: `ruff`, `black`, `isort`, `mypy --strict`, `pytest -W error
+container (or natively against the project `.venv` when available) — Python: `ruff`, `black`, `isort`, `mypy --strict`, `pytest -W error
 --cov-fail-under=80`; Rust: `cargo fmt --check`, `cargo clippy -- -D warnings`,
 `cargo test`. Security context (why the gate is trustworthy): read-only root
 filesystem, non-root UID 1000, all capabilities dropped, no-new-privileges,

@@ -137,6 +137,14 @@ jobs:
         # real-repo positive control. stdlib unittest only, < 1 s.
         run: python3 harness/config-validation/test_check_browser_launch_flags.py
 
+      - name: Harness native-gate toolchain pinning regression tests (unittest)
+        # Regression suite for harness/run.sh (#256 AC5): deps retains dev
+        # extras (uv sync --all-extras), the native gate resolves tools from
+        # the project .venv (never host PATH) and exits 3 when the venv or a
+        # required tool is missing, and the container fallback keeps its
+        # security flags. stdlib unittest only, < 1 s.
+        run: python3 harness/config-validation/test_harness_run.py
+
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
           python3 harness/docs-validation/check_links.py .
