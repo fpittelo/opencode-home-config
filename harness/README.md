@@ -215,3 +215,9 @@ The harness native-gate regression suite (stdlib `unittest`) guards `run.sh` too
 ```bash
 python3 harness/config-validation/test_harness_run.py
 ```
+
+The per-pane profile selection regression suite (stdlib `unittest`, gate 14 of 14, wired into both gates by #263) guards the dual-profile coexistence and per-pane secrets isolation delivered by #244 — profiles.sh provisioning and the `oc-home` wrapper semantics, the secrets split/migration (`.secrets-home.env`, shared `.secrets.env` retirement), legacy `/AI_OS_ROOT` switcher cleanup, permission hardening (700 config dir, mode-600 secrets, fail-closed assertion), the MADR-0010 decision record, README documentation, and `.gitignore` coverage. Every behavioral test runs `install.sh` against a sandboxed fake `$HOME` with stubbed `systemctl`/`docker`/`curl`/`openssl` — never the real home directory, never the network:
+
+```bash
+python3 tests/test_per_pane_profile_selection.py
+```
