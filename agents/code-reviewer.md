@@ -17,7 +17,7 @@ permission:
     "/home/frede/.config/**": deny
     "/home/frede/projects/**": allow
     "/home/frede/.config/opencode/**": allow
-    "/home/frede/.config/opencode/.secrets.env": deny
+    "/home/frede/.config/opencode/.secrets-*.env": deny
     "/home/frede/.config/**/*.env": deny
     "/home/frede/.config/**/*.pem": deny
     "/home/frede/.config/**/*.key": deny
