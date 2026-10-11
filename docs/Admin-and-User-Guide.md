@@ -41,7 +41,7 @@
 
 OpenCode is an AI-powered coding assistant that runs on your workstation. It uses **agents** (specialized AI personas like an architect, developer, or coach), **skills** (domain-specific knowledge modules), and **MCP tools** (external service connectors like GitHub and Intervals.icu) to help you work on projects. OpenCode reads a configuration file (`opencode.jsonc`) that defines which AI models to use, which agents and skills are available, and which external tools are connected.
 
-You run OpenCode by navigating to a project directory and typing `opencode`. The agents then help you plan, code, review, and manage your work — all from your terminal.
+You run OpenCode by navigating to a project directory and launching a profile wrapper — `oc-home` for the HOME profile, `oc-work` for the WORK profile (see §4). Bare `opencode` is unsupported for secret-bearing work: it loads only the global base layer with no profile-scoped secrets. The agents then help you plan, code, review, and manage your work — all from your terminal.
 
 ---
 
@@ -157,8 +157,8 @@ dev (integration) → qa (staging) → main (production)
 | Branch | Purpose | Who can merge into it? |
 |:---|:---|:---|
 | `dev` | Integration — all feature branches merge here | Any squad member via PR |
-| `qa` | Staging — promoted from `dev` under the single release approval | @architect (with explicit approval) |
-| `main` | Production — promoted from `qa` under the same single release approval | @architect (with explicit approval) |
+| `qa` | Staging — promoted from `dev` as a merge-commit PR (MADR-0012) | @devops executes, under the single @fpittelo release approval (Rule 5) |
+| `main` | Production — promoted from `qa` as a merge-commit PR (MADR-0012) | @devops executes, under the same single @fpittelo release approval (Rule 5) |
 
 **Feature branches** are created from `dev`:
 
@@ -259,12 +259,20 @@ new release ships a newer integration.
 
 ### 2.8 CI/CD Pipeline
 
-The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push and PR to `dev`:
+The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every PR and every push to `dev`, `qa`, and `main`:
 
 | Check | What it does | Failure condition |
 |:---|:---|:---|
 | **JSONC validation** | Strips `//` comments and parses `opencode.jsonc` as valid JSON | Malformed JSONC |
-| **Gitleaks scan** | Runs `zricethezav/gitleaks:latest detect` on the full repo | Any hardcoded secret detected |
+| **install.sh syntax** | `bash -n install.sh` | Syntax error |
+| **Agent/skill presence** | Verifies all 7 agent files and 14 skill directories exist | Missing file |
+| **Permission invariants** | Namespace exclusivity (`COACH_*`, `BROWSER_*`) and mandated BROWSER launch flags | Baseline/restatement/flag drift |
+| **Regression tests** | unittest suites for the config checkers, harness runner, and per-pane profile selection | Test failure |
+| **Docs validation** | Link, MADR schema, and Mermaid syntax checks (`harness/docs-validation/`) | Broken link, bad MADR, bad Mermaid |
+| **Gitleaks scan** | Diff-scoped secret scan of the event's commits (gitleaks-action v3) | Any hardcoded secret detected |
+| **Architecture gate** | PRs labeled `requires-architecture` must touch `docs/adr/**` or `docs/architecture/arc42/**` | Label without architecture changes |
+
+Deep checks (full-history secret scan, render-level Mermaid validation, image builds) run on the scheduled `deep-validation.yml` workflow (MADR-0003) — they never gate PRs.
 
 **Quality gate:** The pipeline must pass with **zero warnings and zero failures** before any merge.
 
@@ -316,11 +324,11 @@ This section is for anyone who uses OpenCode day-to-day. No deep technical knowl
 # Navigate to your project
 cd ~/projects/HOME/my-personal-project
 
-# Start OpenCode
-opencode
+# Launch the HOME profile (sources the profile-scoped secrets)
+oc-home
 ```
 
-That's it. OpenCode loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
+That's it. The wrapper loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
 
 ### 3.2 Agents
 
