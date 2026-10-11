@@ -73,7 +73,6 @@ def strip_jsonc(text: str) -> str:
 def browser_command(root: Path) -> tuple[list[str] | None, str | None]:
     """Return the BROWSER command array, or ``(None, error description)``."""
     config = root / "opencode.jsonc"
-    rel = config.relative_to(root)
     try:
         data = json.loads(strip_jsonc(config.read_text(encoding="utf-8")))
     except (json.JSONDecodeError, OSError) as exc:
@@ -153,11 +152,7 @@ def check_browser_flags(root: Path, failures: list[str]) -> None:
         )
     else:
         hosts = loopback_hosts(origins)
-        missing = [
-            host
-            for host in ("localhost", "127.0.0.1")
-            if host not in hosts
-        ]
+        missing = [host for host in ("localhost", "127.0.0.1") if host not in hosts]
         if missing:
             failures.append(
                 f"{rel}: '--allowed-origins' value {origins!r} must cover "
@@ -180,7 +175,9 @@ def check_browser_flags(root: Path, failures: list[str]) -> None:
 
 def main(argv: list[str]) -> int:
     root = (
-        Path(argv[1]).resolve() if len(argv) > 1 else Path(__file__).resolve().parents[2]
+        Path(argv[1]).resolve()
+        if len(argv) > 1
+        else Path(__file__).resolve().parents[2]
     )
     if not root.is_dir():
         print(f"error: REPO_ROOT is not a directory: {root}", file=sys.stderr)

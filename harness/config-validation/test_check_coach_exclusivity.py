@@ -138,19 +138,17 @@ def build_repo(
     agents_dir = root / "agents"
     agents_dir.mkdir()
     (root / "opencode.jsonc").write_text(
-        config_text
-        if config_text is not None
-        else "{\n  \"permission\": {\n"
-        + ",\n".join(
-            f'    "{key}": "{value}"' for key, value in permission.items()
-        )
-        + "\n  }\n}\n",
+        (
+            config_text
+            if config_text is not None
+            else '{\n  "permission": {\n'
+            + ",\n".join(f'    "{key}": "{value}"' for key, value in permission.items())
+            + "\n  }\n}\n"
+        ),
         encoding="utf-8",
     )
     for name in AGENT_NAMES:
-        rules = (
-            agent_rules[name] if name in agent_rules else valid_agent_rules(name)
-        )
+        rules = agent_rules[name] if name in agent_rules else valid_agent_rules(name)
         (agents_dir / f"{name}.md").write_text(
             agent_spec_text(name, rules), encoding="utf-8"
         )
@@ -232,9 +230,7 @@ class NamespaceExclusivityTests(unittest.TestCase):
             with self.subTest(namespace=namespace, agent=outsider):
                 rules = valid_agent_rules(outsider)
                 rules[keys[0]] = "allow"
-                proc = run_checker(
-                    build_repo(valid_permission(), {outsider: rules})
-                )
+                proc = run_checker(build_repo(valid_permission(), {outsider: rules}))
                 self.assert_gate_fails(proc, f"{outsider}.md", keys[0])
 
     def test_deny_in_whitelist_agent_fails(self) -> None:
@@ -243,9 +239,7 @@ class NamespaceExclusivityTests(unittest.TestCase):
                 insider = sorted(allow_agents)[0].removesuffix(".md")
                 rules = valid_agent_rules(insider)
                 rules[keys[0]] = "deny"
-                proc = run_checker(
-                    build_repo(valid_permission(), {insider: rules})
-                )
+                proc = run_checker(build_repo(valid_permission(), {insider: rules}))
                 self.assert_gate_fails(proc, f"{insider}.md", keys[0])
 
     def test_pattern_drift_key_in_agent_fails(self) -> None:
@@ -253,9 +247,7 @@ class NamespaceExclusivityTests(unittest.TestCase):
             with self.subTest(namespace=namespace):
                 rules = valid_agent_rules("architect")
                 rules[f"{namespace}_EXTRA_*"] = "deny"
-                proc = run_checker(
-                    build_repo(valid_permission(), {"architect": rules})
-                )
+                proc = run_checker(build_repo(valid_permission(), {"architect": rules}))
                 self.assert_gate_fails(proc, "architect.md", f"{namespace}_EXTRA_*")
 
     def test_partial_allow_missing_tool_key_fails(self) -> None:
