@@ -14,9 +14,15 @@ Thumbs.db
 *.swo
 *~
 
-# Node (legacy cruft from old config)
+# Node (legacy cruft from old config; package.json is local plugin-dev noise, not a repo manifest - #295)
 node_modules/
+package.json
 package-lock.json
+
+# Build artifacts
+target/
 
 # Python (harness docs-validation test suite)
 __pycache__/
+.coverage
+.coverage.*
