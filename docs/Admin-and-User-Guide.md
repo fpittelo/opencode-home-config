@@ -41,7 +41,7 @@
 
 OpenCode is an AI-powered coding assistant that runs on your workstation. It uses **agents** (specialized AI personas like an architect, developer, or coach), **skills** (domain-specific knowledge modules), and **MCP tools** (external service connectors like GitHub and Intervals.icu) to help you work on projects. OpenCode reads a configuration file (`opencode.jsonc`) that defines which AI models to use, which agents and skills are available, and which external tools are connected.
 
-You run OpenCode by navigating to a project directory and typing `opencode`. The agents then help you plan, code, review, and manage your work — all from your terminal.
+You run OpenCode by navigating to a project directory and launching a profile wrapper — `oc-home` for the HOME profile, `oc-work` for the WORK profile (see §4). Bare `opencode` is unsupported for secret-bearing work: it loads only the global base layer with no profile-scoped secrets. The agents then help you plan, code, review, and manage your work — all from your terminal.
 
 ---
 
@@ -81,10 +81,11 @@ chmod +x install.sh && ./install.sh
 | 1 | Symlink the skills directory | `~/.config/opencode/skills` → repo's `skills/` |
 | 2 | Install pinned `github-mcp-server` v1.12.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
 | 3 | Install pinned `herdr` v0.9.3 binary — downloaded from the official Herdr release, SHA256-verified against the pinned release-asset digest (skipped if the pinned version is already installed) | `~/.local/bin/herdr` |
-| 4 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
-| 5 | Migrate secrets to the profile-scoped file (if absent) | `~/.config/opencode/.secrets-home.env` (chmod 600, umask 077) |
+| 4 | Verify the pinned `@playwright/mcp` v0.0.83 registry tarball (SHA512 via `openssl`; read-only pin-time audit — nothing is installed, `npx` resolves the pinned version at session start) | npm registry (verification only) |
+| 5 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
 | 6 | Provision `profiles.sh` with the `oc-home()` wrapper (appended without clobbering `oc-work()`) | `~/.config/opencode/profiles.sh` |
-| 7 | Retire the legacy mechanism: remove `.secrets.env` sourcing from `~/.bashrc` / `~/.profile`, unset the systemd user environment (verified secret-free), remove the legacy `/AI_OS_ROOT` switcher | `~/.bashrc`, `~/.profile`, systemd user session |
+| 7 | Create or migrate the profile-scoped secrets file (chmod 600, umask 077; a populated shared `.secrets.env` is migrated into it and removed) | `~/.config/opencode/.secrets-home.env` |
+| 8 | Retire the legacy mechanism: remove `.secrets.env` sourcing from `~/.bashrc` / `~/.profile`, unset the systemd user environment (verified secret-free), remove the legacy `/AI_OS_ROOT` switcher | `~/.bashrc`, `~/.profile`, systemd user session |
 
 The installer is **idempotent** — running it again will update the symlinks but will NOT overwrite existing secrets files (`.secrets-home.env`).
 
@@ -98,6 +99,7 @@ Secrets live in the profile-scoped file `~/.config/opencode/.secrets-home.env` (
 |:---|:---|:---|
 | `OPENROUTER_HOME_API_KEY` | OpenRouter API access (all AI models) | https://openrouter.ai/keys |
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub MCP server (issues, PRs, releases) | https://github.com/settings/tokens (fine-grained, read/write) |
+| `GITHUB_TOKEN_CODE_REVIEWER` | GitHub MCP server for @code-reviewer (the @devfpittelo machine account — PR approvals under separation of duties) | https://github.com/settings/tokens (fine-grained, read/write) |
 | `INTERVALS_API_KEY` | Intervals.icu API (coach MCP — workout data) | https://intervals.icu/api/v1/auth |
 | `INTERVALS_ATHLETE_ID` | Intervals.icu athlete ID (coach MCP) | https://intervals.icu/athlete (numeric ID in URL) |
 
@@ -110,6 +112,7 @@ nano ~/.config/opencode/.secrets-home.env
 # Fill in your keys (replace the <...> placeholders):
 # export OPENROUTER_HOME_API_KEY="<your-openrouter-key>"
 # export GITHUB_PERSONAL_ACCESS_TOKEN="<your-github-token>"
+# export GITHUB_TOKEN_CODE_REVIEWER="<your-code-reviewer-token>"
 # export INTERVALS_API_KEY="<your-intervals-key>"
 # export INTERVALS_ATHLETE_ID="<your-athlete-id>"
 
@@ -121,8 +124,8 @@ ls -la ~/.config/opencode/.secrets-home.env
 # wrapper subshell — they do not persist in the pane shell after exit)
 oc-home
 
-# Verify all 4 keys are populated inside the pane (without printing values)
-for v in OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN INTERVALS_API_KEY INTERVALS_ATHLETE_ID; do
+# Verify all 5 keys are populated inside the pane (without printing values)
+for v in OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN GITHUB_TOKEN_CODE_REVIEWER INTERVALS_API_KEY INTERVALS_ATHLETE_ID; do
     echo "$v: $([ -n "${!v}" ] && echo 'OK' || echo 'EMPTY')"
 done
 ```
@@ -157,8 +160,8 @@ dev (integration) → qa (staging) → main (production)
 | Branch | Purpose | Who can merge into it? |
 |:---|:---|:---|
 | `dev` | Integration — all feature branches merge here | Any squad member via PR |
-| `qa` | Staging — promoted from `dev` under the single release approval | @architect (with explicit approval) |
-| `main` | Production — promoted from `qa` under the same single release approval | @architect (with explicit approval) |
+| `qa` | Staging — promoted from `dev` as a merge-commit PR (MADR-0012) | @devops executes, under the single @fpittelo release approval (Rule 5) |
+| `main` | Production — promoted from `qa` as a merge-commit PR (MADR-0012) | @devops executes, under the same single @fpittelo release approval (Rule 5) |
 
 **Feature branches** are created from `dev`:
 
@@ -171,12 +174,14 @@ fix/<issue-#>-<slug>        # Bug fixes
 
 ### 2.6 MCP Servers
 
-OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 6 local servers (plus the remote `openrouter` endpoint): the two GitHub servers run as a pinned native binary, the three Coach servers as Docker containers, and the Playwright browser server via pinned `npx`:
+OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 8 local servers (plus the remote `openrouter` endpoint): the four GitHub servers run as a pinned native binary (the two core servers plus the MADR-0011 extended-toolset servers), the three Coach servers as Docker containers, and the Playwright browser server via pinned `npx`:
 
 | MCP Server | Runtime | Environment Variables | Purpose |
 |:---|:---|:---|:---|
 | `GITHUB` | Native binary `github-mcp-server` v1.12.2 at `~/.local/bin/` (installed + SHA256-verified by `install.sh`) | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
 | `GITHUB_CODE_REVIEWER` | Same binary, restricted to `--toolsets=context,repos,pull_requests` | `GITHUB_TOKEN_CODE_REVIEWER` | PR review as @devfpittelo (separation of duties) |
+| `GITHUB_ACTIONS` | Same binary, restricted to `--toolsets=actions` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub Actions runs/jobs triage (MADR-0011) — full namespace for @devops; read-only triage tools for @developer (`actions_run_trigger` denied) |
+| `GITHUB_SECURITY` | Same binary, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | `GITHUB_PERSONAL_ACCESS_TOKEN` | Code scanning, secret scanning, and Dependabot alert triage — @cyber-security only (MADR-0011) |
 | `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
 | `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
 | `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
@@ -189,6 +194,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - Environment variables are injected from the profile-scoped secrets file (`.secrets-home.env` / `.secrets-work.env`) sourced by the `oc-home` / `oc-work` wrapper subshell, via `{env:VAR}` interpolation (MADR-0010).
 - **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
 - **Availability (#207, MADR-0009):** Browser MCP tools (`BROWSER_*`) are exposed exclusively to the `@developer` and `@devops` agents — `opencode.jsonc` sets a global default-deny baseline (`BROWSER_*`: deny) and every other SCRUM agent denies them explicitly (see §3.4).
+- **Availability (#252, MADR-0011):** `GITHUB_ACTIONS_*` is @devops-only for writes (`actions_run_trigger`) with read-only triage tools granted to @developer; `GITHUB_SECURITY_*` is @cyber-security-only (read-only enforced at process startup). The global default-deny baseline (`GITHUB_ACTIONS_*` / `GITHUB_SECURITY_*`: deny) covers every other persona, and every SCRUM agent re-states the denies explicitly (see §3.4).
 
 ### 2.7 Herdr Agent Runtime
 
@@ -259,12 +265,20 @@ new release ships a newer integration.
 
 ### 2.8 CI/CD Pipeline
 
-The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every push and PR to `dev`:
+The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every PR and every push to `dev`, `qa`, and `main`:
 
 | Check | What it does | Failure condition |
 |:---|:---|:---|
 | **JSONC validation** | Strips `//` comments and parses `opencode.jsonc` as valid JSON | Malformed JSONC |
-| **Gitleaks scan** | Runs `zricethezav/gitleaks:latest detect` on the full repo | Any hardcoded secret detected |
+| **install.sh syntax** | `bash -n install.sh` | Syntax error |
+| **Agent/skill presence** | Verifies all 7 agent files and 14 skill directories exist | Missing file |
+| **Permission invariants** | Namespace exclusivity (`COACH_*`, `BROWSER_*`, `GITHUB_ACTIONS_*`, `GITHUB_SECURITY_*`) and mandated BROWSER launch flags | Baseline/restatement/flag drift |
+| **Regression tests** | unittest suites for the config checkers, harness runner, and per-pane profile selection | Test failure |
+| **Docs validation** | Link, MADR schema, and Mermaid syntax checks (`harness/docs-validation/`) | Broken link, bad MADR, bad Mermaid |
+| **Gitleaks scan** | Diff-scoped secret scan of the event's commits (gitleaks-action v3) | Any hardcoded secret detected |
+| **Architecture gate** | PRs labeled `requires-architecture` must touch `docs/adr/**` or `docs/architecture/arc42/**` | Label without architecture changes |
+
+Deep checks (full-history secret scan, render-level Mermaid validation, image builds) run on the scheduled `deep-validation.yml` workflow (MADR-0003) — they never gate PRs.
 
 **Quality gate:** The pipeline must pass with **zero warnings and zero failures** before any merge.
 
@@ -316,11 +330,11 @@ This section is for anyone who uses OpenCode day-to-day. No deep technical knowl
 # Navigate to your project
 cd ~/projects/HOME/my-personal-project
 
-# Start OpenCode
-opencode
+# Launch the HOME profile (sources the profile-scoped secrets)
+oc-home
 ```
 
-That's it. OpenCode loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
+That's it. The wrapper loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
 
 ### 3.2 Agents
 
@@ -371,12 +385,14 @@ Skills are knowledge modules that activate automatically when the conversation m
 
 ### 3.4 MCP Tools
 
-MCP tools connect OpenCode to external services. The HOME profile defines 7 MCP servers: the two GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), the Playwright browser server via pinned `npx`, and `openrouter` as a remote endpoint:
+MCP tools connect OpenCode to external services. The HOME profile defines 9 MCP servers (8 local + 1 remote): the four GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), the Playwright browser server via pinned `npx`, and `openrouter` as a remote endpoint:
 
 | MCP Tool | Runtime | What it provides |
 |:---|:---|:---|
 | **GITHUB** | Native binary `github-mcp-server` v1.12.2 | Create/read GitHub issues, PRs, releases, branches, commits as @fpittelo. The agent you're talking to right now uses this. |
 | **GITHUB_CODE_REVIEWER** | Same native binary, restricted toolsets | Formal PR reviews as @devfpittelo (@code-reviewer only — separation of duties) |
+| **GITHUB_ACTIONS** | Native binary `github-mcp-server` v1.12.2, restricted to `--toolsets=actions` | GitHub Actions runs/jobs (MADR-0011): @devops holds the full namespace; @developer has read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with `actions_run_trigger` denied |
+| **GITHUB_SECURITY** | Native binary `github-mcp-server` v1.12.2, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | Code scanning, secret scanning, and Dependabot alerts for @cyber-security triage (MADR-0011; read-only enforced at process startup) |
 | **COACH_DEV** | Docker container `ghcr.io/fpittelo/coach:dev` | Training plan management (dev branch of coach service — experimental) |
 | **COACH_QA** | Docker container `ghcr.io/fpittelo/coach:qa` | Training plan management (qa staging — disabled; enabled by toggling, see §2.6) |
 | **COACH_MAIN** | Docker container `ghcr.io/fpittelo/coach:latest` | Training plan management (production coach service — disabled; enabled by toggling, see §2.6) |
@@ -388,6 +404,8 @@ The coach containers connect to Intervals.icu for workout analytics, training pl
 **Coach MCP availability (#150):** Coach tools (`COACH_DEV_*`, `COACH_QA_*`, `COACH_MAIN_*`) are exclusively available to the **@coach** agent. A global default-deny baseline in `opencode.jsonc` denies all three Coach namespaces for every other persona — including built-in subagents (`explore`, `general`, `task`) — and each SCRUM agent re-states the deny explicitly in its spec. This keeps personal biometric and training data (Intervals.icu) isolated to the coaching workflow. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`, run locally via `bash harness/run-config-gate.sh` and in CI).
 
 **Browser MCP availability (#207, MADR-0009):** Browser tools (`BROWSER_*`) are available to the **@developer** and **@devops** agents only. The same global default-deny baseline (`BROWSER_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every other SCRUM agent re-states the deny explicitly in its spec. The server runs with an ephemeral in-memory profile (`--isolated`), WebMCP disabled (`--no-webmcp`), service workers blocked (`--block-service-workers`), image responses omitted (`--image-responses omit`), a loopback-origin allowlist (`--allowed-origins` — upstream documents it as not a security boundary), and a scoped `--output-dir`; the pinned `@playwright/mcp` version is audited at pin time by `install.sh` (npx re-resolves from the registry each session). The namespace-exclusivity invariant (COACH_* and BROWSER_*) and the mandated launch flags are machine-enforced by the same config gate.
+
+**GitHub Actions & Security MCP availability (#252, MADR-0011):** `GITHUB_ACTIONS_*` is @devops-only for writes (`actions_run_trigger`), with read-only triage tools granted to @developer; `GITHUB_SECURITY_*` is @cyber-security-only, with the `--read-only` flag enforced at process startup and raw secret payloads redacted before recording. The global default-deny baseline (`GITHUB_ACTIONS_*` / `GITHUB_SECURITY_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every SCRUM agent re-states the denies explicitly in its spec. The namespace-exclusivity invariant is machine-enforced by the same config gate.
 
 ### 3.5 Models
 
@@ -541,7 +559,7 @@ cd ~/projects/opencode-home-config && ./install.sh
 **HOME pane profile:**
 - **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
 - **14 skills** available (arc42-documentation, coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, harness-engineering, herdr, home-governance, madr-adr, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
-- **7 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER as native binaries, COACH_DEV as the active Coach container, BROWSER via pinned npx, openrouter remote; COACH_QA/COACH_MAIN disabled)
+- **9 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER + GITHUB_ACTIONS + GITHUB_SECURITY as native binaries, COACH_DEV as the active Coach container, BROWSER via pinned npx, openrouter remote; COACH_QA/COACH_MAIN disabled)
 - **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
 - **Use for:** personal projects under `~/projects/HOME/`
 
