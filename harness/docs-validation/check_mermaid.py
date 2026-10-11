@@ -61,25 +61,48 @@ EXCERPT_LINES = 15
 # Diagram keywords recognized by the syntax mode. Case-sensitive on purpose:
 # mermaid's own grammar is case-sensitive, so the syntax check must not
 # accept what the render check would reject.
-DIAGRAM_KEYWORDS = frozenset({
-    "flowchart", "graph",
-    "sequenceDiagram",
-    "classDiagram",
-    "stateDiagram", "stateDiagram-v2",
-    "erDiagram",
-    "journey", "gantt", "pie", "gitGraph",
-    "quadrantChart", "mindmap", "timeline",
-    "sankey-beta", "xychart-beta", "block-beta", "architecture-beta",
-    "radar-beta", "kanban-beta",
-    "C4Context", "C4Container", "C4Component", "C4Dynamic",
-    "requirementDiagram", "requirement",
-})
+DIAGRAM_KEYWORDS = frozenset(
+    {
+        "flowchart",
+        "graph",
+        "sequenceDiagram",
+        "classDiagram",
+        "stateDiagram",
+        "stateDiagram-v2",
+        "erDiagram",
+        "journey",
+        "gantt",
+        "pie",
+        "gitGraph",
+        "quadrantChart",
+        "mindmap",
+        "timeline",
+        "sankey-beta",
+        "xychart-beta",
+        "block-beta",
+        "architecture-beta",
+        "radar-beta",
+        "kanban-beta",
+        "C4Context",
+        "C4Container",
+        "C4Component",
+        "C4Dynamic",
+        "requirementDiagram",
+        "requirement",
+    }
+)
 
 # Dialects whose node shapes make unquoted ()/[] structurally significant;
 # only these get the per-line bracket/paren balance check.
-BRACKET_STRUCTURAL = frozenset({
-    "flowchart", "graph", "classDiagram", "stateDiagram", "stateDiagram-v2",
-})
+BRACKET_STRUCTURAL = frozenset(
+    {
+        "flowchart",
+        "graph",
+        "classDiagram",
+        "stateDiagram",
+        "stateDiagram-v2",
+    }
+)
 
 
 def doc_files(root: Path) -> list[Path]:
@@ -148,7 +171,7 @@ def strip_comment(line: str) -> str:
     for i, ch in enumerate(line):
         if ch == '"':
             in_string = not in_string
-        elif ch == "%" and not in_string and line[i:i + 2] == "%%":
+        elif ch == "%" and not in_string and line[i : i + 2] == "%%":
             return line[:i]
     return line
 
@@ -159,7 +182,7 @@ def split_frontmatter(lines: list[str]) -> tuple[list[str], str | None]:
         return lines, None
     for i in range(1, len(lines)):
         if lines[i].strip() == "---":
-            return lines[i + 1:], None
+            return lines[i + 1 :], None
     return [], "unterminated YAML frontmatter (no closing '---')"
 
 
@@ -256,13 +279,19 @@ def run_render(root: Path, files: list[Path]) -> int:
                 total += 1
                 failure = validate_block(mmdc, code, workdir, index)
                 if failure is not None:
-                    print(f"FAIL check_mermaid: {path.relative_to(root)} "
-                          f"block #{index} (line {start_line}): {failure}")
+                    print(
+                        f"FAIL check_mermaid: {path.relative_to(root)} "
+                        f"block #{index} (line {start_line}): {failure}"
+                    )
                     return 1
     if total == 0:
-        print("PASS check_mermaid: no mermaid blocks found in doc set (nothing to validate)")
+        print(
+            "PASS check_mermaid: no mermaid blocks found in doc set (nothing to validate)"
+        )
         return 0
-    print(f"PASS check_mermaid: {total} mermaid block(s) validated in {len(files)} file(s)")
+    print(
+        f"PASS check_mermaid: {total} mermaid block(s) validated in {len(files)} file(s)"
+    )
     return 0
 
 
@@ -275,15 +304,21 @@ def run_syntax(root: Path, files: list[Path]) -> int:
             total += 1
             errors = syntax_errors(code)
             if errors:
-                print(f"FAIL check_mermaid (syntax): {path.relative_to(root)} "
-                      f"block #{index} (line {start_line}): {'; '.join(errors)}")
+                print(
+                    f"FAIL check_mermaid (syntax): {path.relative_to(root)} "
+                    f"block #{index} (line {start_line}): {'; '.join(errors)}"
+                )
                 return 1
     if total == 0:
-        print("PASS check_mermaid (syntax): no mermaid blocks found in doc set "
-              "(nothing to validate)")
+        print(
+            "PASS check_mermaid (syntax): no mermaid blocks found in doc set "
+            "(nothing to validate)"
+        )
         return 0
-    print(f"PASS check_mermaid (syntax): {total} mermaid block(s) structurally valid "
-          f"in {len(files)} file(s)")
+    print(
+        f"PASS check_mermaid (syntax): {total} mermaid block(s) structurally valid "
+        f"in {len(files)} file(s)"
+    )
     return 0
 
 
@@ -291,13 +326,20 @@ def main(argv: list[str]) -> int:
     default_root = Path(__file__).resolve().parents[2]
     parser = argparse.ArgumentParser(
         description="Validate fenced mermaid blocks. Default mode renders each "
-                    "block with mmdc (deep validation); --syntax validates "
-                    "structure natively without mmdc/Chromium (per-PR gate).")
-    parser.add_argument("root", nargs="?", default=None,
-                        help="repository root (default: the script's own repo)")
-    parser.add_argument("--syntax", action="store_true",
-                        help="native structural validation, no mmdc/Chromium "
-                             "(MADR-0003 D1)")
+        "block with mmdc (deep validation); --syntax validates "
+        "structure natively without mmdc/Chromium (per-PR gate)."
+    )
+    parser.add_argument(
+        "root",
+        nargs="?",
+        default=None,
+        help="repository root (default: the script's own repo)",
+    )
+    parser.add_argument(
+        "--syntax",
+        action="store_true",
+        help="native structural validation, no mmdc/Chromium " "(MADR-0003 D1)",
+    )
     args = parser.parse_args(argv[1:])
     root = Path(args.root).resolve() if args.root else default_root
     if not root.is_dir():

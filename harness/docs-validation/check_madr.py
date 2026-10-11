@@ -41,21 +41,34 @@ def check_adr(path: Path, number: int) -> list[str]:
     first_non_blank = next((line for line in lines if line.strip()), "")
     m = H1_RE.match(first_non_blank)
     if not m:
-        errors.append("H1 header missing or malformed (expected '# MADR-NNNN: <title>')")
+        errors.append(
+            "H1 header missing or malformed (expected '# MADR-NNNN: <title>')"
+        )
     elif int(m.group(1)) != number:
-        errors.append(f"H1 number {m.group(1)} does not match filename number {number:04d}")
-    for label, rx in (("Status", STATUS_RE), ("Date", DATE_RE), ("Deciders", DECIDERS_RE)):
+        errors.append(
+            f"H1 number {m.group(1)} does not match filename number {number:04d}"
+        )
+    for label, rx in (
+        ("Status", STATUS_RE),
+        ("Date", DATE_RE),
+        ("Deciders", DECIDERS_RE),
+    ):
         if not any(rx.match(line) for line in lines):
             errors.append(f"missing or malformed {label} field")
     positions = [
         next((i for i, line in enumerate(lines) if line.strip() == section), None)
         for section in MANDATORY_SECTIONS
     ]
-    if None in positions:
+    # Narrow to the found positions so `sorted()` type-checks under mypy
+    # --strict: `positions` is `list[int | None]`, but this branch is only
+    # reached when no section is missing (no None entries). Behavior is
+    # identical — `found` preserves order and equals `positions` here.
+    found = [pos for pos in positions if pos is not None]
+    if len(found) != len(positions):
         for section, pos in zip(MANDATORY_SECTIONS, positions):
             if pos is None:
                 errors.append(f"missing mandatory section '{section}'")
-    elif positions != sorted(positions):
+    elif found != sorted(found):
         errors.append(
             "mandatory sections out of required order: " + ", ".join(MANDATORY_SECTIONS)
         )
@@ -63,7 +76,11 @@ def check_adr(path: Path, number: int) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    root = Path(argv[1]).resolve() if len(argv) > 1 else Path(__file__).resolve().parents[2]
+    root = (
+        Path(argv[1]).resolve()
+        if len(argv) > 1
+        else Path(__file__).resolve().parents[2]
+    )
     if not root.is_dir():
         print(f"error: REPO_ROOT is not a directory: {root}", file=sys.stderr)
         return 1
@@ -79,8 +96,10 @@ def main(argv: list[str]) -> int:
             continue
         m = NAME_RE.match(entry.name)
         if not m:
-            errors.append(f"{ADR_DIR}/{entry.name}: "
-                          f"file name violates pattern 'NNNN-<lowercase-slug>.md'")
+            errors.append(
+                f"{ADR_DIR}/{entry.name}: "
+                f"file name violates pattern 'NNNN-<lowercase-slug>.md'"
+            )
             continue
         number = int(m.group(1))
         numbers.append(number)
@@ -96,8 +115,10 @@ def main(argv: list[str]) -> int:
     if unique:
         missing = sorted(set(range(1, max(unique) + 1)) - set(unique))
         if missing:
-            errors.append(f"{ADR_DIR}: sequence gap - missing number(s): "
-                          + ", ".join(f"{n:04d}" for n in missing))
+            errors.append(
+                f"{ADR_DIR}: sequence gap - missing number(s): "
+                + ", ".join(f"{n:04d}" for n in missing)
+            )
     if errors:
         print("FAIL check_madr: non-conforming ADR(s):")
         for error in errors:
@@ -106,8 +127,10 @@ def main(argv: list[str]) -> int:
     if conforming == 0:
         print(f"PASS check_madr: no ADRs found in {ADR_DIR} (nothing to validate)")
         return 0
-    print(f"PASS check_madr: {conforming} ADR(s) conforming in {ADR_DIR}: "
-          + ", ".join(f"{n:04d}" for n in unique))
+    print(
+        f"PASS check_madr: {conforming} ADR(s) conforming in {ADR_DIR}: "
+        + ", ".join(f"{n:04d}" for n in unique)
+    )
     return 0
 
 

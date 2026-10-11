@@ -53,12 +53,8 @@ def two_block_doc(defect_body: str) -> str:
     """Doc with a valid block #1 and a defective block #2 (context check)."""
     return (
         "# Doc\n\n"
-        "```mermaid\n"
-        + VALID_FLOWCHART
-        + "```\n\n"
-        "```mermaid\n"
-        + defect_body
-        + "```\n"
+        "```mermaid\n" + VALID_FLOWCHART + "```\n\n"
+        "```mermaid\n" + defect_body + "```\n"
     )
 
 
@@ -69,11 +65,12 @@ class DefectClassTests(unittest.TestCase):
         proc = run_syntax({"defect.md": doc})
         output = proc.stdout + proc.stderr
         self.assertEqual(
-            proc.returncode, 1,
+            proc.returncode,
+            1,
             f"expected exit 1, got {proc.returncode}:\n{output}",
         )
         self.assertIn("defect.md", output)  # file context
-        self.assertIn("block #2", output)   # 1-based block-index context
+        self.assertIn("block #2", output)  # 1-based block-index context
         for fragment in expected_fragments:
             self.assertIn(fragment, output)
 
@@ -94,7 +91,7 @@ class DefectClassTests(unittest.TestCase):
 
     def test_odd_quote_count_fails(self) -> None:
         self.assert_gate_fails(
-            two_block_doc("flowchart TD\n  A[\"unterminated\n"),
+            two_block_doc('flowchart TD\n  A["unterminated\n'),
             "odd number of",
         )
 
@@ -120,7 +117,8 @@ class PositiveControlTests(unittest.TestCase):
         proc = run_syntax(files)
         output = proc.stdout + proc.stderr
         self.assertEqual(
-            proc.returncode, 0,
+            proc.returncode,
+            0,
             f"expected exit 0, got {proc.returncode}:\n{output}",
         )
         for fragment in expected:
@@ -148,7 +146,7 @@ class PositiveControlTests(unittest.TestCase):
             "---\n"
             "title: schema\n"
             "---\n"
-            "%%{init: {\"theme\": \"dark\"}}%%\n"
+            '%%{init: {"theme": "dark"}}%%\n'
             "erDiagram\n"
             "  CUSTOMER ||--o{ ORDER : places\n"
             "  CUSTOMER {\n"
@@ -163,9 +161,9 @@ class PositiveControlTests(unittest.TestCase):
     def test_gitgraph_quotes_pass(self) -> None:
         body = (
             "gitGraph\n"
-            "  commit id: \"one\"\n"
+            '  commit id: "one"\n'
             "  branch dev\n"
-            "  commit id: \"three\"\n"
+            '  commit id: "three"\n'
         )
         self.assert_gate_passes(
             {"ok.md": f"```mermaid\n{body}```\n"},
@@ -186,9 +184,7 @@ class PositiveControlTests(unittest.TestCase):
             "```\n"
             "````\n"
             "\n"
-            "```mermaid\n"
-            + VALID_FLOWCHART
-            + "```\n"
+            "```mermaid\n" + VALID_FLOWCHART + "```\n"
         )
         self.assert_gate_passes({"ok.md": doc}, "1 mermaid block(s) structurally valid")
 

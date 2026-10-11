@@ -80,13 +80,14 @@ def parse_dest(raw: str) -> str:
     """Extract the link destination: first token, or the <angle-bracketed> form."""
     dest = raw.strip()
     if dest.startswith("<") and ">" in dest:
-        return dest[1:dest.index(">")]
+        return dest[1 : dest.index(">")]
     tokens = dest.split()
     return tokens[0] if tokens else ""
 
 
-def verify(path: Path, parsed: tuple[str, str],
-           heading_cache: dict[Path, set[str]]) -> str | None:
+def verify(
+    path: Path, parsed: tuple[str, str], heading_cache: dict[Path, set[str]]
+) -> str | None:
     """Return an error reason if the relative target is broken, else None."""
     raw_path, anchor = parsed
     dest = parse_dest(raw_path)
@@ -97,14 +98,19 @@ def verify(path: Path, parsed: tuple[str, str],
         return "target does not exist"
     if anchor and resolved.suffix == ".md":
         slugs = heading_cache.setdefault(
-            resolved, collect_headings(resolved.read_text(encoding="utf-8")))
+            resolved, collect_headings(resolved.read_text(encoding="utf-8"))
+        )
         if anchor not in slugs:
             return f"anchor '#{anchor}' not found in {dest}"
     return None
 
 
 def main(argv: list[str]) -> int:
-    root = Path(argv[1]).resolve() if len(argv) > 1 else Path(__file__).resolve().parents[2]
+    root = (
+        Path(argv[1]).resolve()
+        if len(argv) > 1
+        else Path(__file__).resolve().parents[2]
+    )
     if not root.is_dir():
         print(f"error: REPO_ROOT is not a directory: {root}", file=sys.stderr)
         return 1
@@ -127,8 +133,10 @@ def main(argv: list[str]) -> int:
                     checked += 1
                     reason = verify(path, parsed, heading_cache)
                     if reason:
-                        failures.append(f"{path.relative_to(root)}:{lineno}: "
-                                        f"broken relative link '{target}' ({reason})")
+                        failures.append(
+                            f"{path.relative_to(root)}:{lineno}: "
+                            f"broken relative link '{target}' ({reason})"
+                        )
             elif m and len(m.group(1)) >= fence_len and not m.group(2).strip():
                 fence_len = None
     if failures:
@@ -136,8 +144,10 @@ def main(argv: list[str]) -> int:
         for failure in failures:
             print(f"  {failure}")
         return 1
-    print(f"PASS check_links: {checked} relative link(s)/img src verified "
-          f"in {len(files)} file(s)")
+    print(
+        f"PASS check_links: {checked} relative link(s)/img src verified "
+        f"in {len(files)} file(s)"
+    )
     return 0
 
 
