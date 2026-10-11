@@ -1,6 +1,6 @@
 # 9. Architecture Decisions (MADR Index)
 
-*Status: live — wired by STORY-03 (issue #60). ADRs are created via the `madr-adr` skill (`bash skills/madr-adr/scripts/new-adr.sh "<title>"`) and stored under `docs/adr/`; the format and machine-checkable header schema are specified in `skills/madr-adr/SKILL.md` (CI lint enforcement lands with STORY-04, #61).*
+*Status: live — wired by STORY-03 (issue #60). ADRs are created via the `madr-adr` skill (`bash skills/madr-adr/scripts/new-adr.sh "<title>"`) and stored under `docs/adr/`; the format and machine-checkable header schema are specified in `skills/madr-adr/SKILL.md` and enforced in CI by `harness/docs-validation/check_madr.py` (STORY-04, #61).*
 
 **This section is the authoritative index of Architecture Decision Records.** Each decision is recorded as a separate MADR document under `docs/adr/` and indexed here. *Every accepted ADR MUST be listed below (number, title, status, link); the directory-level inventory mirrors this index in `docs/adr/README.md`.*
 

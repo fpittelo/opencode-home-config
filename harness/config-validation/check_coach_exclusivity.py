@@ -231,7 +231,9 @@ def check_agent_specs(root: Path, failures: list[str]) -> None:
 
 def main(argv: list[str]) -> int:
     root = (
-        Path(argv[1]).resolve() if len(argv) > 1 else Path(__file__).resolve().parents[2]
+        Path(argv[1]).resolve()
+        if len(argv) > 1
+        else Path(__file__).resolve().parents[2]
     )
     if not root.is_dir():
         print(f"error: REPO_ROOT is not a directory: {root}", file=sys.stderr)
@@ -241,8 +243,7 @@ def main(argv: list[str]) -> int:
     check_agent_specs(root, failures)
     if failures:
         print(
-            "FAIL check_coach_exclusivity: namespace-exclusivity invariant "
-            "violated:"
+            "FAIL check_coach_exclusivity: namespace-exclusivity invariant " "violated:"
         )
         for failure in failures:
             print(f"  {failure}")

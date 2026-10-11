@@ -8,7 +8,10 @@ This repository implements the **Golden Architecture v3.1** — fully decoupled 
 
 ```
 opencode-home-config/
-├── .github/workflows/ci.yml   # Native quality gate + Gitleaks scan
+├── .github/workflows/
+│   ├── ci.yml                  # Native per-PR quality gate + Gitleaks scan
+│   ├── deep-validation.yml     # Scheduled deep checks (render validation, full-history scan)
+│   └── harness-image-build.yml # On-demand runner image builds
 ├── .gitignore
 ├── install.sh                 # Idempotent Linux/WSL bootstrap
 ├── opencode.jsonc            # Global default profile for HOME
@@ -20,12 +23,15 @@ opencode-home-config/
 │   ├── developer.md
 │   ├── devops.md
 │   └── scrum-master.md
-├── docs/                     # arc42 architecture, MADRs (11), and history/
+├── docs/                     # arc42 architecture, MADRs (12), guides, and history/
+│   ├── Admin-and-User-Guide.md
 │   ├── adr/
 │   ├── architecture/arc42/
 │   └── history/
 ├── harness/                  # SSOT quality gate runner, config & docs validators
+│   ├── README.md
 │   ├── config-validation/
+│   ├── docker/               # Runner images (deep-validation / image-build workflows)
 │   ├── docs-validation/
 │   ├── run.sh
 │   └── run-config-gate.sh

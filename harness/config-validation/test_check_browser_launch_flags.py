@@ -36,11 +36,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # --block-service-workers are deliberately absent: the gate pins the
 # mandated set, not the advisory set).
 VALID_COMMAND = [
-    "npx", "-y", "@playwright/mcp@0.0.83",
+    "npx",
+    "-y",
+    "@playwright/mcp@0.0.83",
     "--isolated",
     "--no-webmcp",
-    "--allowed-origins", "http://localhost:*;http://127.0.0.1:*",
-    "--output-dir", "/tmp/opencode/playwright-output",
+    "--allowed-origins",
+    "http://localhost:*;http://127.0.0.1:*",
+    "--output-dir",
+    "/tmp/opencode/playwright-output",
 ]
 
 
@@ -122,7 +126,8 @@ class BrowserLaunchFlagTests(unittest.TestCase):
         command = [
             element
             for element in VALID_COMMAND
-            if element not in ("--allowed-origins", "http://localhost:*;http://127.0.0.1:*")
+            if element
+            not in ("--allowed-origins", "http://localhost:*;http://127.0.0.1:*")
         ]
         proc = run_checker(build_repo(config_text(command)))
         self.assert_gate_fails(proc, "--allowed-origins", "must contain")
