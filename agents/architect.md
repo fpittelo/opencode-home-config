@@ -230,7 +230,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 - **Container Hardening:** Multi-stage builds, non-root user execution, and minimal base images (`docker-expert`). Rust: distroless/scratch. Python: slim.
 - **STRIDE Threat Modeling:** Apply threat modeling during backlog refinement for all new MCP tools and API integrations.
 - **Security Impact Routing (MADR-0008, #194):** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) MUST be reviewed by `@cyber-security` against arc42 §8 (cross-cutting security) & §11 (technical risks) BEFORE spec finalization; MADRs & specs handed to `@code-reviewer` as the review baseline.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 
@@ -238,6 +238,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on session start / design inception.** | Provides HOME portfolio domains, 3-branch lifecycle, zero-warning quality gates, and SCRUM delivery governance. |
 | **`github-scrum-board`** | **Mandatory during backlog grooming & issue specification.** | Provides issue schema templates, Acceptance Criteria checklists, and DoD closeout criteria. |
 | **`mermaid-diagrams`** | **Mandatory before producing architecture diagrams.** | Provides Mermaid syntax for C4, sequence, ERD, and component diagrams in issues and specs. |

@@ -360,7 +360,7 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 
 ### 3.3 Skills
 
-Skills are knowledge modules that activate automatically when the conversation matches their domain. The HOME profile has 14 skills:
+Skills are knowledge modules that activate automatically when the conversation matches their domain. The HOME profile has 15 skills:
 
 | Skill | What it does | When it activates |
 |:---|:---|:---|
@@ -370,6 +370,7 @@ Skills are knowledge modules that activate automatically when the conversation m
 | **fastmcp-builder** | Designing FastMCP servers, Pydantic v2 schemas, transport protocols | Building MCP tools |
 | **find-skills** | Discovers and installs new skills from the ecosystem | "How do I do X?" or "Find a skill for X" |
 | **github-scrum-board** | Sprint management, issue templates, DoD enforcement | GitHub issue/PR/sprint-marker management |
+| **kis-yagni** | Minimal-diff delivery discipline: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding | Every task — mandatory for all agents |
 | **harness-engineering** | Containerized pre-push quality gate (`bash harness/run.sh python\|rust`) | Before pushing any code; when a gate fails |
 | **herdr** | Controls Herdr, a terminal multiplexer for coding agents (panes, tabs, workspaces) | Explicit Herdr mention only; requires `HERDR_ENV=1` |
 | **home-governance** | HOME portfolio context, Swiss privacy rules, Git lifecycle, SCRUM governance | Session start, design inception |
@@ -534,7 +535,7 @@ Each wrapper sources its profile-scoped secrets file (`.secrets-home.env` / `.se
 |:---|:---|:---|
 | **Repo** | `fpittelo/opencode-home-config` (GitHub) | `isgov/ea/opencode-work-config` (GitLab) |
 | **Agents** | 7 | 8 |
-| **Skills** | 14 | 20 |
+| **Skills** | 15 | 20 |
 | **MCP: GITHUB** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
 | **MCP: COACH** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
 | **AI providers** | OpenRouter only | EPFL AI + OpenRouter |
@@ -558,7 +559,7 @@ cd ~/projects/opencode-home-config && ./install.sh
 
 **HOME pane profile:**
 - **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
-- **14 skills** available (arc42-documentation, coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, harness-engineering, herdr, home-governance, madr-adr, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
+- **15 skills** available (arc42-documentation, coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, harness-engineering, herdr, home-governance, kis-yagni, madr-adr, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
 - **9 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER + GITHUB_ACTIONS + GITHUB_SECURITY as native binaries, COACH_DEV as the active Coach container, BROWSER via pinned npx, openrouter remote; COACH_QA/COACH_MAIN disabled)
 - **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
 - **Use for:** personal projects under `~/projects/HOME/`

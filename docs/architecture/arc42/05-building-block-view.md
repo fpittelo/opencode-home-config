@@ -16,7 +16,7 @@ C4Container
     Container_Boundary(home_profile, "HOME OpenCode Profile (installed to ~/.config/opencode)") {
         Container(opencode_jsonc, "opencode.jsonc", "JSONC", "Provider scoping, default agent + mode gating, MCP server registry, env interpolation")
         Container(agents, "Agent Specs (7)", "Markdown + YAML frontmatter", "Mandates, models, permission rules per agent")
-        Container(skills, "Skills (14)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, ...")
+        Container(skills, "Skills (15)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, KIS & YAGNI, ...")
         Container(installer, "install.sh", "Bash", "Path-independent symlinking into ~/.config/opencode")
         Container(ci, "CI Pipeline", "GitHub Actions", "JSONC validation, agent/skill presence, diff-scoped Gitleaks scan")
         Container(arc42docs, "arc42 Docs", "Markdown", "Architecture documentation (this tree)")
