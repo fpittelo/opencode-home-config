@@ -8,7 +8,7 @@ The **HOME OpenCode profile** is the agent runtime configuration that turns Open
 
 - Provide **seven specialized agents** (architect, scrum-master, developer, code-reviewer, devops, cyber-security, coach) with precise mandates, model assignments, and permission boundaries.
 - Integrate **MCP servers** (GitHub, GitHub Code Reviewer, Coach, OpenRouter) so agents operate on real platforms with real credentials — without ever handling secrets in plaintext.
-- Enforce **deterministic, auditable SCRUM delivery** anchored to GitHub Issues, labels, and milestones (board-as-SSOT).
+- Enforce **deterministic, auditable SCRUM delivery** anchored to GitHub Issues, status labels, and sprint marker issues (board-as-SSOT, MADR-0013).
 - Separate the HOME (personal) profile from the professional work profile (`opencode-work-config`) with zero cross-contamination.
 
 ## 1.2 Quality Goals

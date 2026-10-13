@@ -18,12 +18,13 @@
 | [MADR-0010](../../adr/0010-per-pane-profile-selection-and-secrets-isolation.md) | Per-pane dual-profile coexistence and secrets isolation — `oc-home`/`oc-work` wrappers (subshell + exec), profile-scoped secrets, shared `.secrets.env` + systemd import retired, PO risk-acceptance for shared provider OAuth tokens | accepted | 2026-10-10 |
 | [MADR-0011](../../adr/0011-curated-github-mcp-toolset-expansion-and-per-agent-permission-scoping.md) | Curated GitHub MCP toolset expansion and per-agent permission scoping — dedicated `GITHUB_ACTIONS` and `GITHUB_SECURITY` (read-only) servers, actions access for @devops/@developer, alert access for @cyber-security, projects/discussions rejected (YAGNI) | accepted | 2026-10-10 |
 | [MADR-0012](../../adr/0012-promotion-topology-eliminate-per-release-reconcile-prs.md) | Promotion topology — retain three branches, promote with merge commits (never squash); per-release reconcile PRs retired | accepted | 2026-10-10 |
+| [MADR-0013](../../adr/0013-board-state-management-without-milestone-tooling.md) | Board state management without milestone tooling — five-state status labels as SSOT, sprint marker issues for sprint scope, milestones demoted to historical records, verify-or-escalate board writes | accepted | 2026-10-13 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
 | Decision | Where recorded | Candidate ADR |
 | :--- | :--- | :--- |
-| Board-as-SSOT: GitHub Issues + labels + milestones, no Projects v2, no file-based backlogs | Epic 3 #57 refinement note 1 | future ADR candidate |
+| Board-as-SSOT: GitHub Issues + status labels (MADR-0013 five-state taxonomy) + sprint marker issues, no Projects v2, no file-based backlogs | Epic 3 #57 refinement note 1 | **Delivered — MADR-0013 (accepted)** |
 | SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | future ADR candidate |
 | OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | **Delivered — MADR-0006 (accepted)** |
 | Remote OpenRouter MCP server for model-catalog access | #67 | future ADR candidate |

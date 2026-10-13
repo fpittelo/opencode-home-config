@@ -95,7 +95,7 @@ The HOME SCRUM Team is a single PO (@fpittelo) leading AI agents. Every collabor
 
 - **(a) Promotion approvals** `dev` → `qa` → `main` — **one approval per release covers both legs** (codifies the "please, full promotion" practice).
 - **(b) Release publication.**
-- **(c) Milestone lifecycle** (upstream-blocked).
+- **(c) Milestone lifecycle** — **retired by MADR-0013**: sprint markers are agent-managed and milestones are historical records; no PO action remains for sprint bookkeeping.
 - **(d) Ask-tier bash checkpoints** (MADR-0004).
 - **(e) Reviewer access on new private repos:** grant `@devfpittelo` read access (or make public) at creation time — the SoD reviewer otherwise gets 404 (Sprint 10 finding).
 
