@@ -45,6 +45,7 @@ opencode-home-config/
 │   ├── harness-engineering/
 │   ├── herdr/
 │   ├── home-governance/
+│   ├── kis-yagni/
 │   ├── madr-adr/
 │   ├── mermaid-diagrams/
 │   ├── opentofu-iac/

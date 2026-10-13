@@ -271,7 +271,7 @@ The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every PR and
 |:---|:---|:---|
 | **JSONC validation** | Strips `//` comments and parses `opencode.jsonc` as valid JSON | Malformed JSONC |
 | **install.sh syntax** | `bash -n install.sh` | Syntax error |
-| **Agent/skill presence** | Verifies all 7 agent files and 14 skill directories exist | Missing file |
+| **Agent/skill presence** | Verifies all 7 agent files and 15 skill directories exist | Missing file |
 | **Permission invariants** | Namespace exclusivity (`COACH_*`, `BROWSER_*`, `GITHUB_ACTIONS_*`, `GITHUB_SECURITY_*`) and mandated BROWSER launch flags | Baseline/restatement/flag drift |
 | **Regression tests** | unittest suites for the config checkers, harness runner, and per-pane profile selection | Test failure |
 | **Docs validation** | Link, MADR schema, and Mermaid syntax checks (`harness/docs-validation/`) | Broken link, bad MADR, bad Mermaid |
