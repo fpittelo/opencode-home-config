@@ -190,7 +190,7 @@ When unsure which language a project uses, check the project's ADRs or ask `@arc
 
 - **Strict Test-Driven Development (TDD):** Red-Green-Refactor discipline, 100% test coverage for critical paths, zero warnings.
 - **Security Best Practices:** Zero hardcoded secrets (`gitleaks`), clean dependency audits, strict input validation.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 
@@ -282,6 +282,7 @@ If you encounter an unexpected failure or limitation with the **GitHub MCP Serve
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on session start / feature onboarding.** | Establishes 3-branch Git lifecycle, pre-flight quality gates, TDD mandates, and Definition of Done. |
 | **`test-driven-development`** | **Mandatory before implementing any feature or bugfix.** | Enforces TDD workflow: red → green → refactor. Ensures zero warnings and pristine test suites. |
 | **`fastmcp-builder`** | **Mandatory before writing MCP server code (Python).** | Provides authoritative FastMCP patterns, Pydantic schemas, error handling, and testing practices. |

@@ -338,6 +338,8 @@ All agents deliver with **Keep It Simple (KIS)** and **You Aren't Gonna Need It 
 
 **Provenance:** PO directive of 2026-10-03 (Sprint 08, recorded in #167) — measured outcome: ~190 lines across 4 issues, zero REQUEST_CHANGES. Promoted to standing policy by #180. Extends MADR-0003's **Proportionate Quality Gates** principle (D5) from pipeline controls to agent delivery behavior.
 
+**Operational playbook:** the `kis-yagni` skill — **mandatory activation for all agents on every task** (PO directive 2026-10-13, #306). This section remains the policy SSOT; the skill operationalizes it (per-role application, pre-delivery checklist, non-scope).
+
 ---
 
 ## 10. Portfolio Standard (FPITTELO PROJECT STANDARD v1)

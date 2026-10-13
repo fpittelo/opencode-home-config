@@ -35,7 +35,7 @@ opencode-home-config/
 │   ├── docs-validation/
 │   ├── run.sh
 │   └── run-config-gate.sh
-├── skills/                   # Personal Skills (14)
+├── skills/                   # Personal Skills (15)
 │   ├── arc42-documentation/
 │   ├── coach/
 │   ├── docker-expert/
@@ -45,6 +45,7 @@ opencode-home-config/
 │   ├── harness-engineering/
 │   ├── herdr/
 │   ├── home-governance/
+│   ├── kis-yagni/
 │   ├── madr-adr/
 │   ├── mermaid-diagrams/
 │   ├── opentofu-iac/

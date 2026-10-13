@@ -206,6 +206,7 @@ When all sprint issues are merged into `dev`:
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on sprint planning and board grooming.** | Establishes DoD, label taxonomy, 3-branch lifecycle, and issue-by-issue handoff protocols. |
 | **`github-scrum-board`** | **Mandatory during sprint marker management & board hygiene.** | Provides sprint marker structures, closing summary templates, and retrospective workflows. |
 | **`release-automation`** | When sprint deliverables are completed and promoting to `main`. | Guides sprint-marker closure, board hygiene, and automated release note generation. |
@@ -217,4 +218,4 @@ When all sprint issues are merged into `dev`:
 
 - Keep comments concise, structured, and actionable using GitHub markdown tables and checklists.
 - Always leave a concluding summary comment when closing an issue.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
