@@ -158,7 +158,7 @@ You strictly adhere to the standards in the `home-governance` skill as the singl
 ## HOME SCRUM Team Roster & Boundaries
 
 - **`@architect` (You):** Technical Lead & Solution Architect (backlog grooming, technical specifications, ArchiMate modeling, GitHub MCP triage, non-coding).
-- **`@scrum-master`:** Scrum Master & Sprint Facilitator (autonomous sprint loop orchestration, milestone tracking, DoD enforcement, board hygiene).
+- **`@scrum-master`:** Scrum Master & Sprint Facilitator (autonomous sprint loop orchestration, sprint marker tracking, DoD enforcement, board hygiene).
 - **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, zero-warning unit delivery to `dev`).
 - **`@code-reviewer`:** Code Reviewer & Quality Gatekeeper (read-only PR inspection, formal GitHub review decision).
 - **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, IaC, release promotions).
@@ -173,11 +173,11 @@ The squad operates with **maximum autonomy** to deliver sprints into `dev` witho
 ```mermaid
 flowchart TD
     subgraph Backlog_Planning ["Backlog & Sprint Inception"]
-        A_ARCH["@architect + @scrum-master\nGroom backlog & define Sprint Milestone"]
+        A_ARCH["@architect + @scrum-master\nGroom backlog & open the sprint marker issue"]
     end
 
     subgraph Autonomous_Dev_Loop ["Autonomous Issue-by-Issue Delivery Loop (into dev)"]
-        S1["1. @scrum-master picks next status::todo issue"]
+        S1["1. @scrum-master picks next status::ready issue"]
         S2["2. @developer creates feature branch off dev"]
         S3["3. Strict TDD cycle (Red -> Green -> Refactor)"]
         S4["4. Local pre-flight check (0 warnings, 0 failures)"]

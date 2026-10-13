@@ -4,7 +4,7 @@
 
 ## 6.1 Scenario: Autonomous Issue-by-Issue Delivery Loop
 
-**Trigger:** a sprint milestone is active with at least one `status::todo` issue, and @fpittelo has authorized the loop.
+**Trigger:** a sprint marker issue is active with at least one `status::ready` issue, and @fpittelo has authorized the loop.
 
 ```mermaid
 sequenceDiagram
@@ -13,7 +13,7 @@ sequenceDiagram
     participant CR as @code-reviewer (@devfpittelo)
     participant GH as GitHub (board + CI)
 
-    SM->>GH: Pick next status::todo issue (DoR check, WIP limit 1)
+    SM->>GH: Pick next status::ready issue (DoR check, WIP limit 1)
     SM->>GH: label → status::in-progress + kickoff comment
     DEV->>GH: branch feature/<issue#>-<slug> off dev
     DEV->>DEV: implement (TDD where applicable) + local pre-flight (0 warnings)
@@ -35,7 +35,7 @@ sequenceDiagram
 
 1. @fpittelo grants the release approval — **one approval per release covers both legs** (`home-governance` Rule 5 — SSOT).
 2. @devops merges `dev` → `qa`, then `qa` → `main` under that approval, as **merge-commit PRs (never squash — MADR-0012)**; CI must be green on each.
-3. Release tag `vX.Y.Z` + GitHub Release; @scrum-master runs board hygiene (audit, label cleanup, milestone close, retrospective, next-sprint initialization).
+3. Release tag `vX.Y.Z` + GitHub Release; @scrum-master runs board hygiene (audit, label cleanup, sprint-marker close, retrospective, next-sprint marker creation — MADR-0013).
 
 ## 6.3 Scenario: Architecture Change → Documentation Update
 

@@ -159,7 +159,7 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 
 ### Squad Roster & Responsibilities
 - **`@architect`:** Technical Lead & Solution Architect (backlog grooming, technical specifications, ArchiMate modeling, non-coding).
-- **`@scrum-master`:** Scrum Master (sprint ceremonies, milestone tracking, DoD enforcement, board hygiene).
+- **`@scrum-master`:** Scrum Master (sprint ceremonies, sprint marker tracking, DoD enforcement, board hygiene).
 - **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, unit delivery to `dev`).
 - **`@code-reviewer`:** Code Reviewer & Quality Gatekeeper (read-only PR inspection, formal decision).
 - **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, release promotions).
@@ -169,19 +169,19 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 
 **Sprint cadence (PO decision A, 2026-10-04, #216):** sprints are demand-driven (often same-day); the nominal 2-week windows in milestone titles are **labels only**, not planning commitments — early/same-day execution is conformant, not a deviation (codified in the `github-scrum-board` skill §1).
 
-1. **Backlog Refinement & Sprint Planning:** `@architect` and `@scrum-master` groom atomic GitHub issues with acceptance criteria, assigned to a 2-week Sprint Milestone.
+1. **Backlog Refinement & Sprint Planning:** `@architect` and `@scrum-master` groom atomic GitHub issues with acceptance criteria, sub-scoped to the sprint marker issue (MADR-0013 — no milestone).
 2. **Remote Sync & Branching:** Always pull latest `dev` (`git checkout dev && git pull --ff-only origin dev`) before creating a feature branch.
 3. **TDD Cycle (Red-Green-Refactor):** `@developer` writes failing tests first, watches them fail, writes minimal passing code, and refactors.
 4. **Local Pre-Flight Quality Gate:** Must pass `ruff`, `black`, `isort`, `mypy --strict`, and `pytest -W error` locally.
 5. **Self-Remediation Circuit Breaker:** Agents are capped at **3 consecutive attempts** to fix pre-flight or CI failures before escalating with `blocker::active`.
 6. **Single-Owner PR Merge Protocol:** Assigned agent opens PR targeting `dev` (`status::review`). Once `@code-reviewer` gives formal approval on GitHub and CI is green, the PR author merges into `dev` via squash-and-merge and sets `status::done`.
-7. **Autonomous Handoff & DoD Verification:** `@scrum-master` verifies all 5 DoD criteria, posts a closing summary comment, closes the issue, and immediately triggers the next prioritized `status::todo` issue.
+7. **Autonomous Handoff & DoD Verification:** `@scrum-master` verifies all 5 DoD criteria, posts a closing summary comment, closes the issue, and immediately triggers the next prioritized `status::ready` issue.
 8. **Promotion & Release:** When all sprint deliverables are in `dev`, `@architect` & `@devops` coordinate staging to `qa` and release to `main` upon the single `@fpittelo` release approval (Rule 5 — one approval covers both legs).
 
 ### Parallel-Session Governance
 
-- **Milestone attachment & WIP=1:** Every session — including parallel or emergency sessions — MUST attach delivered work to the active sprint milestone and respect WIP=1.
-- **Emergency exception:** Emergency security remediation MAY bypass the loop, but MUST be followed by mandatory post-hoc hygiene: retroactive milestone attachment (or an explicit unmilestoned note in the retro) + full DoD evidence before promotion. (Precedent: #219/#222, retro #230.)
+- **Sprint-marker attachment & WIP=1:** Every session — including parallel or emergency sessions — MUST sub-scope delivered work to the active sprint marker issue (MADR-0013) and respect WIP=1.
+- **Emergency exception:** Emergency security remediation MAY bypass the loop, but MUST be followed by mandatory post-hoc hygiene: retroactive sprint-marker attachment (or an explicit note in the retro) + full DoD evidence before promotion. (Precedent: #219/#222, retro #230.)
 
 ### Subagent-Resilience Protocol
 
@@ -360,7 +360,7 @@ The explicit, closed list of what still requires **@fpittelo**:
 
 - **(a) Promotion approvals** `dev` → `qa` → `main` — **one approval per release covers both legs** (codifies the "please, full promotion" practice).
 - **(b) Release publication.**
-- **(c) Milestone lifecycle** (upstream-blocked).
+- **(c) Milestone lifecycle** — **retired by MADR-0013**: sprint markers are agent-managed and milestones are historical records; no PO action remains for sprint bookkeeping.
 - **(d) Ask-tier bash checkpoints** (MADR-0004).
 - **(e) Reviewer access on new private repos:** grant `@devfpittelo` read access (or make public) at creation time — the SoD reviewer otherwise gets 404 (Sprint 10 finding).
 

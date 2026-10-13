@@ -369,7 +369,7 @@ Skills are knowledge modules that activate automatically when the conversation m
 | **docker-expert** | Docker containerization, multi-stage builds, security hardening | Container/Docker questions |
 | **fastmcp-builder** | Designing FastMCP servers, Pydantic v2 schemas, transport protocols | Building MCP tools |
 | **find-skills** | Discovers and installs new skills from the ecosystem | "How do I do X?" or "Find a skill for X" |
-| **github-scrum-board** | Sprint management, issue templates, DoD enforcement | GitHub issue/PR/milestone management |
+| **github-scrum-board** | Sprint management, issue templates, DoD enforcement | GitHub issue/PR/sprint-marker management |
 | **harness-engineering** | Containerized pre-push quality gate (`bash harness/run.sh python\|rust`) | Before pushing any code; when a gate fails |
 | **herdr** | Controls Herdr, a terminal multiplexer for coding agents (panes, tabs, workspaces) | Explicit Herdr mention only; requires `HERDR_ENV=1` |
 | **home-governance** | HOME portfolio context, Swiss privacy rules, Git lifecycle, SCRUM governance | Session start, design inception |

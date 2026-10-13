@@ -35,7 +35,7 @@ Every repository maintains this standardized label schema:
 | | `status::review` | `#006B75` | PR opened targeting `dev`, pending review |
 | | `status::done` | `#0E8A16` | Merged into `dev`, DoD verified, issue closed |
 | **Agent** | `agent::architect` | `#BFD4F2` | Solution architecture, ADRs, backlog grooming |
-| | `agent::scrum-master`| `#F9D0C4` | Milestone management, DoD audit, board hygiene |
+| | `agent::scrum-master`| `#F9D0C4` | Sprint marker management, DoD audit, board hygiene |
 | | `agent::developer` | `#C2E0C6` | Python/FastMCP implementation with TDD |
 | | `agent::code-reviewer`| `#FEF2C0` | Read-only PR inspection and quality gate |
 | | `agent::devops` | `#D4C5F9` | CI/CD workflows, Docker, release promotion |

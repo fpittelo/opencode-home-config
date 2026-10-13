@@ -24,7 +24,7 @@
 
 | Decision | Where recorded | Candidate ADR |
 | :--- | :--- | :--- |
-| Board-as-SSOT: GitHub Issues + labels + milestones, no Projects v2, no file-based backlogs | Epic 3 #57 refinement note 1 | future ADR candidate |
+| Board-as-SSOT: GitHub Issues + status labels (MADR-0013 five-state taxonomy) + sprint marker issues, no Projects v2, no file-based backlogs | Epic 3 #57 refinement note 1 | **Delivered — MADR-0013 (accepted)** |
 | SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | future ADR candidate |
 | OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | **Delivered — MADR-0006 (accepted)** |
 | Remote OpenRouter MCP server for model-catalog access | #67 | future ADR candidate |
