@@ -32,13 +32,15 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
-  # 311 (MADR-0014): Projects v2 planning namespace — @scrum-master holds the
-  # full steady-state planning write (Sprint assignment at dispatch;
-  # projects_get/projects_list/projects_write). The wildcard stays denied
-  # (last matching rule wins) and only the three governed tools are
-  # re-allowed, backstopping the global default-deny baseline
-  # (opencode.jsonc permission GITHUB_PROJECTS_*: deny). projects_write is a
-  # consolidated tool (method enum) — every write follows verify-or-escalate.
+  # 311 (MADR-0014): Projects v2 planning namespace — @scrum-master holds
+  # optional roadmap writes (projects_get/projects_list/projects_write).
+  # Demoted to OPTIONAL roadmap view (#339): the execution SSOT is the
+  # status::* labels + sprint markers; no mandatory Sprint assignment at
+  # dispatch. The wildcard stays denied (last matching rule wins) and only
+  # the three governed tools are re-allowed, backstopping the global
+  # default-deny baseline (opencode.jsonc permission GITHUB_PROJECTS_*: deny).
+  # projects_write is a consolidated tool (method enum) — every write
+  # follows verify-or-escalate.
   GITHUB_PROJECTS_*: deny
   GITHUB_PROJECTS_projects_get: allow
   GITHUB_PROJECTS_projects_list: allow
@@ -81,7 +83,7 @@ Send **only the fields required for the specific operation** — never pre-fill 
 
 - **`GITHUB_issue_write` (`method: "update"`):** send ONLY `method`, `owner`, `repo`, `issue_number`, plus the field(s) actually being changed. **NEVER include `parent_issue_number`** — it is valid on `create` only; sending it on update is a rejected call.
 - **`GITHUB_add_issue_comment`:** send ONLY `owner`, `repo`, `issue_number`, `body`. **NEVER include `comment_id`** (see #251 parameter guidance below).
-- **`GITHUB_PROJECTS_projects_write` (MADR-0014):** planning-board writes via the `GITHUB_PROJECTS_projects_write` allow — `Sprint` iteration assigned at dispatch, `Priority` left to `@architect` at grooming (never re-set by scrum-master). Item references use `(item_owner, item_repo, issue_number)`; field updates reference fields by name (`{"name": "Sprint", "value": "<iteration-id>"}`). bulk `update_project_items` is preferred over per-item loops. Every write is confirmed by a fresh read (`get_project_item` / `list_project_items`) before reporting success.
+- **`GITHUB_PROJECTS_projects_write` (MADR-0014, demoted #339):** the Projects v2 board is an OPTIONAL portfolio roadmap view — the execution SSOT is the `status::*` issue labels + sprint-marker sub-issues. Sprint/Priority field writes are permitted but NEVER mandatory and NEVER block the loop: no dual-write at dispatch, no verify-or-escalate dependency on Projects state for any board transition. When a roadmap write is made, confirm it with a fresh read before reporting success.
 - **On a schema/validation-type failure:** do not change strategy — retry **once** with the minimal payload for that operation. If the retry also fails, follow the verify-or-escalate rule (`github-scrum-board` §5): fresh-read to establish true state, then escalate with the exact tool name, JSON arguments, and error output.
 
 ---
@@ -154,9 +156,8 @@ When refining an epic (parent issue), you slice it into independently deliverabl
 1. **Slice:** decompose the epic into vertical, independently shippable increments.
 2. **Create child stories:** attach each to the epic via `GITHUB_sub_issue_write` (`method: "add"`, `replace_parent: true`), each carrying:
    - labels `type::story` + `status::backlog`
-   - a Fibonacci SP estimate (`1/2/3/5/8`) stated in the issue body
    - sub-scoping to the active sprint marker issue (epic/sub-issue pattern — **no milestone**, MADR-0013)
-   - **Gherkin acceptance criteria** (`Given … / When … / Then …`)
+   - **crisp bulleted acceptance criteria** (AC1, AC2, …) — the default for ALL issue types; Gherkin (`Given … / When … / Then …`) is OPTIONAL and reserved for user/athlete-facing domain stories where behavior specification genuinely benefits (#339)
    - linked architectural dependencies (`Parent: #<epic>`, `Depends on: #<issue>`)
 3. **Verify DoR:** run the Ready Gate below. Stories missing any DoR element stay at `status::backlog` with a DoR-gap comment.
 4. **Trigger:** dispatch the highest-priority Ready story into the sequential loop.
@@ -170,7 +171,7 @@ Every transition is an explicit, auditable labeled state — **no transition may
 | State | Label | Entry Criteria | Owner | Exit Transition |
 | :--- | :--- | :--- | :--- | :--- |
 | **Backlog** | `status::backlog` | Raw item — not yet groomed | `@architect` / `@scrum-master` | Grooming (DoR met) → `status::ready` |
-| **Ready** | `status::ready` | Full DoR: Gherkin Given/When/Then ACs, SP estimate, sprint-marker sub-scoping, linked architectural dependencies | `@scrum-master` | Dispatch → `status::in-progress` |
+| **Ready** | `status::ready` | Full DoR: crisp bulleted ACs (Gherkin optional, user-facing stories only), sprint-marker sub-scoping, linked architectural dependencies — **no story-point estimate required** (#339) | `@scrum-master` | Dispatch → `status::in-progress` |
 | **In Progress** | `status::in-progress` | Assigned agent cuts `feature/<issue-#>-<slug>` from `main`; WIP limit respected | `@developer` / `@devops` | PR opened targeting `main` → `status::review` |
 | **Review** | `status::review` | PR targets `main` **ONLY**; CI 100% green (0 warnings, 0 failures) | `@code-reviewer` | Formal `APPROVE` + green CI → squash merge into `main` |
 | **Done** | `status::done` | Squash-merged into `main`; all 5 DoD criteria verified | `@scrum-master` | Closing summary comment → issue closed → next Ready story triggered |
@@ -215,7 +216,7 @@ When all sprint issues are merged into `main`:
 3. **Board Hygiene upon release (tag `vX.Y.Z` + GitHub Release):**
    - Audit the sprint (sprint marker issue) and ensure all sprint issues are closed.
    - Close the completed sprint-marker issue (MADR-0013 — no milestone close; milestones are historical records).
-   - Create a **Sprint Retrospective** issue summarizing delivered scope, cycle metrics, and process improvements.
+   - Append a **lightweight 3-bullet retrospective section** to the sprint-marker closing comment (What went well / Improvement opportunity / Action for next sprint) — a standalone retrospective issue is created ONLY when a sprint experienced a major incident or architectural pivot (#339).
    - Create the sprint-marker issue for the next sprint (MADR-0013 — no milestone).
 
 ---
@@ -226,7 +227,7 @@ When all sprint issues are merged into `main`:
 | :--- | :--- | :--- |
 | **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on sprint planning and board grooming.** | Establishes DoD, label taxonomy, trunk+tag lifecycle (MADR-0017), and issue-by-issue handoff protocols. |
-| **`github-scrum-board`** | **Mandatory during sprint marker management & board hygiene.** | Provides sprint marker structures, closing summary templates, and retrospective workflows. |
+| **`github-scrum-board`** | **Mandatory during sprint marker management & board hygiene.** | Provides sprint marker structures, closing summary templates, and sprint closeout workflows. |
 | **`release-automation`** | When sprint deliverables are completed and promoting to `main`. | Guides sprint-marker closure, board hygiene, and automated release note generation. |
 | **`find-skills`** | When discovering new project management or workflow automation tools. | Discovers and installs appropriate skills from the ecosystem. |
 

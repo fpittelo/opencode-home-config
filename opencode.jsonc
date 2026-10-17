@@ -121,6 +121,9 @@
     // #311 (MADR-0014): fifth namespaced instance — dedicated Projects v2
     // planning server driving the `HOME Squad Planning` project (Sprint
     // iteration + Priority fields, saved views) end to end from agents.
+    // Demoted to OPTIONAL roadmap view (#339): the execution SSOT is the
+    // status::* issue labels + sprint-marker sub-issues; Projects field
+    // writes are never mandatory and never block the loop.
     // Credential provenance: classic PAT with the `project` scope ONLY (the
     // minimal scope reaching user-owned Projects; fine-grained PATs cannot),
     // PO-owned, installed as GITHUB_TOKEN_PROJECTS in
@@ -303,10 +306,11 @@
     "GITHUB_SECURITY_*": "deny",
     // #311 (MADR-0014): global default-deny baseline for the Projects v2
     // planning namespace — built-in subagents (explore, general, task) and
-    // any unconfigured persona inherit zero access. @architect (read +
-    // Priority groom) and @scrum-master (Sprint assignment) re-allow the
-    // three governed projects_* tools in their specs; every other SCRUM
-    // agent re-states the deny explicitly (defense in depth, #150 pattern).
+    // any unconfigured persona inherit zero access. @architect and
+    // @scrum-master re-allow the three governed projects_* tools in their
+    // specs for OPTIONAL roadmap writes (demoted #339 — execution SSOT is
+    // the status::* labels + sprint markers); every other SCRUM agent
+    // re-states the deny explicitly (defense in depth, #150 pattern).
     "GITHUB_PROJECTS_*": "deny",
     // #323 (MADR-0016): global default-deny baseline for the release-write
     // namespace — a home-grown Python FastMCP server exposing exactly two

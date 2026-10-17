@@ -130,11 +130,12 @@ permission:
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
   # 311 (MADR-0014): Projects v2 planning namespace — @architect holds read +
-  # field groom (projects_get/projects_list/projects_write: Priority is set
-  # at grooming per the settled #308 convention; Sprint assignment belongs
-  # to @scrum-master at dispatch). The wildcard stays denied (last matching
-  # rule wins) and only the three governed tools are re-allowed, backstopping
-  # the global default-deny baseline (opencode.jsonc permission
+  # optional roadmap writes (projects_get/projects_list/projects_write).
+  # Demoted to OPTIONAL roadmap view (#339): the execution SSOT is the
+  # status::* labels + sprint markers; Projects field writes are never
+  # mandatory and never block the loop. The wildcard stays denied (last
+  # matching rule wins) and only the three governed tools are re-allowed,
+  # backstopping the global default-deny baseline (opencode.jsonc permission
   # GITHUB_PROJECTS_*: deny). projects_write is a consolidated tool (method
   # enum) — method-level restriction is impossible by pattern; every write
   # follows verify-or-escalate.
