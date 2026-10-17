@@ -1,0 +1,8 @@
+# GITHUB_RELEASES server local artifacts (never committed — MADR-0016 #323)
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*

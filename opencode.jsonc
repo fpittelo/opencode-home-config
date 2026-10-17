@@ -142,6 +142,33 @@
       },
       "enabled": true
     },
+    // #323 (MADR-0016): sixth namespaced GitHub server — the first
+    // home-grown MCP server in the portfolio: a Python FastMCP process
+    // (tools/github-releases-mcp, stdio via the project .venv interpreter)
+    // exposing exactly two release-write tools, create_release and
+    // update_release, against https://api.github.com with the account
+    // hard-pinned to @fpittelo (no owner input on any tool). Tool names
+    // surface as GITHUB_RELEASES_create_release and
+    // GITHUB_RELEASES_update_release. Credential: PO-owned PAT installed as
+    // GITHUB_TOKEN_RELEASES in ~/.config/opencode/.secrets-home.env (mode
+    // 600, never committed, gitleaks-covered) — initially the same PAT value
+    // as the shared GITHUB server, kept under a separate name as a rotation
+    // seam (MADR-0016 condition 7). Dependency hygiene: uv.lock-gated,
+    // ruff + mypy --strict + pytest + pip-audit --strict via config gate 17.
+    // Access: sole allow for @devops (release-automation §4 SoD — release
+    // publishing authority); every other agent denies the namespace.
+    "GITHUB_RELEASES": {
+      "type": "local",
+      "command": [
+        "{env:HOME}/projects/opencode-home-config/tools/github-releases-mcp/.venv/bin/python",
+        "-m",
+        "github_releases_mcp.server"
+      ],
+      "environment": {
+        "GITHUB_TOKEN_RELEASES": "{env:GITHUB_TOKEN_RELEASES}"
+      },
+      "enabled": true
+    },
     // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
     // duplicate tool schemas are not injected into every LLM turn. To switch
     // environments, set "enabled": true on the target and false on the others.
@@ -281,6 +308,13 @@
     // three governed projects_* tools in their specs; every other SCRUM
     // agent re-states the deny explicitly (defense in depth, #150 pattern).
     "GITHUB_PROJECTS_*": "deny",
+    // #323 (MADR-0016): global default-deny baseline for the release-write
+    // namespace — a home-grown Python FastMCP server exposing exactly two
+    // tools (GITHUB_RELEASES_create_release / GITHUB_RELEASES_update_release;
+    // no delete capability). @devops holds the sole allow (release-automation
+    // §4 SoD); every other SCRUM agent re-states the deny explicitly
+    // (defense in depth, #150 pattern).
+    "GITHUB_RELEASES_*": "deny",
     // #158 (MADR-0004): allow-by-default bash posture with catastrophic-deny
     // guardrails (PO directive 2026-10-03) — supersedes the #86-era ask-default +
     // short allowlist. Last matching rule wins: broad rules first, deny rules

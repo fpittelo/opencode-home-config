@@ -138,6 +138,22 @@ echo "⏳  Pre-pulling pinned coach image..."
 docker pull "$COACH_DEV_IMAGE"
 echo "✅  Coach image pre-pulled (coach:dev)."
 
+# 5a. Install the home-grown GITHUB_RELEASES FastMCP server (MADR-0016, #323):
+#     sync the locked dependency set (uv.lock) into the project venv that
+#     opencode.jsonc launches as `.venv/bin/python -m github_releases_mcp.server`.
+#     Idempotent: uv sync is a no-op when the lockfile state is already
+#     installed. Guarded like the other idempotent blocks: skipped with an
+#     informational line when uv is missing; a missing project directory
+#     means the checkout predates #323, so there is nothing to install.
+GITHUB_RELEASES_DIR="$SCRIPT_DIR/tools/github-releases-mcp"
+if [ -d "$GITHUB_RELEASES_DIR" ] && command -v uv >/dev/null 2>&1; then
+    echo "⏳  Syncing GITHUB_RELEASES server dependencies (uv sync --locked)..."
+    (cd "$GITHUB_RELEASES_DIR" && uv sync --locked)
+    echo "✅  GITHUB_RELEASES server dependencies synced (MADR-0016)."
+elif [ -d "$GITHUB_RELEASES_DIR" ]; then
+    echo "ℹ️  uv not found — skipping GITHUB_RELEASES server dependency sync (install uv to enable the GITHUB_RELEASES MCP server, MADR-0016)."
+fi
+
 # 6. Per-pane profile selection snippet (issue #244, MC1/F1).
 #    Sourced from .bashrc/.profile. Defines shell functions only: nothing
 #    here exports secrets into the pane shell — the wrapper sources the
@@ -213,12 +229,17 @@ migrate_shared_secrets() {
 migrate_shared_secrets
 
 # 7b. Fresh home secrets template (created only if the migration above did
-#     not already produce one).
+#     not already produce one). GITHUB_TOKEN_RELEASES (#323, MADR-0016) sits
+#     with the other tokens; its value is required before the GITHUB_RELEASES
+#     server becomes usable. Note: a pre-existing .secrets-home.env is never
+#     overwritten — populate the variable by hand on established hosts
+#     (same manual-step policy as GITHUB_TOKEN_PROJECTS).
 if [ ! -f "$SECRETS_FILE" ]; then
     cat << 'EOF' > "$SECRETS_FILE"
 export OPENROUTER_HOME_API_KEY=""
 export GITHUB_PERSONAL_ACCESS_TOKEN=""
 export GITHUB_TOKEN_CODE_REVIEWER=""  # token for @devfpittelo machine account — @code-reviewer identity
+export GITHUB_TOKEN_RELEASES=""       # token for the GITHUB_RELEASES MCP server (MADR-0016) — value required before the server is usable
 export INTERVALS_API_KEY=""
 export INTERVALS_ATHLETE_ID=""
 EOF
