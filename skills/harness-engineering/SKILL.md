@@ -29,7 +29,7 @@ before anything is pushed or a PR is opened.
 flowchart TD
     A["1. TDD cycle\ntest-driven-development skill"] --> B["2. Run harness\nbash harness/run.sh python/rust"]
     B --> C{"Exit code 0?"}
-    C -->|yes| D["3. Push + open PR\ntargeting dev"]
+    C -->|yes| D["3. Push + open PR\ntargeting main"]
     C -->|no| E["4. Read output, fix, retry\nmax 3 iterations"]
     E --> B
     E -->|"3rd failure"| F["5. STOP — do not push\ngit checkout -- .\ndiagnostic comment + blocker::active"]
@@ -75,7 +75,7 @@ filesystem, non-root UID 1000, all capabilities dropped, no-new-privileges,
 
 ### Step 3 — Pass → Push + Open PR
 
-Exit code `0` is the gate. Push the branch and open the PR targeting `dev`
+Exit code `0` is the gate. Push the branch and open the PR targeting `main`
 (developer agent workflow). **Never push on a red gate.**
 
 ### Step 4 — Fail → Read Output, Fix, Retry (max 3)

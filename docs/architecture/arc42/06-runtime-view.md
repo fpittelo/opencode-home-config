@@ -15,27 +15,27 @@ sequenceDiagram
 
     SM->>GH: Pick next status::ready issue (DoR check, WIP limit 1)
     SM->>GH: label → status::in-progress + kickoff comment
-    DEV->>GH: branch feature/<issue#>-<slug> off dev
+    DEV->>GH: branch feature/<issue#>-<slug> off main
     DEV->>DEV: implement (TDD where applicable) + local pre-flight (0 warnings)
-    DEV->>GH: open PR → dev (Resolves #N)
+    DEV->>GH: open PR → main (Resolves #N)
     SM->>GH: label → status::review
     CR->>GH: inspect diff, verify ACs, formal APPROVE (as @devfpittelo)
-    DEV->>GH: squash-merge PR into dev
+    DEV->>GH: squash-merge PR into main
     SM->>GH: verify 5-point DoD, close issue (status::done)
     SM->>SM: trigger next Ready story (WIP limit 1)
 ```
 
-**Postconditions:** issue closed with full traceability (squash SHA, PR, CI run, review links); `dev` advanced by exactly one squash commit.
+**Postconditions:** issue closed with full traceability (squash SHA, PR, CI run, review links); `main` advanced by exactly one squash commit.
 
 **Failure modes:** pre-flight or CI failure → developer self-remediation (max 3 attempts, then `blocker::active` escalation to @architect per the circuit breaker).
 
-## 6.2 Scenario: Promotion & Release (human-gated)
+## 6.2 Scenario: Release (human-gated, tag-from-trunk — MADR-0017)
 
-**Trigger:** all sprint deliverables merged into `dev`.
+**Trigger:** all sprint deliverables merged into `main`.
 
-1. @fpittelo grants the release approval — **one approval per release covers both legs** (`home-governance` Rule 5 — SSOT).
-2. @devops merges `dev` → `qa`, then `qa` → `main` under that approval, as **merge-commit PRs (never squash — MADR-0012)**; CI must be green on each.
-3. Release tag `vX.Y.Z` + GitHub Release; @scrum-master runs board hygiene (audit, label cleanup, sprint-marker close, retrospective, next-sprint marker creation — MADR-0013).
+1. @fpittelo grants the release approval — **one explicit approval per release before tagging** (`home-governance` Rule 5 — SSOT).
+2. @devops creates the release tag `vX.Y.Z` on `main` and publishes the GitHub Release via `GITHUB_RELEASES` (MADR-0016). No promotion PRs exist (MADR-0017 supersedes MADR-0012's promotion protocol).
+3. @scrum-master runs board hygiene (audit, label cleanup, sprint-marker close, retrospective, next-sprint marker creation — MADR-0013).
 
 ## 6.3 Scenario: Architecture Change → Documentation Update
 

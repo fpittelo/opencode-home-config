@@ -1,6 +1,6 @@
 # MADR-0012: Promotion topology — eliminate per-release reconcile PRs
 
-- **Status:** accepted
+- **Status:** superseded (superseded by MADR-0017)
 - **Date:** 2026-10-10
 - **Deciders:** @fpittelo (PO approval 2026-10-10 — Option 2), @architect (author)
 

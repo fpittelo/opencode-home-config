@@ -33,8 +33,8 @@ REPO_ROOT="${3:-$(git rev-parse --show-toplevel)}"
 # from the project venv, never from the host PATH.
 VENV_BIN="${REPO_ROOT}/.venv/bin"
 
-PYTHON_IMAGE="ghcr.io/fpittelo/harness-runner-python:dev"
-RUST_IMAGE="ghcr.io/fpittelo/harness-runner-rust:dev"
+PYTHON_IMAGE="ghcr.io/fpittelo/harness-runner-python:latest"
+RUST_IMAGE="ghcr.io/fpittelo/harness-runner-rust:latest"
 
 # Harness security flags (harness/README.md §5); network policy is per-phase.
 SECURITY_FLAGS=(

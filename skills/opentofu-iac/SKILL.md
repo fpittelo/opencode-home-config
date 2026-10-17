@@ -133,7 +133,7 @@ terraform {
 
 ## 6. Pre-Flight Quality Gates & Local Verification
 
-Before pushing code or opening a PR to `dev`, execute all local verification steps:
+Before pushing code or opening a PR to `main`, execute all local verification steps:
 
 ```bash
 # 1. Format check
@@ -160,9 +160,9 @@ name: IaC Pipeline
 
 on:
   push:
-    branches: [dev, qa, main]
+    branches: [main]
   pull_request:
-    branches: [dev, qa, main]
+    branches: [main]
 
 permissions:
   contents: read

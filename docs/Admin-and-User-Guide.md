@@ -12,7 +12,7 @@
    - [Installation](#22-installation)
    - [Secrets Management](#23-secrets-management)
    - [Directory Structure](#24-directory-structure)
-   - [3-Branch Git Lifecycle](#25-3-branch-git-lifecycle)
+   - [Trunk+Tag Git Lifecycle](#25-trunktag-git-lifecycle)
    - [MCP Servers](#26-mcp-servers)
    - [Herdr Agent Runtime](#27-herdr-agent-runtime)
    - [CI/CD Pipeline](#28-cicd-pipeline)
@@ -149,28 +149,29 @@ The recommended directory layout on VIDAR:
 - **Config repos** (`opencode-home-config/`, `opencode-work-config/`) live directly under `~/projects/` — they are tooling, not workspaces.
 - **Project directories** (`HOME/`, `WORK/`) group projects by context.
 
-### 2.5 3-Branch Git Lifecycle
+### 2.5 Trunk+Tag Git Lifecycle
 
-All work follows a strict 3-branch lifecycle:
+All work follows a **trunk+tag** lifecycle (MADR-0017): a single persistent trunk `main`, with releases cut from it as semantic tags.
 
 ```
-dev (integration) → qa (staging) → main (production)
+main (trunk) → tag vX.Y.Z + GitHub Release
 ```
 
 | Branch | Purpose | Who can merge into it? |
 |:---|:---|:---|
-| `dev` | Integration — all feature branches merge here | Any squad member via PR |
-| `qa` | Staging — promoted from `dev` as a merge-commit PR (MADR-0012) | @devops executes, under the single @fpittelo release approval (Rule 5) |
-| `main` | Production — promoted from `qa` as a merge-commit PR (MADR-0012) | @devops executes, under the same single @fpittelo release approval (Rule 5) |
+| `main` | Trunk — the single integration and production branch; every feature branch merges here | Any squad member via PR, after `@code-reviewer` approval + 100% green CI |
 
-**Feature branches** are created from `dev`:
+**Feature branches** are created from `main`:
 
 ```
 feature/<issue-#>-<slug>    # New features
 fix/<issue-#>-<slug>        # Bug fixes
+chore/<issue-#>-<slug>      # Maintenance
 ```
 
-**Rules:** see `home-governance` §5 — SSOT (three persistent branches, feature-branch isolation, zero-warning CI, promotion approval, release & board hygiene). Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5). Promotions are **merge-commit PRs, never squash** (MADR-0012).
+**Releases** are tag-from-trunk: `@devops` tags `vX.Y.Z` on `main` and publishes a GitHub Release under **one explicit @fpittelo approval per release** (Rule 5). There are no promotion branches and no promotion PRs — `dev` and `qa` are retired.
+
+**Rules:** see `home-governance` §5 — SSOT (single trunk, feature-branch isolation, zero-warning CI, squash merge into `main`, release approval, release & board hygiene). Rollback is `git revert` on trunk or redeploying the previous tag; hotfixes branch from the released tag.
 
 ### 2.6 MCP Servers
 
@@ -267,7 +268,7 @@ new release ships a newer integration.
 
 ### 2.8 CI/CD Pipeline
 
-The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every PR and every push to `dev`, `qa`, and `main`:
+The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every PR targeting `main` and every push to `main` (trunk+tag, MADR-0017):
 
 | Check | What it does | Failure condition |
 |:---|:---|:---|
@@ -379,7 +380,7 @@ Skills are knowledge modules that activate automatically when the conversation m
 | **madr-adr** | MADR decision records: template, header schema, `new-adr.sh` scaffolding, arc42 §9 indexing | Architectural spikes, technology introductions |
 | **mermaid-diagrams** | Creating diagrams (C4, sequence, ERD, flowcharts) using Mermaid syntax | "Diagram", "visualize", "model", architecture diagrams |
 | **opentofu-iac** | Infrastructure as Code (OpenTofu/Terraform) for GCP/Azure | Cloud infrastructure, IaC questions |
-| **release-automation** | Semantic versioning, promotion gates, post-release board hygiene | Release coordination, `dev` → `qa` → `main` |
+| **release-automation** | Semantic versioning, tag-from-trunk releases, post-release board hygiene | Release coordination, tag `vX.Y.Z` on `main` |
 | **test-driven-development** | TDD workflow (Red → Green → Refactor) | Writing or modifying implementation code |
 
 **How skills activate:** Skills load automatically when the conversation topic matches their description. You don't need to do anything — just ask a question and the relevant skill provides context to the agent.
@@ -443,9 +444,9 @@ flowchart TD
     C --> D["4. Ask @architect to plan the work"]
     D --> E["5. @developer creates a feature branch"]
     E --> F["6. @developer implements (TDD: Red → Green → Refactor)"]
-    F --> G["7. @developer pushes & opens PR to dev"]
+    F --> G["7. @developer pushes & opens PR to main"]
     G --> H["8. @code-reviewer inspects the PR"]
-    H --> I["9. @developer squash-merges into dev"]
+    H --> I["9. @developer squash-merges into main"]
     I --> J["10. @scrum-master verifies DoD & closes issue"]
 ```
 
@@ -466,15 +467,15 @@ flowchart TD
 
 4. **Ask @architect to plan the work:** Describe what you want to build. The architect will create or groom GitHub issues, define acceptance criteria, and assign work to the right agents.
 
-5. **@developer creates a feature branch:** The developer branches off `dev` with `feature/<issue-#>-<slug>`.
+5. **@developer creates a feature branch:** The developer branches off `main` with `feature/<issue-#>-<slug>`.
 
 6. **@developer implements using TDD:** Red (write failing test) → Green (make it pass) → Refactor (clean up).
 
-7. **@developer pushes and opens a PR to `dev`:** The PR description references the issue (`Resolves #<issue-#>`).
+7. **@developer pushes and opens a PR to `main`:** The PR description references the issue (`Resolves #<issue-#>`).
 
 8. **@code-reviewer inspects the PR:** Read-only inspection, formal APPROVE or REQUEST_CHANGES.
 
-9. **@developer squash-merges into `dev`:** CI must be 100% clean (0 warnings, 0 failures).
+9. **@developer squash-merges into `main`:** CI must be 100% clean (0 warnings, 0 failures).
 
 10. **@scrum-master verifies DoD and closes the issue:** The Definition of Done is checked and the issue is closed.
 
@@ -482,7 +483,7 @@ flowchart TD
 
 | Do | Don't |
 |:---|:---|
-| ✅ Use feature branches (`feature/<issue-#>-<slug>`) | ❌ Commit directly to `dev`, `qa`, or `main` |
+| ✅ Use feature branches (`feature/<issue-#>-<slug>`) | ❌ Commit directly to `main` |
 | ✅ Reference the issue in your PR (`Resolves #<issue-#>`) | ❌ Open a PR without an issue |
 | ✅ Run `install.sh` after cloning the repo | ❌ Manually edit symlinks (use `install.sh`) |
 | ✅ Keep `.secrets-home.env` / `.secrets-work.env` at chmod 600 | ❌ Share or print secret values |

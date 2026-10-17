@@ -44,7 +44,7 @@ docker run --rm \
   -v harness-uv-cache:/home/harness/.cache/uv \
   -v harness-pip-cache:/home/harness/.cache/pip \
   -w /workspace \
-  ghcr.io/fpittelo/harness-runner-python:dev \
+  ghcr.io/fpittelo/harness-runner-python:latest \
   bash -c "uv sync --frozen && uv run pytest -W error --cov=."
 ```
 
@@ -62,7 +62,7 @@ docker run --rm \
   -v harness-cargo-git:/home/harness/.cargo/git \
   -v harness-cargo-target:/workspace/target \
   -w /workspace \
-  ghcr.io/fpittelo/harness-runner-rust:dev \
+  ghcr.io/fpittelo/harness-runner-rust:latest \
   bash -c "cargo fmt --check && cargo clippy -- -D warnings && cargo test"
 ```
 
@@ -112,15 +112,14 @@ Named volumes are ideal for **runtime** harness execution because they persist a
 
 ## 4. CI Integration
 
-The workflow `.github/workflows/harness-image-build.yml` builds and publishes both images on every push to `dev`, `qa`, or `main` (and on PRs affecting the harness Dockerfiles).
+The workflow `.github/workflows/harness-image-build.yml` builds and publishes both images on every push to `main` (the trunk — MADR-0017) and on PRs affecting the harness Dockerfiles.
 
 ### Tagging Strategy
 
-| Branch | Image Tag | Meaning |
+| Ref | Image Tag | Meaning |
 | :--- | :--- | :--- |
-| `dev` | `:dev` | Bleeding-edge harness runner for sprint development |
-| `qa` | `:qa` | Staging-qualified harness runner |
-| `main` | `:latest` + `:qa` | Production release; `:latest` points to the last stable build |
+| `main` (trunk) | `:latest` | Trunk build; `:latest` points to the last stable build |
+| Release tag `vX.Y.Z` | `:vX.Y.Z` | Pinned harness runner for a released version |
 
 ### Notes
 
@@ -162,7 +161,7 @@ This split prevents flaky tests caused by external network availability and clos
 - **Minimal base images:** `python:3.12-slim-bookworm` and `rust:1.81.0-slim-bookworm`.
 - **Zero hardcoded secrets:** credentials are injected via GitHub Actions `secrets.GITHUB_TOKEN` and `{env:VAR}` interpolation.
 - **Read-only root filesystem:** runtime root is read-only; only `/workspace`, `/tmp`, and named cache volumes are writable.
-- **HOME 3-branch lifecycle:** image builds follow `dev` → `qa` → `main` promotions under the single explicit `@fpittelo` release approval covering both legs (`home-governance` Rule 5).
+- **HOME trunk+tag lifecycle (MADR-0017):** image builds follow the single trunk `main`; releases are semantic tags cut from `main` under the single explicit `@fpittelo` release approval (`home-governance` Rule 5).
 
 ---
 
@@ -170,12 +169,12 @@ This split prevents flaky tests caused by external network availability and clos
 
 ```bash
 # Build locally
-docker build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:dev harness/docker
-docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:dev harness/docker
+docker build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:latest harness/docker
+docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:latest harness/docker
 
 # Smoke test
-docker run --rm ghcr.io/fpittelo/harness-runner-python:dev python --version
-docker run --rm ghcr.io/fpittelo/harness-runner-rust:dev rustc --version
+docker run --rm ghcr.io/fpittelo/harness-runner-python:latest python --version
+docker run --rm ghcr.io/fpittelo/harness-runner-rust:latest rustc --version
 ```
 
 ---

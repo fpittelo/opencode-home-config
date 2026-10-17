@@ -6,11 +6,13 @@ name: Deep Validation
 #
 # Triggers:
 #   - weekly cron (Mondays 05:00 UTC): bounds worst-case detection latency
-#     on dev for defects the fast per-PR path cannot see (render-level
+#     on main for defects the fast per-PR path cannot see (render-level
 #     Mermaid failures, pre-existing secrets).
-#   - push to main (= every qa -> main promotion): nothing reaches
-#     production without full-history secret scanning, render-level
-#     Mermaid validation and image-build verification.
+#   - push to main (= every trunk merge): nothing reaches production
+#     without full-history secret scanning, render-level Mermaid
+#     validation and image-build verification.
+#   - push of a release tag v* (= every tag-from-trunk release, MADR-0017):
+#     the same full-history scan and render validation run at release time.
 #   - workflow_dispatch: manual on-demand deep checks.
 
 on:
@@ -18,6 +20,7 @@ on:
     - cron: "0 5 * * 1" # Mondays 05:00 UTC
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -42,9 +45,9 @@ jobs:
         # (src/index.js + src/gitleaks.js @ e0c47f4f): the action appends a
         # --log-opts commit range for push and pull_request events and only
         # omits it (full-history scan) for schedule/workflow_dispatch. On
-        # the qa -> main promotion trigger (push to main) it would therefore
-        # scan ONLY the promotion commits - not full history. To get
-        # identical full-history semantics on ALL three triggers, the
+        # the push-to-main and release-tag triggers it would therefore scan
+        # ONLY the pushed commits - not full history. To get identical
+        # full-history semantics on ALL triggers, the
         # version-pinned gitleaks binary is invoked directly. The image is
         # digest-pinned (tag alone is mutable - #142 A5): the digest is the
         # OCI image index (multi-arch manifest list) of zricethezav/gitleaks
