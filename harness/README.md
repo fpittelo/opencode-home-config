@@ -44,7 +44,7 @@ docker run --rm \
   -v harness-uv-cache:/home/harness/.cache/uv \
   -v harness-pip-cache:/home/harness/.cache/pip \
   -w /workspace \
-  ghcr.io/fpittelo/harness-runner-python:dev \
+  ghcr.io/fpittelo/harness-runner-python:latest \
   bash -c "uv sync --frozen && uv run pytest -W error --cov=."
 ```
 
@@ -62,7 +62,7 @@ docker run --rm \
   -v harness-cargo-git:/home/harness/.cargo/git \
   -v harness-cargo-target:/workspace/target \
   -w /workspace \
-  ghcr.io/fpittelo/harness-runner-rust:dev \
+  ghcr.io/fpittelo/harness-runner-rust:latest \
   bash -c "cargo fmt --check && cargo clippy -- -D warnings && cargo test"
 ```
 
@@ -169,12 +169,12 @@ This split prevents flaky tests caused by external network availability and clos
 
 ```bash
 # Build locally
-docker build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:dev harness/docker
-docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:dev harness/docker
+docker build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:latest harness/docker
+docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:latest harness/docker
 
 # Smoke test
-docker run --rm ghcr.io/fpittelo/harness-runner-python:dev python --version
-docker run --rm ghcr.io/fpittelo/harness-runner-rust:dev rustc --version
+docker run --rm ghcr.io/fpittelo/harness-runner-python:latest python --version
+docker run --rm ghcr.io/fpittelo/harness-runner-rust:latest rustc --version
 ```
 
 ---

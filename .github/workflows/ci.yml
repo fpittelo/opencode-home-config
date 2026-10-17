@@ -1,7 +1,8 @@
 name: CI Pipeline
 
 # MADR-0003 D1 (#134): single native per-PR quality gate - zero Docker,
-# target wall-clock < 90 s. Runs on every PR and every push to dev/qa/main.
+# target wall-clock < 90 s. Runs on every PR targeting main and every push
+# to main (trunk+tag delivery, MADR-0017).
 # Coverage (unchanged from the former 4-job pipeline): JSONC validation,
 # install.sh syntax, agent/skill presence, namespace-exclusivity permission
 # invariant (#150 COACH_*, #207 BROWSER_*), native docs validators (links,
@@ -11,11 +12,12 @@ name: CI Pipeline
 # builds) moved to the scheduled deep-validation workflow (MADR-0003 D2-D4,
 # #133) where their latency is irrelevant.
 
+# transitional: dev retires at the #332 cutover; dropped by the first post-cutover trunk PR
 on:
   push:
-    branches: [dev, qa, main]
+    branches: [dev, main]
   pull_request:
-    branches: [dev, qa, main]
+    branches: [dev, main]
 
 permissions:
   contents: read
