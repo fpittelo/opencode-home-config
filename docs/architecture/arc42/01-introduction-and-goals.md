@@ -24,6 +24,6 @@ The **HOME OpenCode profile** is the agent runtime configuration that turns Open
 
 | Stakeholder | Goal |
 | :--- | :--- |
-| @fpittelo (Product Owner) | Governed autonomy: the squad delivers sprints autonomously; he approves only promotions (`dev`→`qa`→`main`). |
+| @fpittelo (Product Owner) | Governed autonomy: the squad delivers sprints autonomously; he approves only releases (tag `vX.Y.Z` on `main` — MADR-0017). |
 | HOME SCRUM agents | Clear mandates, tool access scoped to their role, no permission leakage. |
 | @devfpittelo (machine account) | Independent review identity enabling segregation of duties. |

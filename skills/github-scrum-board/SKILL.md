@@ -16,7 +16,7 @@ This skill is the operational playbook for **`@scrum-master`** and **`@architect
 - **Sprint Membership — Sprint Marker Issue (MADR-0013):** Sprint scope is expressed by one **sprint-marker issue** per sprint (epic/sub-issue pattern, precedent #293), created and closed autonomously by `@scrum-master`. Sprint membership is the set of issues sub-scoped to the marker; no milestone is required to groom, queue, dispatch, or close work.
 - **Milestones Are Historical Records (MADR-0013):** Milestones are **never SSOT and never a dependency** — agents cannot manage them (upstream `github-mcp-server` exposes no milestone CRUD). Standing rule: **new issues never receive a milestone**; existing closed issues retain their historical milestone as history.
 - **Planning Board (MADR-0014):** the user project **`HOME Squad Planning`** (Projects v2, owner @fpittelo, project #36) is the **planning SSOT**: `Sprint` iteration field (14-day duration — assignment is a planning label, not a schedule commitment, per PO decision A 2026-10-04/#216) and `Priority` single-select (P0 highest … P3 lowest). `@architect` sets `Priority` at grooming; `@scrum-master` assigns `Sprint` at dispatch — both via `GITHUB_PROJECTS_projects_write`, every write verified by a fresh read (verify-or-escalate covers planning writes). The board's built-in `Status` field stays **unmaintained** (PO decision 2: no status mirror); `status::*` issue labels remain the execution SSOT, and sprint-marker issues remain the execution/DoD/retro record.
-- **Issue Execution:** Sequential issue-by-issue handoff into `dev` via squash merge.
+- **Issue Execution:** Sequential issue-by-issue handoff into `main` (the trunk) via squash merge (MADR-0017).
 
 ---
 
@@ -33,8 +33,8 @@ Every repository maintains this standardized label schema:
 | **Status** | `status::backlog` | `#CCCCCC` | Raw, ungroomed item — not yet specified |
 | | `status::ready` | `#0E8A16` | Groomed: ACs written, dependencies closed, pickable |
 | | `status::in-progress`| `#FBCA04` | Actively being developed on a feature branch |
-| | `status::review` | `#006B75` | PR opened targeting `dev`, pending review |
-| | `status::done` | `#0E8A16` | Merged into `dev`, DoD verified, issue closed |
+| | `status::review` | `#006B75` | PR opened targeting `main`, pending review |
+| | `status::done` | `#0E8A16` | Merged into `main`, DoD verified, issue closed |
 | **Agent** | `agent::architect` | `#BFD4F2` | Solution architecture, ADRs, backlog grooming |
 | | `agent::scrum-master`| `#F9D0C4` | Sprint marker management, DoD audit, board hygiene |
 | | `agent::developer` | `#C2E0C6` | Python/FastMCP implementation with TDD |
@@ -88,8 +88,8 @@ As a [user/athlete], I want to [action] so that [expected outcome/value].
 
 ## 4. Pull Request Protocol & Commit Hygiene
 
-- **Branch Naming:** `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>` branched from `dev`.
-- **PR Target:** Must ONLY target `dev`.
+- **Branch Naming:** `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>` branched from `main` (the trunk — MADR-0017).
+- **PR Target:** Must ONLY target `main`.
 - **PR Description:** Must reference issue: `Resolves #<issue-#>`.
 - **Squash Merge Title:** `feat(<scope>): <description> (#<pr_number>)` or `fix(<scope>): <description> (#<pr_number>)`.
 - **Commit Body:**
@@ -103,14 +103,14 @@ As a [user/athlete], I want to [action] so that [expected outcome/value].
 
 ## 5. DoD Closeout Comment Template
 
-When closing an issue upon squash merge into `dev`, **`@scrum-master`** posts this closing comment:
+When closing an issue upon squash merge into `main`, **`@scrum-master`** posts this closing comment:
 
 ```markdown
 ### 🏁 Definition of Done (DoD) Verification Summary
 
 - [x] **Acceptance Criteria:** All acceptance criteria fulfilled and verified against test suite.
-- [x] **Branching & Merge:** Feature branch squash-merged into `dev` via PR #<PR_NUMBER>.
-- [x] **CI Pipeline:** 100% clean GitHub Actions run on `dev` (0 warnings, 0 failures).
+- [x] **Branching & Merge:** Feature branch squash-merged into `main` via PR #<PR_NUMBER>.
+- [x] **CI Pipeline:** 100% clean GitHub Actions run (0 warnings, 0 failures).
 - [x] **Code Review:** Formal `APPROVE` decision documented by `@code-reviewer`.
 - [x] **Traceability:** PR and commits linked to Issue #<ISSUE_NUMBER>.
 
@@ -143,9 +143,9 @@ When a story's acceptance criteria are all fulfilled **except** a pending-PO one
 
 ---
 
-## 6. Post-Merge Board Hygiene Protocol (Triggered on Release to `main`)
+## 6. Post-Release Board Hygiene Protocol (Triggered on Release)
 
-When all sprint deliverables are promoted and merged into `main` (promotions are **merge-commit PRs, never squash** — MADR-0012):
+When all sprint deliverables are merged into `main` (the trunk) and the release is tagged under the single PO approval (MADR-0017 — no promotion PRs exist):
 
 1. **Board Audit:** Verify all issues in the active sprint (sprint-marker issue) are closed with `status::done`.
 2. **Clear Stale Labels:** Remove lingering `blocker::active` or intermediate status labels (including any reappearance of the retired `status::todo`).

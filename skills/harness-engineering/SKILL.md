@@ -75,7 +75,7 @@ filesystem, non-root UID 1000, all capabilities dropped, no-new-privileges,
 
 ### Step 3 — Pass → Push + Open PR
 
-Exit code `0` is the gate. Push the branch and open the PR targeting `dev`
+Exit code `0` is the gate. Push the branch and open the PR targeting `main`
 (developer agent workflow). **Never push on a red gate.**
 
 ### Step 4 — Fail → Read Output, Fix, Retry (max 3)

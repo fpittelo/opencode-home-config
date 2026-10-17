@@ -1,12 +1,12 @@
 ---
 name: home-governance
-description: "Mandatory HOME context, portfolio domains, Swiss privacy rules, ArchiMate 3.x metamodel, 3-branch Git lifecycle, zero-warning quality gates, and SCRUM delivery governance for all @fpittelo personal projects."
+description: "Mandatory HOME context, portfolio domains, Swiss privacy rules, ArchiMate 3.x metamodel, trunk+tag Git lifecycle, zero-warning quality gates, and SCRUM delivery governance for all @fpittelo personal projects."
 ---
 
 # HOME Governance, Architecture & Delivery Standards
 
 All Home AI agents operate within the personal software development ecosystem and agentic architecture of **Frederic Pitteloud (@fpittelo)**.
-This skill establishes the foundational persona, privacy constraints, ArchiMate 3.x metamodel, 3-branch Git delivery lifecycle, CI/CD quality gates, and SCRUM team governance.
+This skill establishes the foundational persona, privacy constraints, ArchiMate 3.x metamodel, trunk+tag Git delivery lifecycle (MADR-0017), CI/CD quality gates, and SCRUM team governance.
 
 ---
 
@@ -65,7 +65,7 @@ Architecture artifacts and solution specifications must adhere to structured Arc
 
 ### Motivation Layer
 - **Driver** (Health, Financial Independence, Agentic Automation) `Influences` → **Goal**
-- **Constraint** (3-Branch Strategy, Zero-Warning CI, Swiss Privacy nLPD) `Influences` → **Goal**
+- **Constraint** (Trunk+Tag Strategy, Zero-Warning CI, Swiss Privacy nLPD) `Influences` → **Goal**
 - **Principle** (TDD First, Infrastructure as Code, Privacy by Design) `Realizes` → **Goal**
 - **Requirement** `Realizes` → **Principle**
 
@@ -85,49 +85,38 @@ Architecture artifacts and solution specifications must adhere to structured Arc
 
 ---
 
-## 5. Mandatory 3-Branch Delivery Lifecycle & Governance
+## 5. Mandatory Trunk+Tag Delivery Lifecycle & Governance (MADR-0017)
 
 All software projects managed under `@fpittelo` strictly adhere to these 6 non-negotiable rules:
 
 ```mermaid
 gitGraph
-    commit id: "Init main"
-    branch qa
-    checkout qa
-    commit id: "Init qa"
-    branch dev
-    checkout dev
-    commit id: "Init dev"
+    commit id: "Init main (trunk)"
     branch feature/10-add-tool
     checkout feature/10-add-tool
     commit id: "test: failing tests (#10)"
     commit id: "feat: implementation (#10)"
-    checkout dev
-    merge feature/10-add-tool id: "PR #11 (Clean CI + Review)"
-    checkout qa
-    merge dev id: "Promote to QA (@fpittelo approval)"
     checkout main
-    merge qa id: "Release v1.0.0 (@fpittelo approval)"
-    commit id: "Tag v1.0.0 & Board Hygiene"
+    merge feature/10-add-tool id: "PR #11 squash (Clean CI + Review)"
+    merge feature/11-fix-tool id: "PR #12 squash (hotfix from tag)"
+    commit id: "Tag v1.0.0 (@fpittelo release approval)"
+    commit id: "GitHub Release + Board Hygiene"
 ```
 
-### Rule 1: Three Persistent Repository Branches
-Every repository continuously maintains exactly three persistent branches:
-- `dev`: Active integration branch where all sprint feature development converges.
-- `qa`: Quality assurance and pre-release staging validation branch.
-- `main`: Stable production branch representing released code.
+### Rule 1: Single Persistent Trunk
+Every repository maintains exactly **one** persistent branch: `main` — the trunk where all sprint feature development converges and from which every release is cut (MADR-0017). The former `dev` (integration) and `qa` (staging) branches are **retired**; staging validation happens on the release candidate *before* tagging (PO's own machine for config repos; deploy-the-tagged-artifact for repos with real staging environments).
 
 ### Rule 2: Feature Branch Isolation
-- Any code modification, feature addition, bugfix, or refactoring **requires a dedicated feature branch** branched from `dev` (e.g., `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>`).
-- Direct commits or pushes to `dev`, `qa`, or `main` are strictly forbidden.
+- Any code modification, feature addition, bugfix, or refactoring **requires a dedicated feature branch** branched from `main` (e.g., `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>`).
+- Direct commits or pushes to `main` are strictly forbidden.
 
-### Rule 3: Merge Destination Constraints
-- Feature branches **can ONLY be merged into `dev`** via squash merge (`merge_method: "squash"`).
-- Merges to `qa` can only originate from `dev`; merges to `main` can only originate from `qa`.
-- **Promotion merge method (MADR-0012):** promotion PRs (`dev` → `qa`, `qa` → `main`) use **merge commits (`merge_method: "merge"`) — never squash** — so `qa`/`main` trees stay byte-identical to their source and the per-release reconcile-PR class stays retired.
+### Rule 3: Merge Destination Constraint
+- Feature branches **can ONLY be merged into `main`** via squash merge (`merge_method: "squash"`).
+- **No promotion branches or promotion PRs exist** (MADR-0017 supersedes MADR-0012's promotion merge method — there is nothing to promote).
+- **Hotfix path:** branch `fix/<issue-#>-<slug>` from the released tag `vX.Y.Z`, PR into `main`, ship as a patch tag `vX.Y.Z+1`.
 
 ### Rule 4: Zero-Tolerance Clean Pipeline Gate
-- Any merge into `dev`, `qa`, or `main` requires a **100% clean GitHub Actions pipeline (0 warnings, 0 failures)**.
+- Any merge into `main` requires a **100% clean GitHub Actions pipeline (0 warnings, 0 failures)**.
 - Local pre-flight gate must pass before pushing:
 
   **Rust projects:**
@@ -143,13 +132,15 @@ Every repository continuously maintains exactly three persistent branches:
   **Mixed-language repos:** Run both gates in their respective directories.
 
 - If any warning, lint error, or test failure occurs, merge is strictly blocked.
+- **Red-trunk policy:** if `main` is ever red, the next action is **revert-first** (revert the offending squash commit) — never fix-forward on a red trunk.
 
-### Rule 5: Promotion Approval Gate
-- Promotions `dev` → `qa` → `main` require **one mandatory explicit approval from @fpittelo per release, covering both legs** (`dev` → `qa` and `qa` → `main`) — the PO decides once; `@devops` executes both merges under it (MADR-0008, PO gate inventory (a)). **This is the normative statement of the promotion approval protocol; all other documents point here.**
+### Rule 5: Release Approval Gate
+- Every release requires **one mandatory explicit approval from @fpittelo** before tagging — the PO decides once; `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release under that approval (MADR-0008, PO gate inventory (a); MADR-0016 for the release-object publish). **This is the normative statement of the release approval protocol; all other documents point here.**
 
-### Rule 6: Main Release & Board Hygiene
-- Merges into `main` require creating a bumped semantic release (Git tag `vX.Y.Z` + GitHub Release).
-- Merges into `main` automatically kickstart a comprehensive **board hygiene cycle by @scrum-master**.
+### Rule 6: Release & Board Hygiene
+- Every release is a bumped semantic version (Git tag `vX.Y.Z` on `main` + GitHub Release with notes).
+- Every release automatically kickstarts a comprehensive **board hygiene cycle by @scrum-master**.
+- **Rollback:** `git revert` the offending squash commit on `main`, or redeploy the previous tag.
 
 ---
 
@@ -160,9 +151,9 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 ### Squad Roster & Responsibilities
 - **`@architect`:** Technical Lead & Solution Architect (backlog grooming, technical specifications, ArchiMate modeling, non-coding).
 - **`@scrum-master`:** Scrum Master (sprint ceremonies, sprint marker tracking, DoD enforcement, board hygiene).
-- **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, unit delivery to `dev`).
+- **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, unit delivery to `main`).
 - **`@code-reviewer`:** Code Reviewer & Quality Gatekeeper (read-only PR inspection, formal decision).
-- **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, release promotions).
+- **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, release tagging & publishing).
 - **`@cyber-security`:** Cyber Security Specialist (threat modeling, secret scanning, Swiss nLPD compliance).
 
 ### Autonomous Sprint Execution Protocol
@@ -170,13 +161,13 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 **Sprint cadence (PO decision A, 2026-10-04, #216):** sprints are demand-driven (often same-day); the nominal 2-week windows in milestone titles are **labels only**, not planning commitments — early/same-day execution is conformant, not a deviation (codified in the `github-scrum-board` skill §1).
 
 1. **Backlog Refinement & Sprint Planning:** `@architect` and `@scrum-master` groom atomic GitHub issues with acceptance criteria, sub-scoped to the sprint marker issue (MADR-0013 — no milestone).
-2. **Remote Sync & Branching:** Always pull latest `dev` (`git checkout dev && git pull --ff-only origin dev`) before creating a feature branch.
+2. **Remote Sync & Branching:** Always pull latest `main` (`git checkout main && git pull --ff-only origin main`) before creating a feature branch.
 3. **TDD Cycle (Red-Green-Refactor):** `@developer` writes failing tests first, watches them fail, writes minimal passing code, and refactors.
 4. **Local Pre-Flight Quality Gate:** Must pass `ruff`, `black`, `isort`, `mypy --strict`, and `pytest -W error` locally.
 5. **Self-Remediation Circuit Breaker:** Agents are capped at **3 consecutive attempts** to fix pre-flight or CI failures before escalating with `blocker::active`.
-6. **Single-Owner PR Merge Protocol:** Assigned agent opens PR targeting `dev` (`status::review`). Once `@code-reviewer` gives formal approval on GitHub and CI is green, the PR author merges into `dev` via squash-and-merge and sets `status::done`.
+6. **Single-Owner PR Merge Protocol:** Assigned agent opens PR targeting `main` (`status::review`). Once `@code-reviewer` gives formal approval on GitHub and CI is green, the PR author merges into `main` via squash-and-merge and sets `status::done`.
 7. **Autonomous Handoff & DoD Verification:** `@scrum-master` verifies all 5 DoD criteria, posts a closing summary comment, closes the issue, and immediately triggers the next prioritized `status::ready` issue.
-8. **Promotion & Release:** When all sprint deliverables are in `dev`, `@architect` & `@devops` coordinate staging to `qa` and release to `main` upon the single `@fpittelo` release approval (Rule 5 — one approval covers both legs).
+8. **Release:** When all sprint deliverables are merged into `main`, `@architect` & `@devops` solicit the single `@fpittelo` release approval (Rule 5); `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release (MADR-0016) — no promotion PRs exist (MADR-0017).
 
 ### Parallel-Session Governance
 
@@ -194,7 +185,7 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 
 An issue is **Done** and may only be closed when:
 1. All acceptance criteria in the issue description are fulfilled.
-2. Code is merged into `dev` via PR using **squash-and-merge** (`merge_method: "squash"`).
+2. Code is merged into `main` via PR using **squash-and-merge** (`merge_method: "squash"`).
 3. GitHub Actions CI pipeline completed with **0 warnings and 0 failures**.
 4. `@code-reviewer` approval is explicitly documented on the PR.
 5. Deliverable and PR link are documented in the closing summary comment on the GitHub issue.
@@ -215,9 +206,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [dev, qa, main]
+    branches: [main]
   pull_request:
-    branches: [dev, qa, main]
+    branches: [main]
 
 jobs:
   lint-and-format:
@@ -267,9 +258,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [dev, qa, main]
+    branches: [main]
   pull_request:
-    branches: [dev, qa, main]
+    branches: [main]
 
 jobs:
   lint-and-format:
@@ -346,7 +337,7 @@ All agents deliver with **Keep It Simple (KIS)** and **You Aren't Gonna Need It 
 
 All @fpittelo projects follow the **FPITTELO PROJECT STANDARD v1**, maintained in [`fpittelo/project-template`](https://github.com/fpittelo/project-template) — its `STANDARD.md` is the portfolio SSOT for project governance (MADR-0007).
 
-- **Agents:** apply the standard when working in any fpittelo repository — 3-branch lifecycle, zero-warning CI, SCRUM label taxonomy, MADR workflow, KIS & YAGNI, security baseline.
+- **Agents:** apply the standard when working in any fpittelo repository — trunk+tag lifecycle (MADR-0017), zero-warning CI, SCRUM label taxonomy, MADR workflow, KIS & YAGNI, security baseline.
 - **New projects:** scaffold from the `fpittelo/project-template` GitHub template repository.
 - **Existing projects:** retrofit incrementally (pilot: `coach`).
 
@@ -360,7 +351,7 @@ All agents operate inside the **four-quadrant responsibility harness** (MADR-000
 
 The explicit, closed list of what still requires **@fpittelo**:
 
-- **(a) Promotion approvals** `dev` → `qa` → `main` — **one approval per release covers both legs** (codifies the "please, full promotion" practice).
+- **(a) Release approvals** — **one explicit approval per release** before `@devops` tags `vX.Y.Z` on `main` (MADR-0017; codifies the former "please, full promotion" practice — the approval now gates the tag, not promotion PRs).
 - **(b) Release publication.**
 - **(c) Milestone lifecycle** — **retired by MADR-0013**: sprint markers are agent-managed and milestones are historical records; no PO action remains for sprint bookkeeping.
 - **(d) Ask-tier bash checkpoints** (MADR-0004).

@@ -15,6 +15,6 @@
 | **OpenRouter** | LLM gateway providing model routing; the sole enabled provider in this profile |
 | **SoD** | Segregation of Duties — PR reviews performed by machine account `@devfpittelo` via a dedicated MCP server, never by the owner identity |
 | **Sprint marker issue** | One issue per sprint (epic/sub-issue pattern) expressing sprint membership; created/closed autonomously by @scrum-master (MADR-0013). Milestones are historical records only |
-| **Tier A / Tier B** | Branch protection levels: Tier A (light, `dev`), Tier B (strict, `qa`/`main` with mandatory @fpittelo approval) |
+| **Tier A / Tier B** | Branch protection levels: Tier A (light, feature branches), Tier B (strict, `main` trunk with mandatory `@code-reviewer` approval; releases additionally gated by the explicit @fpittelo release approval — MADR-0017) |
 | **WIP limit 1** | At most one `status::in-progress` issue per sprint (sprint marker issue) — preserves the sequential issue-by-issue loop |
 | **Zero-warning gate** | CI must complete with 0 warnings and 0 failures for any merge |

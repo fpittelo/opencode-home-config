@@ -4,7 +4,7 @@
 
 | Scenario | Metric | Target |
 | :--- | :--- | :--- |
-| Merge into `dev`/`qa`/`main` | CI pipeline result | 100% green — 0 warnings, 0 failures |
+| Merge into `main` (trunk — MADR-0017) | CI pipeline result | 100% green — 0 warnings, 0 failures |
 | Secret leakage | Gitleaks findings (full history) | 0 findings on every scan |
 | Config validity | JSONC parse of `opencode.jsonc` | Valid on every CI run |
 | Delivery autonomy | Human interventions per sprint | Only promotion approvals + live-verification witnesses |
