@@ -376,7 +376,10 @@
       // cat-specific deny; "*token*" skipped — over-matches command-agnostically).
       "*.env*": "deny",
       "*.pem*": "deny",
-      "*.key*": "deny"
+      "*.key*": "deny",
+      // #352 (MADR-0020 no-delete parity, PO decision (a) 2026-10-17): tail
+      // append — release deletion is machine-denied for every agent.
+      "gh release delete*": "deny"
     }
   },
   "compaction": {

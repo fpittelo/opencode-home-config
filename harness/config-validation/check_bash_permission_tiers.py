@@ -119,6 +119,10 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     "*.env*",
     "*.pem*",
     "*.key*",
+    # #352 (MADR-0020 no-delete parity, PO decision (a) 2026-10-17): tail
+    # append — the retired MADR-0016 server intentionally had no delete
+    # capability; release deletion is machine-denied for every agent.
+    "gh release delete*",
 )
 
 # Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
@@ -233,6 +237,13 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("python -m pip install pkg", "ask"),
     ("env", "deny"),
     ("printenv HOST", "deny"),
+    # #352 (MADR-0020 no-delete parity): release deletion is denied; create,
+    # view and edit remain allowed (publishing stays governed by the PO
+    # approval gate, home-governance Rule 5).
+    ("gh release delete v1.0.0", "deny"),
+    ("gh release create v1.0.0", "allow"),
+    ("gh release view v1.0.0", "allow"),
+    ("gh release edit", "allow"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
