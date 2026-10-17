@@ -98,7 +98,11 @@ gitGraph
     commit id: "feat: implementation (#10)"
     checkout main
     merge feature/10-add-tool id: "PR #11 squash (Clean CI + Review)"
-    merge feature/11-fix-tool id: "PR #12 squash (hotfix from tag)"
+    branch feature/11-fix-tool
+    checkout feature/11-fix-tool
+    commit id: "fix: hotfix branched from tag (#12)"
+    checkout main
+    merge feature/11-fix-tool id: "PR #12 squash (hotfix merged)"
     commit id: "Tag v1.0.0 (@fpittelo release approval)"
     commit id: "GitHub Release + Board Hygiene"
 ```
