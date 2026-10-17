@@ -153,6 +153,14 @@ See the [Migration Plan v3.1 (historical)](docs/history/opencode-config-migratio
 - **Directory hardening:** `~/.config/opencode` is mode 700; `install.sh` fails
   closed if any secrets file is group/world-readable.
 - **Gitleaks scanning:** CI pipeline scans every push and PR.
+- **`GITHUB_PROJECTS` server (MADR-0014):** fifth namespaced MCP instance
+  (`--toolsets=projects`) for the agent-managed Projects v2 planning model
+  (`HOME Squad Planning`); global default-deny `GITHUB_PROJECTS_*` baseline with
+  the governed partial allow reserved to @architect/@scrum-master.
+- **Projects credential:** classic PAT with the `project` scope ONLY
+  (`GITHUB_TOKEN_PROJECTS`), PO-owned, mode 600 in the profile-scoped secrets
+  file, never committed — the shared `GITHUB` server keeps its fine-grained
+  token (zero scope widening).
 
 ## Governance
 

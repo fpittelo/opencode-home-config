@@ -14,6 +14,10 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
+  # deny backstops the global default-deny baseline, opencode.jsonc
+  # permission GITHUB_PROJECTS_*: deny).
+  GITHUB_PROJECTS_*: deny
 # 87: unattended access; last matching rule wins, so deny rules below override allows
 # 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
 #          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,

@@ -118,6 +118,30 @@
       },
       "enabled": true
     },
+    // #311 (MADR-0014): fifth namespaced instance — dedicated Projects v2
+    // planning server driving the `HOME Squad Planning` project (Sprint
+    // iteration + Priority fields, saved views) end to end from agents.
+    // Credential provenance: classic PAT with the `project` scope ONLY (the
+    // minimal scope reaching user-owned Projects; fine-grained PATs cannot),
+    // PO-owned, installed as GITHUB_TOKEN_PROJECTS in
+    // ~/.config/opencode/.secrets-home.env (mode 600, never committed,
+    // gitleaks-covered). Separate instance because the shared GITHUB server
+    // keeps its default toolsets and its fine-grained token unchanged — zero
+    // scope widening on the main credential — and per-agent permission
+    // scoping stays possible via the namespaced GITHUB_PROJECTS_* patterns
+    // (MADR-0011 pattern).
+    "GITHUB_PROJECTS": {
+      "type": "local",
+      "command": [
+        "{env:HOME}/.local/bin/github-mcp-server",
+        "stdio",
+        "--toolsets=projects"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN_PROJECTS}"
+      },
+      "enabled": true
+    },
     // AC1 (#83) toggle pattern: only one Coach environment is active at a time so
     // duplicate tool schemas are not injected into every LLM turn. To switch
     // environments, set "enabled": true on the target and false on the others.
@@ -250,6 +274,13 @@
     // re-states the denies explicitly (defense in depth, #150 pattern).
     "GITHUB_ACTIONS_*": "deny",
     "GITHUB_SECURITY_*": "deny",
+    // #311 (MADR-0014): global default-deny baseline for the Projects v2
+    // planning namespace — built-in subagents (explore, general, task) and
+    // any unconfigured persona inherit zero access. @architect (read +
+    // Priority groom) and @scrum-master (Sprint assignment) re-allow the
+    // three governed projects_* tools in their specs; every other SCRUM
+    // agent re-states the deny explicitly (defense in depth, #150 pattern).
+    "GITHUB_PROJECTS_*": "deny",
     // #158 (MADR-0004): allow-by-default bash posture with catastrophic-deny
     // guardrails (PO directive 2026-10-03) — supersedes the #86-era ask-default +
     // short allowlist. Last matching rule wins: broad rules first, deny rules
