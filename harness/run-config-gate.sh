@@ -109,7 +109,12 @@ python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_cons
 # verified on opencode 1.19.0: an agent without a bash key receives every
 # config-level bash rule; a partial agent bash map appends AFTER the deny
 # tail) or carries only documented role-deviation patterns — re-stating
-# root tier patterns in an agent is now the defect.
+# root tier patterns in an agent is now the defect. #350: every agent spec
+# is parsed in block AND flow style (scalar/flow mapping), and the three
+# non-inheritance agents (scrum-master, code-reviewer, coach) must match
+# their pinned order-sensitive bash shapes — incl. the scrum-master
+# trailing secret-file denies that close the append-override of the root
+# *.env*/*.pem*/*.key* denies.
 python3 harness/config-validation/check_bash_permission_tiers.py . || fail "check_bash_permission_tiers.py failed"
 python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "test_check_bash_permission_tiers.py failed"
 # 17/17 YAML front-matter validity gate for agents/*.md (#338 AC1-AC2):

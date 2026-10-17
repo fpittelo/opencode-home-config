@@ -31,6 +31,17 @@ Consequences enforced below:
      last match wins, opencode semantics) and every expected verdict of
      the MADR-0015 delta must hold. A failing verdict against the real
      config is a REAL ordering defect: fix the config, not the table.
+  4. NON-INHERITANCE AGENT SHAPES (#350) — scrum-master, code-reviewer
+     and coach declare an explicit bash posture instead of inheriting;
+     each shape is pinned order-sensitively (NON_INHERITANCE_AGENTS).
+     scrum-master's three trailing secret-file denies (``*.env*`` /
+     ``*.pem*`` / ``*.key*``) must sit AFTER its gh/git allows: agent
+     rules append after the root deny tail, so without them an allow
+     like ``gh pr *`` re-enables credential-file commands (e.g.
+     ``gh pr edit 1 --body-file foo.env``). Every agent spec — including
+     the four allow-default ones — is parsed in block form AND flow
+     style (scalar ``bash: deny`` / flow mapping ``bash: {"*": deny}``);
+     a flow-style header is no longer silently blessed.
 
 Usage: check_bash_permission_tiers.py [REPO_ROOT]
 """
@@ -167,6 +178,38 @@ AGENT_DEVIATIONS: dict[str, frozenset[str]] = {
     ),
 }
 
+# Non-inheritance agent specs (#350): these three declare an explicit bash
+# posture instead of inheriting the root baseline. Their shapes are pinned
+# ORDER-SENSITIVELY because agent rules append AFTER the root deny tail
+# (last-match-wins): scrum-master's three trailing secret-file denies must
+# stay AFTER its gh/git allows, or an allow like `gh pr *` would re-enable
+# credential-file commands (e.g. `gh pr edit 1 --body-file foo.env`) — the
+# append-override closed by #350. coach's scalar `bash: deny` normalizes to
+# the single catch-all deny rule (flow/block equivalents accepted). Any edit
+# is a deliberate, reviewed change to these constants.
+NON_INHERITANCE_AGENTS: dict[str, tuple[tuple[str, str], ...]] = {
+    "scrum-master.md": (
+        ("*", "deny"),
+        ("gh issue *", "allow"),
+        ("gh pr *", "allow"),
+        ("git push origin --delete *", "allow"),
+        ("*.env*", "deny"),
+        ("*.pem*", "deny"),
+        ("*.key*", "deny"),
+    ),
+    "code-reviewer.md": (
+        ("*", "deny"),
+        ("git status *", "allow"),
+        ("git diff *", "allow"),
+        ("git rev-parse *", "allow"),
+        ("git cat-file *", "allow"),
+        ("cat *", "allow"),
+        ("grep *", "allow"),
+        ("ls *", "allow"),
+    ),
+    "coach.md": (("*", "deny"),),
+}
+
 # Last-match-wins truth table of the ratified delta (MADR-0015): every
 # verdict must hold against the real ordered rule list.
 TRUTH_TABLE: tuple[tuple[str, str], ...] = (
@@ -190,9 +233,13 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
-BASH_HEADER_RE = re.compile(r"^  bash:\s*$")
+# bash: with an empty inline = block form; a non-empty inline = flow style
+# (scalar tier or flow mapping) — both parsed since #350.
+BASH_HEADER_RE = re.compile(r"^  bash:(?P<inline>.*)$")
 NEXT_KEY_RE = re.compile(r"^  \S")
 RULE_RE = re.compile(r'^\s*"([^"]+)":\s*(allow|ask|deny)\s*$')
+FLOW_PAIR_RE = re.compile(r'"([^"]+)"\s*:\s*(allow|ask|deny)')
+SCALAR_TIERS = frozenset({"allow", "ask", "deny"})
 
 
 def strip_jsonc(text: str) -> str:
@@ -242,14 +289,38 @@ def root_rules(root: Path, failures: list[str]) -> list[tuple[str, str]] | None:
     return [(str(pattern), str(tier)) for pattern, tier in bash.items()]
 
 
+def parse_inline_bash(
+    inline: str, rel: str, failures: list[str]
+) -> list[tuple[str, str]]:
+    """Normalize a flow-style bash value (#350): scalar or flow mapping.
+
+    ``deny``/``allow``/``ask`` normalize to the equivalent single
+    catch-all rule (opencode scalar semantics); ``{"*": deny}``-style
+    flow mappings parse pair-wise. Anything else fails closed.
+    """
+    if inline in SCALAR_TIERS:
+        return [("*", inline)]
+    pairs = FLOW_PAIR_RE.findall(inline)
+    if pairs and inline.startswith("{") and inline.endswith("}"):
+        return [(pattern, tier) for pattern, tier in pairs]
+    failures.append(
+        f"{rel}: unparseable flow-style bash value {inline!r} — use the "
+        f"block form, a scalar allow/ask/deny, or a flow mapping (#350)"
+    )
+    return []
+
+
 def agent_bash(
     root: Path, agent: Path, failures: list[str]
 ) -> tuple[bool, list[tuple[str, str]]]:
-    """(present, rules) of an agent spec's YAML bash block.
+    """(present, rules) of an agent spec's bash posture.
 
     present=False means the agent omits the bash key entirely — the
-    legitimate inherited posture (#340). Parse/read problems are recorded
-    as failures; comments and blank lines inside the block are skipped.
+    legitimate inherited posture (#340). All three YAML spellings are
+    parsed (#350): the block form (``bash:`` + indented rules), the flow
+    mapping (``bash: {"*": deny}``) and the scalar (``bash: deny``).
+    Parse/read problems are recorded as failures; comments and blank
+    lines inside a block are skipped.
     """
     rel = agent.relative_to(root)
     try:
@@ -267,6 +338,9 @@ def agent_bash(
     )
     if start is None:
         return False, []  # inherited posture — no bash key at all
+    inline = BASH_HEADER_RE.match(lines[start]).group("inline").strip()
+    if inline:
+        return True, parse_inline_bash(inline, rel, failures)
     rules: list[tuple[str, str]] = []
     for line in lines[start + 1 :]:
         if NEXT_KEY_RE.match(line):
@@ -351,6 +425,39 @@ def check_agent_inheritance(root: Path, failures: list[str]) -> None:
                 )
 
 
+def check_non_inheritance_agents(root: Path, failures: list[str]) -> None:
+    """The three non-inheritance agents match their pinned bash shapes (#350).
+
+    scrum-master/code-reviewer/coach do NOT inherit the root baseline:
+    they declare an explicit bash posture. Each shape is pinned
+    order-sensitively (last-match-wins makes order semantic — the
+    scrum-master trailing secret-file denies must stay AFTER its allows,
+    else an allow re-enables a root-denied credential-file class).
+    """
+    for name, expected in NON_INHERITANCE_AGENTS.items():
+        agent = root / "agents" / name
+        rel = agent.relative_to(root)
+        if not agent.is_file():
+            failures.append(f"{rel}: missing agent spec file")
+            continue
+        present, rules = agent_bash(root, agent, failures)
+        if not present:
+            failures.append(
+                f"{rel}: bash posture missing — omitting bash inherits the "
+                f"root '*': allow head and widens the posture; declare the "
+                f"pinned shape (#350)"
+            )
+            continue
+        if rules != list(expected):
+            failures.append(
+                f"{rel}: bash posture diverges from the pinned "
+                f"order-sensitive shape — expected {list(expected)}, found "
+                f"{rules}; agent rules append AFTER the root deny tail "
+                f"(last-match-wins), so the trailing '*.env*'/'*.pem*'/"
+                f"'*.key*' denies must stay AFTER the allows (#350)"
+            )
+
+
 def resolve(rules: list[tuple[str, str]], command: str) -> str:
     """opencode last-match-wins resolution over the ordered rule list."""
     verdict = "allow"  # opencode's default posture when no rule matches
@@ -389,6 +496,7 @@ def main(argv: list[str]) -> int:
         check_root_baseline(root_rule_list, "opencode.jsonc", failures)
         check_truth_table(root_rule_list, "opencode.jsonc", failures)
     check_agent_inheritance(root, failures)
+    check_non_inheritance_agents(root, failures)
     if failures:
         print("FAIL check_bash_permission_tiers: bash tier invariant violated:")
         for failure in failures:
@@ -398,9 +506,12 @@ def main(argv: list[str]) -> int:
         f"PASS check_bash_permission_tiers: root permission.bash equals the "
         f"MADR-0015 baseline (allow head + {len(BASELINE_ASK_TIER)} ask + "
         f"{len(BASELINE_DENY_TAIL)} deny rules, order-sensitive), "
-        f"{len(TRUTH_TABLE)}-case last-match-wins truth table green, and "
+        f"{len(TRUTH_TABLE)}-case last-match-wins truth table green, "
         f"{len(AGENT_FILES)} allow-default agents inherit the root baseline "
-        f"with zero root re-statements (#340, opencode 1.19.0 verified)"
+        f"with zero root re-statements, and {len(NON_INHERITANCE_AGENTS)} "
+        f"non-inheritance agents match their pinned order-sensitive bash "
+        f"shapes incl. the scrum-master trailing secret-file denies "
+        f"(#340, #350; opencode 1.19.0 verified)"
     )
     return 0
 

@@ -34,6 +34,18 @@ mirroring the whole block, an undocumented role deviation, a
 non-allow-tier deviation, a missing agent file, and invalid JSONC. A
 positive control pins the real repository state.
 
+#350 extension: the checker must parse the bash posture of ALL agent
+specs — block form, flow mapping (``bash: {"*": deny}``) and scalar
+(``bash: deny``) — instead of only block-form headers in the four
+allow-default specs (a flow-style ``bash: {"*": allow}`` header used to
+be silently blessed). The shapes of the three non-inheritance agents
+(scrum-master, code-reviewer, coach) are pinned order-sensitively: the
+scrum-master pin requires the three trailing secret-file denies
+(``*.env*``/``*.pem*``/``*.key*``) to sit AFTER its gh/git allows, because
+agent rules append after the root deny tail (last-match-wins) — without
+them an allow like ``gh pr *`` re-enables credential-file commands such
+as ``gh pr edit 1 --body-file foo.env`` (the #350 append-override).
+
 Run:
     python3 harness/config-validation/test_check_bash_permission_tiers.py
 """
@@ -56,6 +68,23 @@ CHECKER = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(CHECKER)
 
 AGENT_NAMES = ("architect", "developer", "devops", "cyber-security")
+NON_INHERITANCE_NAMES = ("scrum-master", "code-reviewer", "coach")
+ALL_AGENT_NAMES = AGENT_NAMES + NON_INHERITANCE_NAMES
+
+# Expected bash shapes of the three non-inheritance agents (#350),
+# order-sensitive (last-match-wins: agent rules append AFTER the root
+# deny tail). The scrum-master shape carries the three trailing
+# secret-file denies AFTER the gh/git allows — the #350 append-override
+# guard. Taken from the checker's own pins (single source of truth,
+# mirroring KNOWN_GOOD_RULES below).
+SCRUM_MASTER_EXPECTED = CHECKER.NON_INHERITANCE_AGENTS["scrum-master.md"]
+CODE_REVIEWER_EXPECTED = CHECKER.NON_INHERITANCE_AGENTS["code-reviewer.md"]
+COACH_EXPECTED = CHECKER.NON_INHERITANCE_AGENTS["coach.md"]
+NON_INH_DEFAULTS: dict[str, tuple[tuple[str, str], ...]] = {
+    "scrum-master": SCRUM_MASTER_EXPECTED,
+    "code-reviewer": CODE_REVIEWER_EXPECTED,
+    "coach": COACH_EXPECTED,
+}
 
 # Known-good root bash block: built from the checker's own baseline pin
 # (single source of truth): allow head + ask tier + frozen deny tail.
@@ -68,10 +97,21 @@ def root_config_text(rules: tuple[tuple[str, str], ...]) -> str:
     return '{\n  "permission": {\n    "bash": {\n' + entries + "\n    }\n  }\n}\n"
 
 
-def agent_text(name: str, rules: tuple[tuple[str, str], ...] | None) -> str:
-    """Minimal agent spec: YAML front-matter (optional bash block) + body."""
+def agent_text(
+    name: str,
+    rules: tuple[tuple[str, str], ...] | None,
+    bash_inline: str | None = None,
+) -> str:
+    """Minimal agent spec: YAML front-matter (optional bash block) + body.
+
+    ``bash_inline`` (#350) writes a flow-style value — a scalar
+    (``bash: deny``) or a flow mapping (``bash: {"*": deny}``) — instead
+    of the block form; it takes precedence over ``rules``.
+    """
     bash_block = ""
-    if rules is not None:
+    if bash_inline is not None:
+        bash_block = f"  bash: {bash_inline}\n"
+    elif rules is not None:
         body = "\n".join(f'    "{pattern}": {tier}' for pattern, tier in rules)
         bash_block = "  bash:\n" + f"{body}\n"
     return (
@@ -92,12 +132,17 @@ def build_repo(
     agent_bash: dict[str, tuple[tuple[str, str], ...] | None] | None = None,
     config_text: str | None = None,
     drop_agents: tuple[str, ...] = (),
+    agent_bash_inline: dict[str, str] | None = None,
 ) -> Path:
     """Materialize a throwaway repo (opencode.jsonc + agents/) and return it.
 
-    Agents omit the bash block by default (the inherited posture); pass
-    agent_bash entries to re-introduce blocks or None entries to keep a
-    specific agent bash-free.
+    The four allow-default agents omit the bash block by default (the
+    inherited posture); pass agent_bash entries to re-introduce blocks or
+    None entries to keep a specific agent bash-free. The three
+    non-inheritance agents (#350) default to their pinned shapes
+    (scrum-master/code-reviewer block form, coach scalar deny);
+    agent_bash_inline entries (#350) write a flow-style value instead and
+    take precedence over agent_bash.
     """
     root = Path(tempfile.mkdtemp())
     agents_dir = root / "agents"
@@ -107,12 +152,17 @@ def build_repo(
         encoding="utf-8",
     )
     overrides = agent_bash or {}
-    for name in AGENT_NAMES:
+    inlines = agent_bash_inline or {}
+    for name in ALL_AGENT_NAMES:
         if name in drop_agents:
             continue
-        (agents_dir / f"{name}.md").write_text(
-            agent_text(name, overrides.get(name)), encoding="utf-8"
-        )
+        if name in inlines:
+            text = agent_text(name, None, bash_inline=inlines[name])
+        elif name in NON_INH_DEFAULTS:
+            text = agent_text(name, overrides.get(name, NON_INH_DEFAULTS[name]))
+        else:
+            text = agent_text(name, overrides.get(name))
+        (agents_dir / f"{name}.md").write_text(text, encoding="utf-8")
     return root
 
 
@@ -287,8 +337,129 @@ class AgentInheritanceTests(unittest.TestCase):
         self.assertIn("inherit", text.lower())
 
 
+class NonInheritanceAgentShapeTests(unittest.TestCase):
+    """The three non-inheritance agents carry their pinned bash shapes (#350).
+
+    scrum-master, code-reviewer and coach declare an explicit bash posture
+    instead of inheriting the root baseline. The shapes are pinned
+    order-sensitively (last-match-wins: agent rules append AFTER the root
+    deny tail), the scrum-master pin requires the three trailing
+    secret-file denies AFTER its gh/git allows, and flow-style bash values
+    (scalar / flow mapping) must be parsed everywhere — a flow-style
+    ``bash: {"*": allow}`` header must not be silently blessed.
+    """
+
+    def assert_gate_fails(
+        self, proc: subprocess.CompletedProcess[str], *fragments: str
+    ) -> None:
+        output = proc.stdout + proc.stderr
+        self.assertEqual(
+            proc.returncode,
+            1,
+            f"expected exit 1, got {proc.returncode}:\n{output}",
+        )
+        for fragment in fragments:
+            self.assertIn(fragment, output)
+
+    def assert_gate_passes(self, proc: subprocess.CompletedProcess[str]) -> None:
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"expected exit 0, got {proc.returncode}:\n{proc.stdout}{proc.stderr}",
+        )
+
+    def test_scrum_master_pinned_shape_passes(self) -> None:
+        self.assert_gate_passes(run_checker(build_repo()))
+
+    def test_scrum_master_missing_trailing_denies_fails(self) -> None:
+        proc = run_checker(
+            build_repo(agent_bash={"scrum-master": SCRUM_MASTER_EXPECTED[:4]})
+        )
+        self.assert_gate_fails(proc, "agents/scrum-master.md", "pinned")
+
+    def test_scrum_master_trailing_denies_before_allows_fails(self) -> None:
+        # Order-sensitive: denies placed BEFORE the allows defeat the guard
+        # (the allows would still be the last match for credential commands).
+        reordered = (
+            ("*", "deny"),
+            ("*.env*", "deny"),
+            ("*.pem*", "deny"),
+            ("*.key*", "deny"),
+            ("gh issue *", "allow"),
+            ("gh pr *", "allow"),
+            ("git push origin --delete *", "allow"),
+        )
+        proc = run_checker(build_repo(agent_bash={"scrum-master": reordered}))
+        self.assert_gate_fails(proc, "agents/scrum-master.md", "pinned")
+
+    def test_scrum_master_bash_key_absent_fails(self) -> None:
+        # Omitting bash inherits the root "*": allow head — a widening.
+        proc = run_checker(build_repo(agent_bash={"scrum-master": None}))
+        self.assert_gate_fails(proc, "agents/scrum-master.md", "bash posture missing")
+
+    def test_scrum_master_flow_style_allow_header_fails(self) -> None:
+        proc = run_checker(
+            build_repo(agent_bash_inline={"scrum-master": '{"*": allow}'})
+        )
+        self.assert_gate_fails(proc, "agents/scrum-master.md", "pinned")
+
+    def test_code_reviewer_pinned_shape_passes(self) -> None:
+        self.assert_gate_passes(run_checker(build_repo()))
+
+    def test_code_reviewer_missing_deny_head_fails(self) -> None:
+        headless = tuple(rule for rule in CODE_REVIEWER_EXPECTED if rule[0] != "*")
+        proc = run_checker(build_repo(agent_bash={"code-reviewer": headless}))
+        self.assert_gate_fails(proc, "agents/code-reviewer.md", "pinned")
+
+    def test_code_reviewer_secret_file_class_allow_fails(self) -> None:
+        widened = CODE_REVIEWER_EXPECTED + (("*.env*", "allow"),)
+        proc = run_checker(build_repo(agent_bash={"code-reviewer": widened}))
+        self.assert_gate_fails(proc, "agents/code-reviewer.md", "pinned")
+
+    def test_coach_scalar_deny_passes(self) -> None:
+        self.assert_gate_passes(run_checker(build_repo()))
+
+    def test_coach_flow_mapping_deny_equivalent_passes(self) -> None:
+        # "bash: deny scalar or equivalent": the flow mapping {"*": deny}
+        # normalizes to the same single catch-all deny rule.
+        proc = run_checker(build_repo(agent_bash_inline={"coach": '{"*": deny}'}))
+        self.assert_gate_passes(proc)
+
+    def test_coach_scalar_allow_fails(self) -> None:
+        proc = run_checker(build_repo(agent_bash_inline={"coach": "allow"}))
+        self.assert_gate_fails(proc, "agents/coach.md", "pinned")
+
+    def test_coach_flow_mapping_allow_fails(self) -> None:
+        proc = run_checker(build_repo(agent_bash_inline={"coach": '{"*": allow}'}))
+        self.assert_gate_fails(proc, "agents/coach.md", "pinned")
+
+    def test_coach_bash_key_absent_fails(self) -> None:
+        proc = run_checker(build_repo(agent_bash={"coach": None}))
+        self.assert_gate_fails(proc, "agents/coach.md", "bash posture missing")
+
+    def test_missing_non_inheritance_agent_fails(self) -> None:
+        proc = run_checker(build_repo(drop_agents=("coach",)))
+        self.assert_gate_fails(proc, "agents/coach.md")
+
+    def test_inheritance_agent_flow_style_allow_header_fails(self) -> None:
+        # The #350 coverage gap: a flow-style bash header in an allow-default
+        # agent spec used to be silently blessed (only block forms parsed).
+        proc = run_checker(build_repo(agent_bash_inline={"architect": '{"*": allow}'}))
+        self.assert_gate_fails(
+            proc, "agents/architect.md", "re-states the root baseline"
+        )
+
+    def test_inheritance_agent_scalar_deny_header_fails(self) -> None:
+        # A scalar bash value is parsed and normalized to the catch-all
+        # rule, which re-states the root baseline pattern "*".
+        proc = run_checker(build_repo(agent_bash_inline={"developer": "deny"}))
+        self.assert_gate_fails(
+            proc, "agents/developer.md", "re-states the root baseline"
+        )
+
+
 class RealRepositoryTests(unittest.TestCase):
-    """Positive control: the real repository satisfies all three invariants."""
+    """Positive control: the real repository satisfies all the invariants."""
 
     def test_real_repo_satisfies_tier_invariants(self) -> None:
         proc = run_checker(REPO_ROOT)

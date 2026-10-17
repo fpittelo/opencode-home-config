@@ -172,15 +172,21 @@ jobs:
         # each of the four allow-default agent specs either omits bash:
         # entirely (root inheritance, opencode 1.19.0 verified) or carries
         # only documented role-deviation patterns — re-stating root tier
-        # patterns in an agent is now the defect.
+        # patterns in an agent is now the defect. #350: every agent spec is
+        # parsed in block AND flow style (scalar/flow mapping), and the three
+        # non-inheritance agents (scrum-master, code-reviewer, coach) must
+        # match their pinned order-sensitive bash shapes — incl. the
+        # scrum-master trailing secret-file denies that close the
+        # append-override of the root *.env*/*.pem*/*.key* denies.
         run: python3 harness/config-validation/check_bash_permission_tiers.py .
 
       - name: Bash permission tier checker regression tests (unittest)
         # Regression suite for check_bash_permission_tiers.py (#142 A1
         # pattern): sandboxed fake-repo negative cases per invariant layer
         # (root baseline pin, clean agent inheritance/duplication defect,
-        # truth-table ordering), real-repo positive control. stdlib unittest
-        # only, < 1 s.
+        # truth-table ordering, #350 non-inheritance shape/order/flow-style
+        # violations), real-repo positive control. stdlib unittest only,
+        # < 1 s.
         run: python3 harness/config-validation/test_check_bash_permission_tiers.py
 
       - name: Enforce YAML front-matter validity for agents/*.md (#338)
