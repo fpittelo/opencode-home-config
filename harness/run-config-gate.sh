@@ -100,12 +100,16 @@ python3 tests/test_per_pane_profile_selection.py || fail "test_per_pane_profile_
 # version literal in opencode.jsonc MCP comment lines citing "pinned" or
 # "v<digit>" matches the pin (comment-drift guard).
 python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_consistency.py failed"
-# 16/17 bash ask/deny tier drift guard + truth table (#320 Slice B, MADR-0015):
-# the ask and deny tiers are identical (order-sensitive) across the root
-# opencode.jsonc block and the four allow-default agent specs, the deny tail
-# is frozen at the MADR-0015 baseline (no removal, no reorder, no insertion
-# inside the tail), and the 17-case last-match-wins truth table of the
-# ratified delta holds on the real config.
+# 16/17 bash tier root-baseline integrity + clean agent inheritance (#340,
+# superseding the MADR-0004/#320 five-file drift guard): the root
+# opencode.jsonc permission.bash block is pinned to the MADR-0015 baseline
+# (allow head + ask tier + frozen deny tail, order-sensitive), the 17-case
+# last-match-wins truth table holds on the root block, and each of the four
+# allow-default agent specs either omits bash: entirely (root inheritance,
+# verified on opencode 1.19.0: an agent without a bash key receives every
+# config-level bash rule; a partial agent bash map appends AFTER the deny
+# tail) or carries only documented role-deviation patterns — re-stating
+# root tier patterns in an agent is now the defect.
 python3 harness/config-validation/check_bash_permission_tiers.py . || fail "check_bash_permission_tiers.py failed"
 python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "test_check_bash_permission_tiers.py failed"
 # 17/17 GITHUB_RELEASES server supply-chain + quality gate (#323 Slice B,
