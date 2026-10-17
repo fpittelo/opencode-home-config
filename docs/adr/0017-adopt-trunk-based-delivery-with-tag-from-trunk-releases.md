@@ -51,7 +51,7 @@ Chosen option: **"Option 1 — Trunk + tag-from-trunk releases"**, because it de
 1. **Single persistent trunk:** `main`. The `dev` and `qa` branches are retired at cutover (follow-up issue #332).
 2. **Feature-branch isolation (unchanged):** all work on `feature|fix|chore/<issue-#>-<slug>` branches cut from `main`; direct pushes to `main` forbidden; PRs target `main` ONLY; squash merge (`merge_method: "squash"`).
 3. **Zero-tolerance gate (unchanged):** 100% clean CI (0 warnings, 0 failures) + formal `@code-reviewer` approval on every PR into `main`.
-4. **Release = tag-from-trunk:** one explicit `@fpittelo` approval per release; `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release via `GITHUB_RELEASES` (MADR-0016). No promotion PRs exist.
+4. **Release = tag-from-trunk:** one explicit `@fpittelo` approval per release; `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release via native `gh release create` (MADR-0020, superseding MADR-0016's server mechanism). No promotion PRs exist.
 5. **Staging validation:** performed on the release candidate *before* tagging — PO's own machine for config repos; deploy-the-tagged-artifact for repos with real staging environments (deploy promotion replaces branch promotion).
 6. **Rollback:** `git revert` the squash commit on trunk, or redeploy the previous tag. **Hotfix:** branch from the released tag → PR to `main` → patch tag.
 

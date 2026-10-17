@@ -34,7 +34,7 @@ sequenceDiagram
 **Trigger:** all sprint deliverables merged into `main`.
 
 1. @fpittelo grants the release approval — **one explicit approval per release before tagging** (`home-governance` Rule 5 — SSOT).
-2. @devops creates the release tag `vX.Y.Z` on `main` and publishes the GitHub Release via `GITHUB_RELEASES` (MADR-0016). No promotion PRs exist (MADR-0017 supersedes MADR-0012's promotion protocol).
+2. @devops creates the release tag `vX.Y.Z` on `main` and publishes the GitHub Release via native `gh release create` (MADR-0020). No promotion PRs exist (MADR-0017 supersedes MADR-0012's promotion protocol).
 3. @scrum-master runs board hygiene (audit, label cleanup, sprint-marker close with 3-bullet retro section, next-sprint marker creation — MADR-0013; standalone retrospective issue only on major incident, #339).
 
 ## 6.3 Scenario: Architecture Change → Documentation Update
