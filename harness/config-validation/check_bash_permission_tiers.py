@@ -123,6 +123,10 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # append — the retired MADR-0016 server intentionally had no delete
     # capability; release deletion is machine-denied for every agent.
     "gh release delete*",
+    # #362 (Sprint 23 spike, upstream anomalyco/opencode#56545): path-scoped
+    # deny closing the recursive-read bypass against the secrets directory
+    # (grep -r X ~/.config/opencode/ returned .secrets-home.env contents).
+    "*/.config/opencode*",
 )
 
 # Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
@@ -213,6 +217,9 @@ NON_INHERITANCE_AGENTS: dict[str, tuple[tuple[str, str], ...]] = {
         ("*.env*", "deny"),
         ("*.pem*", "deny"),
         ("*.key*", "deny"),
+        # 362: path-scoped deny closing the recursive-read bypass against
+        # the secrets directory (upstream anomalyco/opencode#56545).
+        ("*/.config/opencode*", "deny"),
     ),
     "coach.md": (("*", "deny"),),
 }
@@ -244,6 +251,11 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("gh release create v1.0.0", "allow"),
     ("gh release view v1.0.0", "allow"),
     ("gh release edit", "allow"),
+    # 362: path-scoped deny closes the recursive-read bypass against the
+    # secrets directory (upstream anomalyco/opencode#56545).
+    ("grep -r X ~/.config/opencode/", "deny"),
+    ("grep -r X ~/.config/opencode/sub/", "deny"),
+    ("grep -r X secrets/", "allow"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)

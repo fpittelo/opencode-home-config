@@ -44,6 +44,10 @@ permission:
     "*.env*": deny
     "*.pem*": deny
     "*.key*": deny
+    # 362: path-scoped deny closing the recursive-read bypass against the
+    # secrets directory (upstream anomalyco/opencode#56545) — the `grep *`/
+    # `ls *` allows above would otherwise override the root deny tail.
+    "*/.config/opencode*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
   # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
