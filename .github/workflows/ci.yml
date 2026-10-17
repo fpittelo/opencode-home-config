@@ -193,6 +193,23 @@ jobs:
           command -v uv >/dev/null 2>&1 || pip install "uv==0.11.17"
           bash harness/config-validation/check_releases_server.sh
 
+      - name: Enforce YAML front-matter validity for agents/*.md (#338)
+        # AC1-AC2 of #338: every agent file's front-matter block must have
+        # proper --- delimiters, parse as YAML (duplicate keys rejected), and
+        # carry the mandatory schema (description, mode, openrouter/<slug>
+        # model, temperature in [0, 2], non-empty permission mapping). Closes
+        # the #325 defect class (corrupted front-matter passed the
+        # indentation-insensitive namespace-exclusivity checker).
+        run: python3 harness/config-validation/check_agent_frontmatter.py .
+
+      - name: Agent front-matter checker regression tests (unittest)
+        # Regression suite for check_agent_frontmatter.py (#338 AC3, #142 A1
+        # pattern): negative cases per defect class (bad delimiter, invalid
+        # YAML, duplicate key, missing field, wrong type, out-of-range
+        # temperature, non-openrouter model shape), real-repo positive
+        # control over all 7 agent files. stdlib unittest only, < 1 s.
+        run: python3 harness/config-validation/test_check_agent_frontmatter.py
+
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
           python3 harness/docs-validation/check_links.py .

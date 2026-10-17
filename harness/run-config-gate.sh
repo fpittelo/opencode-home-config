@@ -116,4 +116,12 @@ python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "t
 # (pip-audit --strict). NOT a repoint of harness/run.sh (root pyproject
 # intentionally absent, MADR-0016).
 bash harness/config-validation/check_releases_server.sh || fail "check_releases_server.sh failed"
-echo "PASS run-config-gate: all 17 gates green (${REPO_ROOT})"
+# 18/18 YAML front-matter validity gate for agents/*.md (#338 AC1-AC2):
+# every agent file's front-matter block must have proper --- delimiters,
+# parse as YAML (duplicate keys rejected), and carry the mandatory schema
+# (description, mode, openrouter/<slug> model, temperature in [0, 2],
+# non-empty permission mapping). Closes the #325 defect class (corrupted
+# front-matter passed the indentation-insensitive namespace checker).
+python3 harness/config-validation/check_agent_frontmatter.py . || fail "check_agent_frontmatter.py failed"
+python3 harness/config-validation/test_check_agent_frontmatter.py || fail "test_check_agent_frontmatter.py failed"
+echo "PASS run-config-gate: all 18 gates green (${REPO_ROOT})"
