@@ -32,13 +32,15 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
-  # 311 (MADR-0014): Projects v2 planning namespace — @scrum-master holds the
-  # full steady-state planning write (Sprint assignment at dispatch;
-  # projects_get/projects_list/projects_write). The wildcard stays denied
-  # (last matching rule wins) and only the three governed tools are
-  # re-allowed, backstopping the global default-deny baseline
-  # (opencode.jsonc permission GITHUB_PROJECTS_*: deny). projects_write is a
-  # consolidated tool (method enum) — every write follows verify-or-escalate.
+  # 311 (MADR-0014): Projects v2 planning namespace — @scrum-master holds
+  # optional roadmap writes (projects_get/projects_list/projects_write).
+  # Demoted to OPTIONAL roadmap view (#339): the execution SSOT is the
+  # status::* labels + sprint markers; no mandatory Sprint assignment at
+  # dispatch. The wildcard stays denied (last matching rule wins) and only
+  # the three governed tools are re-allowed, backstopping the global
+  # default-deny baseline (opencode.jsonc permission GITHUB_PROJECTS_*: deny).
+  # projects_write is a consolidated tool (method enum) — every write
+  # follows verify-or-escalate.
   GITHUB_PROJECTS_*: deny
   GITHUB_PROJECTS_projects_get: allow
   GITHUB_PROJECTS_projects_list: allow

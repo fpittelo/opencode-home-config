@@ -29,7 +29,7 @@
 
 | Decision | Where recorded | Candidate ADR |
 | :--- | :--- | :--- |
-| Board-as-SSOT: GitHub Issues + status labels (MADR-0013 five-state taxonomy) + sprint marker issues; Projects v2 planning board added as planning SSOT per MADR-0014 (no status mirror) | Epic 3 #57 refinement note 1 | **Delivered — MADR-0013 + MADR-0014 (accepted)** |
+| Board-as-SSOT: GitHub Issues + status labels (MADR-0013 five-state taxonomy) + sprint marker issues; Projects v2 added per MADR-0014, demoted to optional roadmap view by MADR-0018 (labels + markers are the sole execution SSOT) | Epic 3 #57 refinement note 1 | **Delivered — MADR-0013 + MADR-0014 + MADR-0018 (accepted)** |
 | SoD: code-reviewer re-platformed to machine account `@devfpittelo` via dedicated MCP server | #52/#53, enforced #68 | future ADR candidate |
 | OpenRouter as sole enabled provider; per-agent model assignments | #42, #62 | **Delivered — MADR-0006 (accepted)** |
 | Remote OpenRouter MCP server for model-catalog access | #67 | future ADR candidate |
