@@ -79,7 +79,7 @@ chmod +x install.sh && ./install.sh
 | 1 | Symlink the config file | `~/.config/opencode/opencode.jsonc` → repo's `opencode.jsonc` |
 | 1 | Symlink the agents directory | `~/.config/opencode/agents` → repo's `agents/` |
 | 1 | Symlink the skills directory | `~/.config/opencode/skills` → repo's `skills/` |
-| 2 | Install pinned `github-mcp-server` v1.12.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
+| 2 | Install pinned `github-mcp-server` v2.0.2 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
 | 3 | Install pinned `herdr` v0.9.3 binary — downloaded from the official Herdr release, SHA256-verified against the pinned release-asset digest (skipped if the pinned version is already installed) | `~/.local/bin/herdr` |
 | 4 | Verify the pinned `@playwright/mcp` v0.0.83 registry tarball (SHA512 via `openssl`; read-only pin-time audit — nothing is installed, `npx` resolves the pinned version at session start) | npm registry (verification only) |
 | 5 | Pre-pull the pinned Coach image | `ghcr.io/fpittelo/coach:dev` (Docker) |
@@ -174,14 +174,15 @@ fix/<issue-#>-<slug>        # Bug fixes
 
 ### 2.6 MCP Servers
 
-OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 8 local servers (plus the remote `openrouter` endpoint): the four GitHub servers run as a pinned native binary (the two core servers plus the MADR-0011 extended-toolset servers), the three Coach servers as Docker containers, and the Playwright browser server via pinned `npx`:
+OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 9 local servers (plus the remote `openrouter` endpoint): the five GitHub servers run as a pinned native binary (the two core servers plus the MADR-0011 extended-toolset servers and the MADR-0014 planning server), the three Coach servers as Docker containers, and the Playwright browser server via pinned `npx`:
 
 | MCP Server | Runtime | Environment Variables | Purpose |
 |:---|:---|:---|:---|
-| `GITHUB` | Native binary `github-mcp-server` v1.12.2 at `~/.local/bin/` (installed + SHA256-verified by `install.sh`) | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
+| `GITHUB` | Native binary `github-mcp-server` v2.0.2 at `~/.local/bin/` (installed + SHA256-verified by `install.sh`) | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
 | `GITHUB_CODE_REVIEWER` | Same binary, restricted to `--toolsets=context,repos,pull_requests` | `GITHUB_TOKEN_CODE_REVIEWER` | PR review as @devfpittelo (separation of duties) |
 | `GITHUB_ACTIONS` | Same binary, restricted to `--toolsets=actions` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub Actions runs/jobs triage (MADR-0011) — full namespace for @devops; read-only triage tools for @developer (`actions_run_trigger` denied) |
 | `GITHUB_SECURITY` | Same binary, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | `GITHUB_PERSONAL_ACCESS_TOKEN` | Code scanning, secret scanning, and Dependabot alert triage — @cyber-security only (MADR-0011) |
+| `GITHUB_PROJECTS` | Same binary, restricted to `--toolsets=projects` | `GITHUB_TOKEN_PROJECTS` | GitHub Projects v2 planning board (`HOME Squad Planning` — MADR-0014): `Sprint` iteration + `Priority` groom/dispatch by @scrum-master/@architect only; classic PAT scoped to `project` only |
 | `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
 | `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
 | `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
@@ -195,6 +196,7 @@ OpenCode connects to external services via **MCP (Model Context Protocol) server
 - **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
 - **Availability (#207, MADR-0009):** Browser MCP tools (`BROWSER_*`) are exposed exclusively to the `@developer` and `@devops` agents — `opencode.jsonc` sets a global default-deny baseline (`BROWSER_*`: deny) and every other SCRUM agent denies them explicitly (see §3.4).
 - **Availability (#252, MADR-0011):** `GITHUB_ACTIONS_*` is @devops-only for writes (`actions_run_trigger`) with read-only triage tools granted to @developer; `GITHUB_SECURITY_*` is @cyber-security-only (read-only enforced at process startup). The global default-deny baseline (`GITHUB_ACTIONS_*` / `GITHUB_SECURITY_*`: deny) covers every other persona, and every SCRUM agent re-states the denies explicitly (see §3.4).
+- **Availability (MADR-0014):** `GITHUB_PROJECTS_*` is @scrum-master (steady-state write: Sprint at dispatch) and @architect (read + Priority grooming) only; every other SCRUM agent and built-in subagent denies the namespace. Every planning-field write follows verify-or-escalate (fresh read after write). The invariant is machine-enforced by the config gate (§3.4).
 
 ### 2.7 Herdr Agent Runtime
 
@@ -386,14 +388,15 @@ Skills are knowledge modules that activate automatically when the conversation m
 
 ### 3.4 MCP Tools
 
-MCP tools connect OpenCode to external services. The HOME profile defines 9 MCP servers (8 local + 1 remote): the four GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), the Playwright browser server via pinned `npx`, and `openrouter` as a remote endpoint:
+MCP tools connect OpenCode to external services. The HOME profile defines 10 MCP servers (9 local + 1 remote): the five GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), the Playwright browser server via pinned `npx`, and `openrouter` as a remote endpoint:
 
 | MCP Tool | Runtime | What it provides |
 |:---|:---|:---|
-| **GITHUB** | Native binary `github-mcp-server` v1.12.2 | Create/read GitHub issues, PRs, releases, branches, commits as @fpittelo. The agent you're talking to right now uses this. |
+| **GITHUB** | Native binary `github-mcp-server` v2.0.2 | Create/read GitHub issues, PRs, releases, branches, commits as @fpittelo. The agent you're talking to right now uses this. |
 | **GITHUB_CODE_REVIEWER** | Same native binary, restricted toolsets | Formal PR reviews as @devfpittelo (@code-reviewer only — separation of duties) |
-| **GITHUB_ACTIONS** | Native binary `github-mcp-server` v1.12.2, restricted to `--toolsets=actions` | GitHub Actions runs/jobs (MADR-0011): @devops holds the full namespace; @developer has read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with `actions_run_trigger` denied |
-| **GITHUB_SECURITY** | Native binary `github-mcp-server` v1.12.2, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | Code scanning, secret scanning, and Dependabot alerts for @cyber-security triage (MADR-0011; read-only enforced at process startup) |
+| **GITHUB_ACTIONS** | Native binary `github-mcp-server` v2.0.2, restricted to `--toolsets=actions` | GitHub Actions runs/jobs (MADR-0011): @devops holds the full namespace; @developer has read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with `actions_run_trigger` denied |
+| **GITHUB_SECURITY** | Native binary `github-mcp-server` v2.0.2, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | Code scanning, secret scanning, and Dependabot alerts for @cyber-security triage (MADR-0011; read-only enforced at process startup) |
+| **GITHUB_PROJECTS** | Native binary `github-mcp-server` v2.0.2, restricted to `--toolsets=projects` | GitHub Projects v2 planning board (`HOME Squad Planning`, MADR-0014): `Sprint` set by @scrum-master at dispatch, `Priority` groomed by @architect; @scrum-master and @architect only, all other agents denied |
 | **COACH_DEV** | Docker container `ghcr.io/fpittelo/coach:dev` | Training plan management (dev branch of coach service — experimental) |
 | **COACH_QA** | Docker container `ghcr.io/fpittelo/coach:qa` | Training plan management (qa staging — disabled; enabled by toggling, see §2.6) |
 | **COACH_MAIN** | Docker container `ghcr.io/fpittelo/coach:latest` | Training plan management (production coach service — disabled; enabled by toggling, see §2.6) |
