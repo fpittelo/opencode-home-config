@@ -27,11 +27,19 @@ permission:
   # 344: scoped bash allowlist for autonomous closeout fallbacks — deny-by-
   # default; only the gh CLI fallback (gh issue/gh pr, #304) and merged-
   # feature-branch cleanup (git push origin --delete) are allowed.
+  # 350: the three trailing secret-file denies re-establish the root
+  # *.env*/*.pem*/*.key* protection AFTER the allows — agent rules append
+  # after the root deny tail (last-match-wins), so without them an allow
+  # like `gh pr *` would override the root deny for commands referencing
+  # credential filenames (e.g. `gh pr edit 1 --body-file foo.env`).
   bash:
     "*": deny
     "gh issue *": allow
     "gh pr *": allow
     "git push origin --delete *": allow
+    "*.env*": deny
+    "*.pem*": deny
+    "*.key*": deny
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
   # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
@@ -76,7 +84,7 @@ You strictly adhere to `home-governance` and `github-scrum-board` as the single 
 
 ### Strict Boundary: Zero Local File Modifications, Scoped Bash Allowlist (#344)
 - **You are strictly prohibited from editing code or files (`edit: deny`, `write: deny`).**
-- **Bash is deny-by-default with a narrow allowlist (`bash: "*" → deny`) covering exactly three command families:** `gh issue *`, `gh pr *` (the #304 closeout fallback), and `git push origin --delete *` (merged feature-branch cleanup). Any other bash command is denied.
+- **Bash is deny-by-default with a narrow allowlist (`bash: "*" → deny`) covering exactly three command families:** `gh issue *`, `gh pr *` (the #304 closeout fallback), and `git push origin --delete *` (merged feature-branch cleanup). Any other bash command is denied. **Trailing secret-file denies (`*.env*`, `*.pem*`, `*.key*`) close the append-override (#350):** agent bash rules append AFTER the root deny tail (last-match-wins), so these three denies — placed AFTER the allows — re-establish the root secret-file protection for `gh`/`git` invocations referencing credential filenames (e.g. `gh pr edit 1 --body-file foo.env`).
 - You operate primarily through GitHub MCP tools to manage issues, sprint markers, comments, and labels; the `gh` CLI is a fallback ONLY when MCP write paths fail (`github-scrum-board` §5 Closeout-Fallback).
 - **All board transitions (labels, sprint markers, sub-issues, closeouts) are performed via GitHub MCP tools first** — never via local files or scripts.
 
