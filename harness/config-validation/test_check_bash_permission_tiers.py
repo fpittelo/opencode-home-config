@@ -27,7 +27,8 @@ can override the root deny tail. The checker therefore enforces:
 
 The known-good fixture is built from the checker's own baseline constants
 (single source of truth). Negative cases cover: root ask-tier removal,
-root ask-tier reorder, deny-tail removal, deny-tail reorder, an allow rule
+root ask-tier reorder, deny-tail removal, the #352 release-delete deny
+removal, deny-tail reorder, an allow rule
 interleaved inside the deny tail, a truth-table ordering defect the pin
 alone cannot distinguish, an agent re-stating one root pattern, an agent
 mirroring the whole block, an undocumented role deviation, a
@@ -239,6 +240,14 @@ class RootBaselineIntegrityTests(unittest.TestCase):
 
     def test_deny_tail_removal_fails(self) -> None:
         drifted = remove_rule(KNOWN_GOOD_RULES, "*.key*")
+        proc = run_checker(build_repo(root_rules=drifted))
+        self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
+
+    def test_root_release_delete_deny_removal_fails(self) -> None:
+        # #352 negative case: a root config WITHOUT the `gh release delete*`
+        # deny (the pre-#352 deny tail) fails the baseline pin — the MADR-0020
+        # no-delete guardrail is machine-enforced, not optional.
+        drifted = remove_rule(KNOWN_GOOD_RULES, "gh release delete*")
         proc = run_checker(build_repo(root_rules=drifted))
         self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
 

@@ -35,7 +35,7 @@ Use this skill to automate project releases, semantic version tagging, release g
 4. **Automated Release Bumping:**
    - Under the PO approval, a bumped semantic version tag (`vMAJOR.MINOR.PATCH`) is created on `main` and pushed to origin.
    - A formal GitHub Release is created, generating notes from closed issues and merged PRs.
-   - **Agent-executable (MADR-0020):** the release object is published by `@devops` with the native `gh` CLI (`gh release create` with the curated notes body; `gh release edit` for follow-up edits) under the single PO approval. The token is injected inline as `GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}"` (the #304 shell-assignment pattern — **not** the `env` command). Standing manual PO action is **not** required in the normal flow (fallback: the PO can still publish in the UI). **Guardrail:** agents MUST NOT use `gh release delete` — the retired MADR-0016 server intentionally had no delete capability; `gh release delete` is recorded as a bash deny candidate if the PO wants machine-enforced parity.
+   - **Agent-executable (MADR-0020):** the release object is published by `@devops` with the native `gh` CLI (`gh release create` with the curated notes body; `gh release edit` for follow-up edits) under the single PO approval. The token is injected inline as `GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}"` (the #304 shell-assignment pattern — **not** the `env` command). Standing manual PO action is **not** required in the normal flow (fallback: the PO can still publish in the UI). **Guardrail:** agents MUST NOT use `gh release delete` — the retired MADR-0016 server intentionally had no delete capability; `gh release delete` is machine-denied for agents (root bash deny `gh release delete*`, #352).
 5. **Post-Release Board Hygiene:**
    - Every release automatically triggers a board hygiene cycle executed by `@scrum-master`.
    - `@scrum-master` audits and closes the completed sprint-marker issue (MADR-0013), cleans the board, moves completed items to `status::done`, and appends the lightweight 3-bullet retro section to the marker closeout (standalone retrospective issue only on major incident — #339).
@@ -72,7 +72,7 @@ GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}" gh release create v1.1.0 \
 
 The token is injected inline as `GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}"` (the #304 shell-assignment pattern — **not** the `env` command). Follow-up edits use `gh release edit v1.1.0 ...` under the same injection.
 
-**Guardrail:** agents MUST NOT use `gh release delete` — the retired MADR-0016 server intentionally had no delete capability; `gh release delete` is recorded as a bash deny candidate if the PO wants machine-enforced parity.
+**Guardrail:** agents MUST NOT use `gh release delete` — the retired MADR-0016 server intentionally had no delete capability; `gh release delete` is machine-denied for agents (root bash deny `gh release delete*`, #352) — release disposal remains the PO's own action (UI or PO-run `gh`).
 
 ### Fallback: GitHub REST API
 The REST endpoints (`POST /repos/{owner}/{repo}/releases`, `PATCH /repos/{owner}/{repo}/releases/{id}`) remain the underlying API, but the `curl` transport is **bash-denied** in this posture — use the `gh` CLI above. A plain-REST fallback is only available through a non-`curl` client if one is ever needed.
