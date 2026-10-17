@@ -31,7 +31,9 @@ VERSION_LITERAL_RE = re.compile(r"\d+\.\d+\.\d+")
 
 def pinned_version() -> str:
     """Return the single GITHUB_MCP_VERSION pin declared by install.sh."""
-    matches = PIN_ASSIGNMENT_RE.findall(INSTALL_SH.read_text(encoding="utf-8"))
+    matches: list[str] = PIN_ASSIGNMENT_RE.findall(
+        INSTALL_SH.read_text(encoding="utf-8")
+    )
     if len(matches) != 1:
         raise AssertionError(
             "install.sh must declare exactly one GITHUB_MCP_VERSION "
@@ -57,9 +59,7 @@ def mcp_block_comment_lines() -> list[str]:
         None,
     )
     assert end is not None, 'the "mcp" block closing brace must be present'
-    return [
-        lines[i] for i in range(start, end) if lines[i].lstrip().startswith("//")
-    ]
+    return [lines[i] for i in range(start, end) if lines[i].lstrip().startswith("//")]
 
 
 class TestInstallPin(unittest.TestCase):
@@ -78,7 +78,9 @@ class TestInstalledBinary(unittest.TestCase):
     def test_installed_binary_reports_pinned_version(self) -> None:
         """The installed binary, when present, must report the pinned version."""
         pin = pinned_version()
-        binary = Path(os.environ.get("HOME", "")) / ".local" / "bin" / "github-mcp-server"
+        binary = (
+            Path(os.environ.get("HOME", "")) / ".local" / "bin" / "github-mcp-server"
+        )
         if not binary.is_file():
             self.skipTest(
                 "github-mcp-server not installed at $HOME/.local/bin "

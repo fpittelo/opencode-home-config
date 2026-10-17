@@ -100,4 +100,12 @@ python3 tests/test_per_pane_profile_selection.py || fail "test_per_pane_profile_
 # version literal in opencode.jsonc MCP comment lines citing "pinned" or
 # "v<digit>" matches the pin (comment-drift guard).
 python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_consistency.py failed"
-echo "PASS run-config-gate: all 15 gates green (${REPO_ROOT})"
+# 16/16 bash ask/deny tier drift guard + truth table (#320 Slice B, MADR-0015):
+# the ask and deny tiers are identical (order-sensitive) across the root
+# opencode.jsonc block and the four allow-default agent specs, the deny tail
+# is frozen at the MADR-0015 baseline (no removal, no reorder, no insertion
+# inside the tail), and the 17-case last-match-wins truth table of the
+# ratified delta holds on the real config.
+python3 harness/config-validation/check_bash_permission_tiers.py . || fail "check_bash_permission_tiers.py failed"
+python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "test_check_bash_permission_tiers.py failed"
+echo "PASS run-config-gate: all 16 gates green (${REPO_ROOT})"
