@@ -117,16 +117,16 @@ Operative parts:
    operative part 2 is unchanged by this decision); the project is a planning
    visibility layer on top, not a replacement — sprint membership, WIP=1, and board
    hygiene semantics stay exactly as recorded in MADR-0013.
-3. **Server wiring:** fifth namespaced instance `GITHUB_PROJECTS` in
+4. **Server wiring:** fifth namespaced instance `GITHUB_PROJECTS` in
    `opencode.jsonc` — same pinned binary, `--toolsets=projects`, authenticated via
    `{env:GITHUB_TOKEN_PROJECTS}`. The shared `GITHUB` server keeps its default
    toolsets and its fine-grained token, unchanged.
-4. **Credential:** classic PAT, `project` scope only (the minimal scope that reaches
+5. **Credential:** classic PAT, `project` scope only (the minimal scope that reaches
    user-owned Projects API surface), file mode 600, PO-owned, referenced only by
    `{env:}` interpolation — never committed, never logged. Residual risk: classic
    tokens validate broad by design — mitigated here by single-scope selection (no
    `repo`, no organization scopes); recorded for STRIDE review.
-5. **Permission baseline:** global default-deny `GITHUB_PROJECTS_*` in the root
+6. **Permission baseline:** global default-deny `GITHUB_PROJECTS_*` in the root
    permission object; allowlist — `@scrum-master` holds write (steady-state planning
    field mutations), `@architect` holds read AND write (`projects_get`,
    `projects_list`, `projects_write`) because the PO's settled grooming convention
@@ -139,7 +139,7 @@ Operative parts:
    roles and mitigated by the write-ownership convention above plus the
    verify-or-escalate audit trail. The namespace-exclusivity checker and its
    regression suite are extended accordingly.
-6. **Routing note (label CRUD):** if the delivery loop trips on missing label
+7. **Routing note (label CRUD):** if the delivery loop trips on missing label
    toolset exposure (`list_label`/`label_write`), the fix rides this same permission
    design via the `GITHUB` server — never a parallel exception.
 
