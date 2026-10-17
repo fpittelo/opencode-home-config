@@ -12,12 +12,11 @@ name: CI Pipeline
 # builds) moved to the scheduled deep-validation workflow (MADR-0003 D2-D4,
 # #133) where their latency is irrelevant.
 
-# transitional: dev retires at the #332 cutover; dropped by the first post-cutover trunk PR
 on:
   push:
-    branches: [dev, main]
+    branches: [main]
   pull_request:
-    branches: [dev, main]
+    branches: [main]
 
 permissions:
   contents: read

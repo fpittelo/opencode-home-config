@@ -73,8 +73,8 @@ jobs:
 
       - name: Pull published docs-validator image (build fallback)
         run: |
-          docker pull ghcr.io/fpittelo/harness-docs-validator:dev || \
-            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:dev harness/docker
+          docker pull ghcr.io/fpittelo/harness-docs-validator:latest || \
+            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:latest harness/docker
 
       - name: Run docs validation in hardened container
         # Identical invocation to the former per-PR docs-quality-gate job
@@ -95,7 +95,7 @@ jobs:
             --tmpfs /tmp:noexec,nosuid,size=1g \
             -v "$PWD:/workspace:ro" \
             -w /workspace \
-            ghcr.io/fpittelo/harness-docs-validator:dev \
+            ghcr.io/fpittelo/harness-docs-validator:latest \
             bash harness/docs-validation/run_docs_validation.sh /workspace
 
   image-build-verification:
