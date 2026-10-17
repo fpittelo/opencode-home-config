@@ -227,8 +227,8 @@ For all new FastMCP servers, tools, and cloud integrations during backlog refine
 Apply these labels to security-related issues and PR reviews:
 
 - `severity::critical` (CVSS 9.0–10.0): Immediate blocker. Alert `@architect`, `@developer`, `@devops`.
-- `severity::high` (CVSS 7.0–8.9): Must fix before merging to `dev`.
-- `severity::medium` (CVSS 4.0–6.9): Must fix before promoting `dev` to `qa`.
+- `severity::high` (CVSS 7.0–8.9): Must fix before merging to `main`.
+- `severity::medium` (CVSS 4.0–6.9): Must fix before the next release (tag `vX.Y.Z`).
 - `severity::low` (CVSS 0.1–3.9): Track in backlog and remediate in regular sprint cadence.
 
 Labels: `security::threat-model` | `security::code-review` | `security::cve` | `security::hardening`

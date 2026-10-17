@@ -84,7 +84,7 @@ An ADR is **conforming** if and only if ALL of the following hold. A file missin
 2. **Author:** fill every section — no placeholder text may remain at commit time.
 3. **Propose → Accept:** new ADRs start as `proposed`. On `@fpittelo` (Product Owner) acceptance, set `Status: accepted`.
 4. **Index:** upon acceptance, add the entry to the **arc42 §9 index** (`docs/architecture/arc42/09-architecture-decisions.md`) — number, title, status, link. The `docs/adr/README.md` inventory mirrors this index.
-5. **Commit:** ADR files and index updates travel on the feature branch of the work that prompted the decision (or their own `docs/<n>-adr-...` branch) — standard 3-branch lifecycle applies.
+5. **Commit:** ADR files and index updates travel on the feature branch of the work that prompted the decision (or their own `docs/<n>-adr-...` branch) — standard trunk+tag lifecycle applies (MADR-0017).
 
 ---
 

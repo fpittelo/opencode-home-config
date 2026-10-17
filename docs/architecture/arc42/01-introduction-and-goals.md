@@ -15,7 +15,7 @@ The **HOME OpenCode profile** is the agent runtime configuration that turns Open
 
 | Goal | Why it matters |
 | :--- | :--- |
-| Deterministic agent collaboration | Autonomous sprint delivery must not require human intervention except at promotion gates. |
+| Deterministic agent collaboration | Autonomous sprint delivery must not require human intervention except at release gates. |
 | Auditability | Every delivery decision is traceable on the GitHub board (issue → PR → review → merge). |
 | Security & privacy | Swiss nLPD compliance; zero secrets in repo; segregation of duties for reviews. |
 | Zero-warning quality | Every merge passes CI with 0 warnings / 0 failures. |
@@ -24,6 +24,6 @@ The **HOME OpenCode profile** is the agent runtime configuration that turns Open
 
 | Stakeholder | Goal |
 | :--- | :--- |
-| @fpittelo (Product Owner) | Governed autonomy: the squad delivers sprints autonomously; he approves only promotions (`dev`→`qa`→`main`). |
+| @fpittelo (Product Owner) | Governed autonomy: the squad delivers sprints autonomously; he approves only releases (tag `vX.Y.Z` on `main` — MADR-0017). |
 | HOME SCRUM agents | Clear mandates, tool access scoped to their role, no permission leakage. |
 | @devfpittelo (machine account) | Independent review identity enabling segregation of duties. |

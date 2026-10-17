@@ -68,7 +68,7 @@ This skill establishes the **arc42** architecture documentation method for the H
 | Constraint | Source | Impact |
 | :--- | :--- | :--- |
 ```
-(HOME constraints to always include: 3-branch lifecycle, zero-warning CI, Swiss nLPD, board-as-SSOT, technology stack standards.)
+(HOME constraints to always include: trunk+tag lifecycle (MADR-0017), zero-warning CI, Swiss nLPD, board-as-SSOT, technology stack standards.)
 
 ### §3 System Context & Scope (rich template)
 ```markdown

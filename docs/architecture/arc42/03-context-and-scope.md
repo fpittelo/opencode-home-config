@@ -8,7 +8,7 @@
 C4Context
     title System Context — HOME OpenCode Profile
 
-    Person(fpittelo, "@fpittelo", "Product Owner — approves promotions, owns the ecosystem")
+    Person(fpittelo, "@fpittelo", "Product Owner — approves releases, owns the ecosystem")
     Person_Ext(devfpittelo, "@devfpittelo", "Machine account — independent review identity")
 
     System(homeprofile, "HOME OpenCode Profile", "Agent runtime configuration: 7 agents, skills, MCP integrations, CI gates")
@@ -18,7 +18,7 @@ C4Context
     System_Ext(intervals, "Intervals.icu", "Athletic training analytics (Coach MCP)")
     System_Ext(gitlab, "EPFL GitLab", "Professional work-config counterpart (isolation boundary)")
 
-    Rel(fpittelo, homeprofile, "Owns, configures, approves promotions")
+    Rel(fpittelo, homeprofile, "Owns, configures, approves releases")
     Rel(homeprofile, github, "SCRUM board, branches, PRs, CI via", "GitHub MCP / REST")
     Rel(homeprofile, openrouter, "LLM inference & model catalog via", "HTTPS / MCP")
     Rel(homeprofile, intervals, "Training data via", "Coach MCP (HTTPS)")

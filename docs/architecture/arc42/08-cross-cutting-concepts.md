@@ -4,7 +4,7 @@
 
 ## 8.1 Security & Privacy (Swiss nLPD)
 
-- **Zero secrets in repo:** all credentials referenced as `{env:VAR}` in `opencode.jsonc`; actual values live in the profile-scoped files `~/.config/opencode/.secrets-home.env` / `.secrets-work.env` (mode 600 under a 700 directory), sourced inside the `oc-home` / `oc-work` wrapper subshells (MADR-0010) — the shared `.secrets.env` + systemd user-environment import is retired and verified secret-free post-install. Gitleaks scans the **PR diff on every pull request** (pinned action) and the **full git history weekly and at every qa → main promotion** (MADR-0003; the per-PR full-history scan introduced by #68 is retired).
+- **Zero secrets in repo:** all credentials referenced as `{env:VAR}` in `opencode.jsonc`; actual values live in the profile-scoped files `~/.config/opencode/.secrets-home.env` / `.secrets-work.env` (mode 600 under a 700 directory), sourced inside the `oc-home` / `oc-work` wrapper subshells (MADR-0010) — the shared `.secrets.env` + systemd user-environment import is retired and verified secret-free post-install. Gitleaks scans the **PR diff on every pull request** (pinned action) and the **full git history weekly and at every release** (MADR-0003; the per-PR full-history scan introduced by #68 is retired).
 - **Segregation of duties:** PR reviews are performed by machine account `@devfpittelo` through the dedicated `GITHUB_CODE_REVIEWER` MCP server; cross-impersonation is denied in both directions via permission patterns (#68).
 - **Least privilege:** per-agent permission rules scope MCP tool access (e.g. Coach tools for `@coach` only; reviewer tools denied to all other agents).
 - **MCP namespace scoping (#150, #207/MADR-0009, MADR-0011, MADR-0014, MADR-0016):** scoped MCP namespaces follow the defense-in-depth pattern — a global default-deny baseline in `opencode.jsonc` plus explicit per-agent restatement in `agents/*.md`, with `allow` reserved to designated whitelist agents. `COACH_*` (Intervals.icu training data) is @coach-only; `BROWSER_*` (Playwright browser automation — ephemeral profile, loopback-origin allowlist, pinned `@playwright/mcp`) is @developer/@devops-only; `GITHUB_ACTIONS_*` (CI/CD operations) is @devops-only for writes (`actions_run_trigger`) with read-only triage granted to @developer; `GITHUB_SECURITY_*` (code scanning, secret scanning, dependabot alerts — read-only) is @cyber-security-only under raw secret redaction rules; `GITHUB_PROJECTS_*` (Projects v2 planning — `HOME Squad Planning`, MADR-0014) is wildcard-denied with the governed partial allow (`projects_get`, `projects_list`, `projects_write`) reserved to @architect (read + Priority groom) and @scrum-master (Sprint assignment); `GITHUB_RELEASES_*` (release-object writes — home-grown Python FastMCP server, exactly two tools, MADR-0016) is @devops-only per the release-automation §4 SoD. Built-in subagents (`explore`, `general`, `task`) inherit zero access to all scoped namespaces. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`).
@@ -19,10 +19,10 @@
 - **Proportionate Quality Gates principle:** the cost of a control must be proportional to the risk it mitigates. Every-PR gates run natively in < 90 s; deep checks run weekly and pre-release. Adding a gate requires stating what it catches that existing gates don't (YAGNI); each governance review must identify at least one candidate for removal (KIS).
 - **KIS & YAGNI delivery principle (#180):** agents deliver the minimal diff satisfying the issue's acceptance criteria, with brief evidence; scope beyond the ACs is a review finding. Extends MADR-0003's Proportionate Quality Gates principle from pipeline controls to agent delivery behavior (Sprint 08 provenance: #167).
 - **Per-PR gate (single native job, zero Docker):** JSONC validation of `opencode.jsonc`; `bash -n install.sh`; agent-file presence; skill-presence inventory; **diff-scoped pinned gitleaks**; native link and MADR validators; native Mermaid **syntax** check; label-conditional architecture gate (label read **live** from the API, #287 — the event snapshot is frozen at PR creation).
-- **Deep validation (weekly cron + every qa → main promotion):** full-history gitleaks; Chromium render-level Mermaid validation (docs-validator image); image-build verification.
+- **Deep validation (weekly cron + every release):** full-history gitleaks; Chromium render-level Mermaid validation (docs-validator image); image-build verification.
 - **Harness runner images:** built on `workflow_dispatch` / `harness-v*` tags only — not on every `harness/docker/**` change.
 - **Local pre-flight:** native fast path first (host toolchain); the container path remains the reproducibility fallback with the original security flags and two-phase deps/gate design.
-- Every merge into `dev`/`qa`/`main` still requires a 100% green pipeline: **0 warnings, 0 failures** — unchanged.
+- Every merge into `main` (the trunk — MADR-0017) still requires a 100% green pipeline: **0 warnings, 0 failures** — unchanged.
 
 ## 8.3 Configuration & Secrets
 
@@ -38,7 +38,7 @@
 ## 8.5 Naming & Structure Conventions
 
 - Agents: `agents/<role>.md`; skills: `skills/<name>/SKILL.md`; arc42: `docs/architecture/arc42/NN-<slug>.md`; ADRs: `docs/adr/` (wired by #60).
-- Branches: `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>` off `dev`.
+- Branches: `feature/<issue-#>-<slug>`, `fix/<issue-#>-<slug>`, `chore/<issue-#>-<slug>` off `main` (the trunk — MADR-0017).
 - Labels: `type::*`, `status::*`, `agent::*`, `blocker::*`, `severity::*` (see `github-scrum-board` skill).
 
 ## 8.6 Parallel Agent Sessions — Git Worktree Pattern
@@ -48,9 +48,9 @@
 When multiple agent sessions are dispatched in parallel, each session MUST own an isolated working tree via `git worktree` — never share a checkout:
 
 ```bash
-# 1. Create (from a synced dev): one worktree per session, named for its issue
+# 1. Create (from a synced main): one worktree per session, named for its issue
 git fetch origin && git worktree add -b feature/<issue-#>-<slug> \
-  ../wt-<issue-#>-<slug> origin/dev
+  ../wt-<issue-#>-<slug> origin/main
 
 # 2. Work: cd ../wt-<issue-#>-<slug> — branch, commit, push, PR as normal
 #    (the worktree is a full working tree; harness/validators run inside it)
@@ -61,7 +61,7 @@ git worktree remove ../wt-<issue-#>-<slug> && git branch -D feature/<issue-#>-<s
 ```
 
 Rules:
-- **One worktree per concurrently active issue**; the shared clone stays parked on `dev` for read-only inspection.
+- **One worktree per concurrently active issue**; the shared clone stays parked on `main` for read-only inspection.
 - Worktrees live outside the repo (`../wt-…`) so they never pollute the main checkout or `gitleaks`/docs scans.
 - Cleanup is part of the DoD closeout: no `wt-*` directories may outlive their merged issue.
 - Single-agent sequential work (the default loop, WIP limit 1) does not need a worktree — plain feature branches in the main checkout remain the norm.
@@ -93,7 +93,7 @@ The HOME SCRUM Team is a single PO (@fpittelo) leading AI agents. Every collabor
 
 ### PO Gate Inventory (closed list — everything else is autonomous)
 
-- **(a) Promotion approvals** `dev` → `qa` → `main` — **one approval per release covers both legs** (codifies the "please, full promotion" practice).
+- **(a) Release approvals** — **one explicit approval per release before tagging `vX.Y.Z` on `main`** (MADR-0017; codifies the former "please, full promotion" practice — the approval now gates the tag, not promotion PRs).
 - **(b) Release publication.**
 - **(c) Milestone lifecycle** — **retired by MADR-0013**: sprint markers are agent-managed and milestones are historical records; no PO action remains for sprint bookkeeping.
 - **(d) Ask-tier bash checkpoints** (MADR-0004).

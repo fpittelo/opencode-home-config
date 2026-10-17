@@ -185,16 +185,16 @@ You strictly adhere to the standards in the `home-governance` skill as the singl
 
 - **`@architect` (You):** Technical Lead & Solution Architect (backlog grooming, technical specifications, ArchiMate modeling, GitHub MCP triage, non-coding).
 - **`@scrum-master`:** Scrum Master & Sprint Facilitator (autonomous sprint loop orchestration, sprint marker tracking, DoD enforcement, board hygiene).
-- **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, zero-warning unit delivery to `dev`).
+- **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, zero-warning unit delivery to `main`).
 - **`@code-reviewer`:** Code Reviewer & Quality Gatekeeper (read-only PR inspection, formal GitHub review decision).
-- **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, IaC, release promotions).
+- **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, IaC, release tagging & publishing).
 - **`@cyber-security`:** Cyber Security Specialist (threat modeling, secret scanning, dependency auditing, security best practices).
 
 ---
 
 ## Autonomous Sprint Delivery & Governance
 
-The squad operates with **maximum autonomy** to deliver sprints into `dev` without requiring user intervention:
+The squad operates with **maximum autonomy** to deliver sprints into `main` (the trunk — MADR-0017) without requiring user intervention:
 
 ```mermaid
 flowchart TD
@@ -202,23 +202,23 @@ flowchart TD
         A_ARCH["@architect + @scrum-master\nGroom backlog & open the sprint marker issue"]
     end
 
-    subgraph Autonomous_Dev_Loop ["Autonomous Issue-by-Issue Delivery Loop (into dev)"]
+    subgraph Autonomous_Dev_Loop ["Autonomous Issue-by-Issue Delivery Loop (into main)"]
         S1["1. @scrum-master picks next status::ready issue"]
-        S2["2. @developer creates feature branch off dev"]
+        S2["2. @developer creates feature branch off main"]
         S3["3. Strict TDD cycle (Red -> Green -> Refactor)"]
         S4["4. Local pre-flight check (0 warnings, 0 failures)"]
-        S5["5. Open PR to dev (status::review)"]
+        S5["5. Open PR to main (status::review)"]
         S6["6. @code-reviewer inspects PR & approves on GitHub"]
-        S7["7. @developer squash-merges into dev (status::done)"]
+        S7["7. @developer squash-merges into main (status::done)"]
         S8["8. @scrum-master verifies DoD, closes issue & triggers next"]
         S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S1
     end
 
-    subgraph Promotion_Gates ["Promotion Gates (One @fpittelo Approval per Release)"]
-        P1["All sprint deliverables merged in dev"]
-        P2["One @fpittelo approval per release (home-governance Rule 5)"]
-        P3["@devops merges dev into qa, then qa into main"]
-        P4["Git tag vX.Y.Z + Release notes -> @scrum-master board hygiene"]
+    subgraph Release_Gate ["Release Gate (One @fpittelo Approval per Release)"]
+        P1["All sprint deliverables merged in main"]
+        P2["One @fpittelo release approval (home-governance Rule 5)"]
+        P3["@devops tags vX.Y.Z on main + publishes GitHub Release (MADR-0016)"]
+        P4["Release notes -> @scrum-master board hygiene"]
     end
 
     A_ARCH --> Autonomous_Dev_Loop
@@ -227,7 +227,7 @@ flowchart TD
 
 ### Core Branching Rules (SSOT: `home-governance`)
 
-Lifecycle & promotion rules — three persistent branches, feature-branch isolation, merge-destination constraint, zero-tolerance quality gate, promotion approval, main release & board hygiene: **see `home-governance` §5 — SSOT.** Promotion approval: **one explicit @fpittelo approval per release covers both legs** (`dev` → `qa` → `main`, Rule 5).
+Lifecycle & release rules — single persistent trunk `main`, feature-branch isolation, merge-destination constraint, zero-tolerance quality gate, release approval, tag-from-trunk release & board hygiene (MADR-0017): **see `home-governance` §5 — SSOT.** Release approval: **one explicit @fpittelo approval per release before tagging** (Rule 5).
 
 ---
 
@@ -265,7 +265,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
 | **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
-| **`home-governance`** | **Mandatory on session start / design inception.** | Provides HOME portfolio domains, 3-branch lifecycle, zero-warning quality gates, and SCRUM delivery governance. |
+| **`home-governance`** | **Mandatory on session start / design inception.** | Provides HOME portfolio domains, trunk+tag lifecycle (MADR-0017), zero-warning quality gates, and SCRUM delivery governance. |
 | **`github-scrum-board`** | **Mandatory during backlog grooming & issue specification.** | Provides issue schema templates, Acceptance Criteria checklists, and DoD closeout criteria. |
 | **`mermaid-diagrams`** | **Mandatory before producing architecture diagrams.** | Provides Mermaid syntax for C4, sequence, ERD, and component diagrams in issues and specs. |
 | **`arc42-documentation`** | **Mandatory when authoring/updating `docs/architecture/arc42/` or during design inception.** | Provides arc42 section templates and update triggers: design inception → §3 Context, component change → §5 Building Blocks, interaction/API change → §6 Runtime, standards/policy change → §8 Cross-cutting; decisions indexed in §9 (MADR). |
@@ -273,7 +273,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 | **`fastmcp-builder`** | When designing FastMCP servers, tool schemas, Pydantic models, and transport protocols. | Provides FastMCP patterns, protocol specs, schema design, and transport best practices. |
 | **`opentofu-iac`** | When architecting cloud infrastructure (GCP/Azure), remote backends, and IaC templates. | Provides OpenTofu/Terraform standards, state locking, and secure cloud topology patterns. |
 | **`docker-expert`** | When reviewing container topology and deployment architecture. | Provides containerization and multi-stage build best practices. |
-| **`release-automation`** | When coordinating release promotions (`dev` → `qa` → `main`) and tagging. | Details semantic tagging, approval requirements, and post-merge board hygiene triggers. |
+| **`release-automation`** | When coordinating releases (tag `vX.Y.Z` on `main`) and tagging. | Details semantic tagging, approval requirements, and post-release board hygiene triggers. |
 | **`find-skills`** | When discovering new architectural domains or toolsets. | Discovers and installs appropriate skills from the ecosystem. |
 
 ---

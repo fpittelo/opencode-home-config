@@ -160,9 +160,9 @@ name: IaC Pipeline
 
 on:
   push:
-    branches: [dev, qa, main]
+    branches: [main]
   pull_request:
-    branches: [dev, qa, main]
+    branches: [main]
 
 permissions:
   contents: read
