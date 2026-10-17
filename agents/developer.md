@@ -42,13 +42,20 @@ permission:
     "*": allow
     # --- ask-tier (single checkpoint; catastrophic variants hard-denied below) ---
     "rm *": ask
+    "rm /tmp/opencode/*": allow
+    "rm -r /tmp/opencode/*": allow
     "pip install*": ask
+    "pip3 install*": ask
+    "uv pip install*": ask
+    "*-m pip install*": ask
     "npm install -g*": ask
     "npm i -g*": ask
     "kill*": ask
     "pkill*": ask
     "killall*": ask
     "chmod *": ask
+    "chmod 600 *": allow
+    "chmod 700 *": allow
     "chown *": ask
     "systemctl*": ask
     # --- hard deny tail (catastrophic / irreversible / bypass) ---
@@ -133,6 +140,12 @@ permission:
   # assigned by @scrum-master) — this explicit deny backstops the global
   # default-deny baseline (opencode.jsonc permission GITHUB_PROJECTS_*: deny).
   GITHUB_PROJECTS_*: deny
+  # 323 (MADR-0016): release-write namespace (home-grown GITHUB_RELEASES
+  # FastMCP server, exactly two tools: create_release, update_release) is
+  # @devops-only (release-automation §4 SoD) — this explicit deny backstops
+  # the global default-deny baseline (opencode.jsonc permission
+  # GITHUB_RELEASES_*: deny).
+  GITHUB_RELEASES_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

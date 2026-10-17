@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "${REPO_ROOT}"
 fail() { echo "FAIL run-config-gate: $1" >&2; exit 1; }
-# 1/15 opencode.jsonc parses as JSON after comment stripping (port of ci.yml's
+# 1/17 opencode.jsonc parses as JSON after comment stripping (port of ci.yml's
 # validator; quoted heredoc = no bash expansion, so plain Python quoting).
 python3 - <<'PY' || fail "opencode.jsonc is not valid JSONC"
 import json, sys
@@ -40,64 +40,80 @@ with open("opencode.jsonc", encoding="utf-8") as handle:
         sys.exit(f"Invalid JSONC: {exc}")
 print("PASS run-config-gate: opencode.jsonc is valid JSONC")
 PY
-# 2/15 install.sh must be valid bash.
+# 2/17 install.sh must be valid bash.
 bash -n install.sh || fail "install.sh fails 'bash -n'"
 echo "PASS run-config-gate: install.sh syntax OK"
-# 3/15 all 7 agent files exist.
+# 3/17 all 7 agent files exist.
 for agent in architect coach code-reviewer cyber-security developer devops scrum-master; do
   test -f "agents/${agent}.md" || fail "missing agents/${agent}.md"
 done
 echo "PASS run-config-gate: agent files present"
-# 4/15 all 15 skill directories exist (exact list from ci.yml).
+# 4/17 all 15 skill directories exist (exact list from ci.yml).
 for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering herdr home-governance kis-yagni madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
   test -f "skills/${skill}/SKILL.md" || fail "missing skills/${skill}/SKILL.md"
 done
 echo "PASS run-config-gate: skill directories present"
-# 5-7/15 native docs validators (links, MADR schema, mermaid syntax).
+# 5-7/17 native docs validators (links, MADR schema, mermaid syntax).
 python3 harness/docs-validation/check_links.py . || fail "check_links.py failed"
 python3 harness/docs-validation/check_madr.py . || fail "check_madr.py failed"
 python3 harness/docs-validation/check_mermaid.py --syntax . || fail "check_mermaid.py --syntax failed"
-# 8/15 mermaid syntax checker regression suite (#142 A1): stdlib unittest
+# 8/17 mermaid syntax checker regression suite (#142 A1): stdlib unittest
 # regression tests for check_mermaid.py --syntax (defect classes from #134,
 # advisory from the #138 review - the suite was not executed by any gate).
 python3 harness/docs-validation/test_check_mermaid_syntax.py || fail "test_check_mermaid_syntax.py failed"
-# 9/15 namespace-exclusivity permission invariant (#150 AC1-AC3, #207 AC3 /
+# 9/17 namespace-exclusivity permission invariant (#150 AC1-AC3, #207 AC3 /
 # MADR-0009): global default-deny baselines for the COACH_* and BROWSER_* MCP
 # namespaces in opencode.jsonc, explicit per-agent restatement in agents/,
 # and the sole allow whitelists (agents/coach.md for COACH_*; agents/
 # developer.md + agents/devops.md for BROWSER_*).
 python3 harness/config-validation/check_coach_exclusivity.py . || fail "check_coach_exclusivity.py failed"
-# 10/15 namespace-exclusivity checker regression suite (#142 A1 pattern):
+# 10/17 namespace-exclusivity checker regression suite (#142 A1 pattern):
 # stdlib unittest regression tests for check_coach_exclusivity.py — both
 # governed namespaces, negative cases per invariant layer, real-repo control.
 python3 harness/config-validation/test_check_coach_exclusivity.py || fail "test_check_coach_exclusivity.py failed"
-# 11/15 BROWSER launch-flag invariant (#219 AC3 / MADR-0009): the mcp.BROWSER
+# 11/17 BROWSER launch-flag invariant (#219 AC3 / MADR-0009): the mcp.BROWSER
 # command array in opencode.jsonc carries the mandated hardening flags —
 # --isolated (ephemeral profile), --no-webmcp (WebMCP tool-poisoning vector),
 # a loopback --allowed-origins allowlist (localhost + 127.0.0.1), and a
 # scoped /tmp --output-dir.
 python3 harness/config-validation/check_browser_launch_flags.py . || fail "check_browser_launch_flags.py failed"
-# 12/15 BROWSER launch-flag checker regression suite (#142 A1 pattern):
+# 12/17 BROWSER launch-flag checker regression suite (#142 A1 pattern):
 # stdlib unittest regression tests for check_browser_launch_flags.py —
 # negative cases per mandated flag and value shape, real-repo control.
 python3 harness/config-validation/test_check_browser_launch_flags.py || fail "test_check_browser_launch_flags.py failed"
-# 13/15 harness native-gate toolchain pinning regression suite (#256 AC5):
+# 13/17 harness native-gate toolchain pinning regression suite (#256 AC5):
 # stdlib unittest regression tests for harness/run.sh — deps retains dev
 # extras (uv sync --all-extras), the native gate resolves tools from the
 # project .venv (never host PATH), and exits 3 when the venv or a required
 # tool is missing; the container fallback keeps its security flags.
 python3 harness/config-validation/test_harness_run.py || fail "test_harness_run.py failed"
-# 14/15 per-pane profile selection regression suite (#263, #244): stdlib
+# 14/17 per-pane profile selection regression suite (#263, #244): stdlib
 # unittest TDD suite for dual-profile coexistence and per-pane secrets
 # isolation — profiles.sh provisioning, oc-home wrapper semantics, secrets
 # split/migration, legacy switcher cleanup, permission hardening, MADR-0010
 # record, README documentation, .gitignore coverage. Sandboxed fake $HOME.
 python3 tests/test_per_pane_profile_selection.py || fail "test_per_pane_profile_selection.py failed"
-# 15/15 install-pin consistency regression suite (#310): stdlib unittest TDD
+# 15/17 install-pin consistency regression suite (#310): stdlib unittest TDD
 # suite for the github-mcp-server supply-chain pin — exactly one
 # GITHUB_MCP_VERSION assignment in install.sh, the binary at
 # $HOME/.local/bin (when present) reports the pinned version, and every
 # version literal in opencode.jsonc MCP comment lines citing "pinned" or
 # "v<digit>" matches the pin (comment-drift guard).
 python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_consistency.py failed"
-echo "PASS run-config-gate: all 15 gates green (${REPO_ROOT})"
+# 16/17 bash ask/deny tier drift guard + truth table (#320 Slice B, MADR-0015):
+# the ask and deny tiers are identical (order-sensitive) across the root
+# opencode.jsonc block and the four allow-default agent specs, the deny tail
+# is frozen at the MADR-0015 baseline (no removal, no reorder, no insertion
+# inside the tail), and the 17-case last-match-wins truth table of the
+# ratified delta holds on the real config.
+python3 harness/config-validation/check_bash_permission_tiers.py . || fail "check_bash_permission_tiers.py failed"
+python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "test_check_bash_permission_tiers.py failed"
+# 17/17 GITHUB_RELEASES server supply-chain + quality gate (#323 Slice B,
+# MADR-0016 condition 10): the home-grown Python FastMCP server in
+# tools/github-releases-mcp is synced strictly from its committed uv.lock,
+# linted (ruff), strictly type-checked (mypy --strict), tested with zero
+# warnings at >= 80% coverage (pytest -W error), and dependency-audited
+# (pip-audit --strict). NOT a repoint of harness/run.sh (root pyproject
+# intentionally absent, MADR-0016).
+bash harness/config-validation/check_releases_server.sh || fail "check_releases_server.sh failed"
+echo "PASS run-config-gate: all 17 gates green (${REPO_ROOT})"

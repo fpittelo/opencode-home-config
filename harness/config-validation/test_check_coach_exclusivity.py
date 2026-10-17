@@ -24,8 +24,11 @@ designated whitelist agents:
                     architect.md + scrum-master.md hold the governed partial
                     allow (projects_get, projects_list, projects_write — the
                     consolidated planning tool; #311, MADR-0014)
+  GITHUB_RELEASES_* key GITHUB_RELEASES_*, allow only devops.md (sole
+                    release authority via the home-grown FastMCP server's
+                    exactly two write tools; #323, MADR-0016)
 
-Cases are parametrized over all five namespaces (subTest) against a combined
+Cases are parametrized over all six namespaces (subTest) against a combined
 multi-namespace fixture, so a namespace must be enforced on its own merits —
 a checker that silently ignores a namespace fails the negative cases. The
 partial-allow posture gets dedicated negative cases: a missing tool-level
@@ -70,6 +73,10 @@ NAMESPACE_CASES = {
     "GITHUB_PROJECTS": (
         ("GITHUB_PROJECTS_*",),
         (),
+    ),
+    "GITHUB_RELEASES": (
+        ("GITHUB_RELEASES_*",),
+        ("devops.md",),
     ),
 }
 

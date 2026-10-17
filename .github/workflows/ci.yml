@@ -163,6 +163,35 @@ jobs:
         # guard). stdlib unittest only, < 1 s, no network.
         run: python3 harness/config-validation/test_pin_consistency.py
 
+      - name: Enforce bash ask/deny tier drift guard + truth table (#320, MADR-0015)
+        # Slice B of #320 (MADR-0015): the ask and deny tiers are identical
+        # (order-sensitive) across the root opencode.jsonc block and the four
+        # allow-default agent specs, the deny tail is frozen at the MADR-0015
+        # baseline (no removal, no reorder, no insertion inside the tail),
+        # and the 17-case last-match-wins truth table of the ratified delta
+        # holds on the real config.
+        run: python3 harness/config-validation/check_bash_permission_tiers.py .
+
+      - name: Bash permission tier checker regression tests (unittest)
+        # Regression suite for check_bash_permission_tiers.py (#142 A1
+        # pattern): sandboxed fake-repo negative cases per invariant layer
+        # (tier drift, deny-tail freeze, interleaving, truth-table ordering),
+        # real-repo positive control. stdlib unittest only, < 1 s.
+        run: python3 harness/config-validation/test_check_bash_permission_tiers.py
+
+      - name: GITHUB_RELEASES server supply-chain + quality gate (#323, MADR-0016)
+        # Slice B of #323 (MADR-0016 condition 10): the home-grown Python
+        # FastMCP server (tools/github-releases-mcp) synced strictly from its
+        # committed uv.lock, linted (ruff), strictly type-checked
+        # (mypy --strict), tested with zero warnings at >= 80% coverage
+        # (pytest -W error) and dependency-audited (pip-audit --strict,
+        # editable self-install skipped). Own gate script, located inside the
+        # config-validation block by design — NOT a repoint of harness/run.sh
+        # (root pyproject intentionally absent, MADR-0016).
+        run: |
+          command -v uv >/dev/null 2>&1 || pip install "uv==0.11.17"
+          bash harness/config-validation/check_releases_server.sh
+
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
           python3 harness/docs-validation/check_links.py .

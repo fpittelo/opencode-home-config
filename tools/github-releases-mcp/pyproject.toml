@@ -1,0 +1,55 @@
+[project]
+name = "github-releases-mcp"
+version = "0.1.0"
+description = "GITHUB_RELEASES — home-grown FastMCP server for agent-side GitHub release publishing (MADR-0016)"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27.0",
+    "mcp>=1.2.0,<2.0.0",
+    "pydantic>=2.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.11.0",
+    "pip-audit>=2.7.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/github_releases_mcp"]
+
+[tool.mypy]
+mypy_path = "src"
+python_version = "3.12"
+strict = true
+
+# mcp(1.x) FastMCP detects Context parameters at runtime via
+# typing.get_type_hints on the BARE generic (find_context_parameter,
+# mcp.server.fastmcp.utilities.context_injection): a parameterized
+# Context[...] annotation is NOT detected and would leak into the tool
+# schema as a caller-visible parameter. disallow_any_generics is therefore
+# scoped off for this module only; every other strictness flag still applies.
+[[tool.mypy.overrides]]
+module = "github_releases_mcp.server"
+disallow_any_generics = false
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP", "W"]

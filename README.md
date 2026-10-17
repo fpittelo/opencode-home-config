@@ -161,6 +161,18 @@ See the [Migration Plan v3.1 (historical)](docs/history/opencode-config-migratio
   (`GITHUB_TOKEN_PROJECTS`), PO-owned, mode 600 in the profile-scoped secrets
   file, never committed — the shared `GITHUB` server keeps its fine-grained
   token (zero scope widening).
+- **`GITHUB_RELEASES` server (MADR-0016):** sixth namespaced GitHub MCP server
+  and the first home-grown one in the portfolio — a Python FastMCP process
+  (`tools/github-releases-mcp/`, stdio via the project `.venv`) exposing
+  exactly two release-write tools (`GITHUB_RELEASES_create_release`,
+  `GITHUB_RELEASES_update_release`) against `api.github.com` with the account
+  hard-pinned; global default-deny `GITHUB_RELEASES_*` baseline with the sole
+  allow reserved to @devops (release-automation §4 SoD).
+- **Releases credential:** `GITHUB_TOKEN_RELEASES`, PO-owned, mode 600 in the
+  profile-scoped secrets file, never committed — a rotation seam (initially
+  the same PAT value as `GITHUB_PERSONAL_ACCESS_TOKEN`, documented in
+  MADR-0016); the server's dependency surface is pinned by `uv.lock` and
+  audited by config gate 17 (`pip-audit --strict`).
 
 ## Governance
 
