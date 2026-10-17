@@ -108,4 +108,12 @@ python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_cons
 # ratified delta holds on the real config.
 python3 harness/config-validation/check_bash_permission_tiers.py . || fail "check_bash_permission_tiers.py failed"
 python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "test_check_bash_permission_tiers.py failed"
-echo "PASS run-config-gate: all 16 gates green (${REPO_ROOT})"
+# 17/17 GITHUB_RELEASES server supply-chain + quality gate (#323 Slice B,
+# MADR-0016 condition 10): the home-grown Python FastMCP server in
+# tools/github-releases-mcp is synced strictly from its committed uv.lock,
+# linted (ruff), strictly type-checked (mypy --strict), tested with zero
+# warnings at >= 80% coverage (pytest -W error), and dependency-audited
+# (pip-audit --strict). NOT a repoint of harness/run.sh (root pyproject
+# intentionally absent, MADR-0016).
+bash harness/config-validation/check_releases_server.sh || fail "check_releases_server.sh failed"
+echo "PASS run-config-gate: all 17 gates green (${REPO_ROOT})"
