@@ -10,7 +10,7 @@ The HOME promotion flow (release-automation) ends with publishing the GitHub Rel
 
 The remediation was initially groomed as implementing those tools in Go and contributing them upstream (#319). **The PO ruled the HOME stack Python-only (2026-10-17): no Go toolchain, no Go code — #319 closed as not_planned.** Three Python-compatible architectures were then evaluated.
 
-Decision drivers:
+## Decision Drivers
 
 - PO friction: release publishing is the last manual step in the autonomous promotion loop (issue #308's original thesis).
 - **Stack constraint (PO, binding): Python-only** — no Go toolchain or code is to be introduced, executed, or maintained.
