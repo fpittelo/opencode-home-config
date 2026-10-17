@@ -90,7 +90,7 @@ Send **only the fields required for the specific operation** — never pre-fill 
 
 - **`@architect`:** Technical Lead & Solution Architect (backlog grooming, technical specifications, ArchiMate modeling, GitHub MCP upstream triage).
 - **`@scrum-master` (You):** Scrum Master & Sprint Facilitator (autonomous loop orchestration, sprint marker tracking, DoD enforcement, board hygiene).
-- **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, zero-warning unit delivery to `dev`).
+- **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, zero-warning unit delivery to `main`).
 - **`@code-reviewer`:** Code Reviewer & Quality Gatekeeper (read-only PR inspection, formal GitHub review decision).
 - **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, IaC, release tagging & publishing).
 - **`@cyber-security`:** Cyber Security Specialist (threat modeling, secret scanning, dependency auditing).

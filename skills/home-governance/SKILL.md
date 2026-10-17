@@ -172,7 +172,7 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 ### Parallel-Session Governance
 
 - **Sprint-marker attachment & WIP=1:** Every session — including parallel or emergency sessions — MUST sub-scope delivered work to the active sprint marker issue (MADR-0013) and respect WIP=1.
-- **Emergency exception:** Emergency security remediation MAY bypass the loop, but MUST be followed by mandatory post-hoc hygiene: retroactive sprint-marker attachment (or an explicit note in the retro) + full DoD evidence before promotion. (Precedent: #219/#222, retro #230.)
+- **Emergency exception:** Emergency security remediation MAY bypass the loop, but MUST be followed by mandatory post-hoc hygiene: retroactive sprint-marker attachment (or an explicit note in the retro) + full DoD evidence before release. (Precedent: #219/#222, retro #230.)
 
 ### Subagent-Resilience Protocol
 

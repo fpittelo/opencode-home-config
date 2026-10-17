@@ -39,7 +39,7 @@ Every repository maintains this standardized label schema:
 | | `agent::scrum-master`| `#F9D0C4` | Sprint marker management, DoD audit, board hygiene |
 | | `agent::developer` | `#C2E0C6` | Python/FastMCP implementation with TDD |
 | | `agent::code-reviewer`| `#FEF2C0` | Read-only PR inspection and quality gate |
-| | `agent::devops` | `#D4C5F9` | CI/CD workflows, Docker, release promotion |
+| | `agent::devops` | `#D4C5F9` | CI/CD workflows, Docker, release tagging & publishing |
 | | `agent::cyber-security`| `#FFC0CB`| Threat modeling, vulnerability scanning |
 | **Blockers**| `blocker::active` | `#B60205` | Blocked item (e.g. 3-attempt circuit breaker triggered) |
 | **Severity**| `severity::critical` | `#B60205` | CVSS 9.0-10.0 blocker |
