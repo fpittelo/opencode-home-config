@@ -46,7 +46,7 @@ grants outside the governed posture are rejected.
 
 Any permission key outside the canonical namespace patterns is a pattern-drift
 error (legacy server-name-as-key keys such as "COACH MAIN" must not return —
-servers were renamed COACH_DEV/QA/MAIN by #108, see arc42 §11).
+servers were renamed COACH_DEV/QA/MAIN by #108, see `arc42/03` §3).
 
 Usage: check_coach_exclusivity.py [REPO_ROOT]
 """

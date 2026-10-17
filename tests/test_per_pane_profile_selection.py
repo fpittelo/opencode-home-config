@@ -16,8 +16,9 @@
 #     assertion on .secrets-*.env files.
 #   - AC7/MC5: MADR-0010 decision record (per-pane env-based selection vs
 #     symlink flipping) with explicit PO risk-acceptance for shared provider
-#     OAuth tokens; indexed in docs/adr/README.md and arc42 §9.
-#   - MC7: arc42 §11 documents the same-UID /proc/<pid>/environ residual.
+#     OAuth tokens; indexed in docs/adr/README.md (single MADR index) and
+#     referenced by arc42 03 (cross-cutting & security).
+#   - MC7: arc42 03 §3 documents the same-UID /proc/<pid>/environ residual.
 #   - AC6/MC8: README dual-profile sections (oc-home/oc-work, wrapper
 #     semantics, merge caveat, bare-opencode-unsupported notice, Herdr usage).
 #   - MC10: .gitignore covers .secrets-home.env.
@@ -861,7 +862,7 @@ class TestDecisionRecord(unittest.TestCase):
         )
 
     def test_decision_indexes_list_0010(self) -> None:
-        """Both decision indexes carry the 0010 row."""
+        """The MADR index carries the 0010 row and arc42 references MADR-0010."""
         adr_index = (ADR_DIR / "README.md").read_text(encoding="utf-8")
         self.assertIn(
             "0010", adr_index, "docs/adr/README.md index must list 0010 (#244 AC7)"
@@ -871,24 +872,26 @@ class TestDecisionRecord(unittest.TestCase):
             adr_index,
             "docs/adr/README.md must link the 0010 record file (#244 AC7)",
         )
-        arc42_index = (ARC42_DIR / "09-architecture-decisions.md").read_text(
-            encoding="utf-8"
-        )
+        arc42_doc = (
+            ARC42_DIR / "03-cross-cutting-and-security.md"
+        ).read_text(encoding="utf-8")
         self.assertIn(
-            "MADR-0010", arc42_index, "arc42 §9 index must list MADR-0010 (#244 AC7)"
+            "MADR-0010",
+            arc42_doc,
+            "arc42 03 (cross-cutting & security) must reference MADR-0010 (#244 AC7)",
         )
 
     def test_arc42_risks_document_proc_environ_residual(self) -> None:
-        """arc42 §11 documents the same-UID /proc/<pid>/environ residual (MC7)."""
-        text = (ARC42_DIR / "11-risks-and-technical-debt.md").read_text(
+        """arc42 03 §3 documents the same-UID /proc/<pid>/environ residual (MC7)."""
+        text = (ARC42_DIR / "03-cross-cutting-and-security.md").read_text(
             encoding="utf-8"
         )
         self.assertIn(
             "/proc",
             text,
-            "arc42 §11 must document the /proc/<pid>/environ residual (MC7)",
+            "arc42 03 §3 must document the /proc/<pid>/environ residual (MC7)",
         )
-        self.assertIn("#244", text, "arc42 §11 residual row must reference #244 (MC7)")
+        self.assertIn("#244", text, "arc42 03 §3 residual row must reference #244 (MC7)")
 
 
 # ---------------------------------------------------------------------------

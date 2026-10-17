@@ -1,6 +1,6 @@
 ---
 name: arc42-documentation
-description: "Repeatable, modular arc42 method for authoring and maintaining architecture documentation: 12-section templates, Mermaid C4 diagram standards, section update triggers, and a documentation quality checklist for all HOME projects."
+description: "Repeatable arc42 method for authoring and maintaining architecture documentation: 3 cohesive view templates (context/building blocks, runtime/delivery, cross-cutting/security), Mermaid C4 diagram standards, update triggers, and a documentation quality checklist for all HOME projects."
 ---
 
 # arc42 Documentation Method
@@ -14,43 +14,48 @@ This skill establishes the **arc42** architecture documentation method for the H
 ## 1. When to Activate
 
 - **Mandatory** when authoring or updating anything under `docs/architecture/arc42/`.
-- **Mandatory** during design inception of a new project or major component (produces §3 Context & Scope).
+- **Mandatory** during design inception of a new project or major component (produces `01` §3 Context & Scope).
 - **Mandatory** when an architectural change lands (see §4 Update Triggers below).
 - Recommended when onboarding a new agent or contributor to a HOME project.
 
 ## 2. Where Documentation Lives
 
 - Per-project arc42 root: `docs/architecture/arc42/`
-- One Markdown file per section: `NN-<section-slug>.md` (e.g. `03-context-and-scope.md`)
-- An index `README.md` links all sections and records the document status.
+- Three cohesive view files (3-view standard, #342):
+  - `01-context-and-building-blocks.md` — §1 Introduction & Goals · §2 Architecture Constraints · §3 System Context & Scope (C4 Context) · §4 Solution Strategy · §5 Building Block View (C4 Container)
+  - `02-runtime-and-delivery.md` — §1 Runtime View · §2 Deployment View
+  - `03-cross-cutting-and-security.md` — §1 Cross-cutting Concepts · §2 Quality Requirements · §3 Risks & Technical Debt · §4 Glossary · §5 Architecture Decisions (MADR pointer)
+- An index `README.md` links the three views and records the document status.
+- MADR decisions are indexed in `docs/adr/README.md` — the single authoritative index (arc42 §5 of the third view points there; no duplicate table).
 - Diagrams are inline Mermaid blocks (GitHub-renderable), following the `mermaid-diagrams` skill syntax rules.
 
 ## 3. Authoring Rules
 
-1. **Modular by default:** each section lives in its own file; never create a monolithic architecture document.
-2. **Diagrams are mandatory** in §3 (C4 Context), §5 (C4 Container), and §6 (Runtime) — text-only architecture documentation is not accepted.
+1. **Cohesive views by default:** documentation lives in the three view files of §2; never fragment into more files and never collapse the views into one monolithic document.
+2. **Diagrams are mandatory** in `01` §3 (C4 Context), `01` §5 (C4 Container), and `02` §1 (Runtime) — text-only architecture documentation is not accepted.
 3. **Mermaid only** for diagrams; use C4 syntax (`C4Context`, `C4Container`) per the `mermaid-diagrams` skill; validate rendering on GitHub before merge.
 4. **No secrets, no personal data** beyond facts already public in the repository (Swiss nLPD — see `home-governance` §2).
 5. **English** for all architecture documentation (language policy, `home-governance` §2).
-6. **Traceability:** every section that records a decision links the governing MADR/ADR in §9.
+6. **Traceability:** every section that records a decision links the governing MADR/ADR in `docs/adr/README.md`.
 7. **Honest status:** unfinished sections are marked `Status: draft` — never leave placeholder text pretending to be content.
 8. **Update in the same PR:** an architectural change and its arc42 update travel in the same feature branch and PR.
 
 ## 4. Section Update Triggers (for @architect)
 
-| Architectural event | Sections to update |
+| Architectural event | View/section to update |
 | :--- | :--- |
-| Design inception / new system or actor | **§3 Context & Scope** |
-| New/changed application component, agent, skill, or MCP server | **§5 Building Block View** |
-| Interaction, API, transport, or protocol change | **§6 Runtime View** |
-| Standards, policy, security, or quality-gate change | **§8 Cross-cutting Concepts** |
-| Architectural decision taken | **§9 Architecture Decisions** (MADR index entry) |
-| New quality requirement or risk identified | **§10 Quality** / **§11 Risks** |
+| Design inception / new system or actor | **`01` §3 Context & Scope** |
+| New/changed application component, agent, skill, or MCP server | **`01` §5 Building Block View** |
+| Interaction, API, transport, or protocol change | **`02` §1 Runtime View** |
+| Standards, policy, security, or quality-gate change | **`03` §1 Cross-cutting Concepts** |
+| Architectural decision taken | **`docs/adr/README.md`** (single MADR index entry) |
+| New quality requirement or risk identified | **`03` §2 Quality** / **`03` §3 Risks** |
 
-## 5. Section Templates
+## 5. View Templates (3-view skeletons)
 
-### §1 Introduction & Goals
+### `01-context-and-building-blocks.md`
 ```markdown
+# Context & Building Blocks
 ## 1. Introduction & Goals
 ### 1.1 Requirements Overview
 <Short description of what the system must achieve and who needs it.>
@@ -60,18 +65,9 @@ This skill establishes the **arc42** architecture documentation method for the H
 ### 1.3 Stakeholders & Their Goals
 | Stakeholder | Goal |
 | :--- | :--- |
-```
-
-### §2 Architecture Constraints
-```markdown
 ## 2. Architecture Constraints
 | Constraint | Source | Impact |
 | :--- | :--- | :--- |
-```
-(HOME constraints to always include: trunk+tag lifecycle (MADR-0017), zero-warning CI, Swiss nLPD, board-as-SSOT, technology stack standards.)
-
-### §3 System Context & Scope (rich template)
-```markdown
 ## 3. System Context & Scope
 ### 3.1 Business Context
 **C4 Context diagram** (Mermaid `C4Context`): the system, its users (Person),
@@ -80,99 +76,70 @@ and neighboring systems (System / System_Ext), with labeled relationships.
 | Channel | Protocol | Notes |
 | :--- | :--- | :--- |
 ### 3.3 Scope Decisions
-- In scope: ...
-- Out of scope: ...
-```
-
-### §4 Solution Strategy
-```markdown
+- In scope: ... / - Out of scope: ...
 ## 4. Solution Strategy
-- Key architectural decisions summarized (link each to §9 MADR entries).
-- Building-block approach, cross-cutting approach, and how quality is achieved.
-```
-
-### §5 Building Block View (rich template)
-```markdown
+- Key architectural decisions summarized (link each to `docs/adr/README.md`).
 ## 5. Building Block View
 ### 5.1 Whitebox Overall System
 **C4 Container diagram** (Mermaid `C4Container`): containers, technologies,
 descriptions, boundaries, and the relationships between them.
 ### 5.2 Level 2 — Motivation & Explanation
-For each important container: purpose, responsibilities, key interfaces.
+| Building block | Responsibility | Key interfaces |
+| :--- | :--- | :--- |
 ### 5.3 Level 3 (optional)
-Component-level detail only where complexity demands it.
 ```
+(HOME constraints to always include in §2: trunk+tag lifecycle (MADR-0017), zero-warning CI, Swiss nLPD, board-as-SSOT, technology stack standards.)
 
-### §6 Runtime View (rich template)
+### `02-runtime-and-delivery.md`
 ```markdown
-## 6. Runtime View
+# Runtime & Delivery
+## 1. Runtime View
 One subsection per important runtime scenario. Each contains a Mermaid
 `sequenceDiagram` (or `flowchart`) plus a short narrative:
-### 6.x Scenario: <name>
+### 1.x Scenario: <name>
 - Trigger / preconditions
 - Diagram
 - Postconditions / failure modes
-```
-
-### §7 Deployment View
-```markdown
-## 7. Deployment View
+## 2. Deployment View
 | Node | Hosts | Infrastructure |
 | :--- | :--- | :--- |
 Include infrastructure-as-code references (OpenTofu/Terraform) where applicable.
 ```
 
-### §8 Cross-cutting Concepts (rich template)
+### `03-cross-cutting-and-security.md`
 ```markdown
-## 8. Cross-cutting Concepts
-### 8.1 Security & Privacy (Swiss nLPD)
-### 8.2 Quality Gates & CI
-### 8.3 Configuration & Secrets
-### 8.4 Language & Communication Policy
-### 8.5 Naming & Structure Conventions
-```
-
-### §9 Architecture Decision Records (MADR index)
-```markdown
-## 9. Architecture Decisions
-**This section is the MADR decision index.** Each decision is a separate
-MADR document under `docs/adr/` (wired by STORY-03, issue #60).
-
-| ADR | Title | Status | Date |
-| :--- | :--- | :--- | :--- |
-```
-
-### §10 Quality Requirements
-```markdown
-## 10. Quality Requirements
+# Cross-cutting Concerns, Quality & Decisions
+## 1. Cross-cutting Concepts
+### 1.1 Security & Privacy (Swiss nLPD)
+### 1.2 Quality Gates & CI
+### 1.3 Configuration & Secrets
+### 1.4 Language & Communication Policy
+### 1.5 Naming & Structure Conventions
+## 2. Quality Requirements
 | Scenario | Metric | Target |
 | :--- | :--- | :--- |
-```
-
-### §11 Risks & Technical Debt
-```markdown
-## 11. Risks & Technical Debt
+## 3. Risks & Technical Debt
 | Risk / Debt | Impact | Mitigation | Tracking issue |
-| :--- | :--- | :--- | :--- |
-```
-
-### §12 Glossary
-```markdown
-## 12. Glossary
+| :--- | :--- | :--- |
+## 4. Glossary
 | Term | Definition |
 | :--- | :--- |
+## 5. Architecture Decisions (MADR)
+**The authoritative MADR index is `docs/adr/README.md`** — link it, never
+duplicate the decision table here. The pre-MADR back-index candidate table
+lives in this section.
 ```
 
 ## 6. Documentation Quality Checklist (pre-merge)
 
-- [ ] All 12 section files exist; `README.md` index links them.
-- [ ] §3 contains a Mermaid `C4Context` diagram; §5 contains a Mermaid `C4Container` diagram; §6 contains at least one runtime diagram.
+- [ ] All 3 view files exist; `README.md` index links them.
+- [ ] `01` §3 contains a Mermaid `C4Context` diagram; `01` §5 contains a Mermaid `C4Container` diagram; `02` §1 contains at least one runtime diagram.
 - [ ] All Mermaid blocks render on GitHub (no syntax errors, no unsupported features).
-- [ ] Every decision referenced links its MADR/ADR in §9 (or is flagged as pending STORY-03 wiring).
+- [ ] Every decision referenced links its MADR/ADR in `docs/adr/README.md` (the single MADR index).
 - [ ] No secrets, no personal data beyond repo-public facts (gitleaks passes).
 - [ ] Links valid, headings consistent, English language, honest `Status:` markers.
 - [ ] CI pipeline green (0 warnings / 0 failures), including the skill-presence inventory.
 
 ---
 
-*Established by STORY-02 (#59), Epic 3 (#57) — HOME SCRUM Team. §9 wiring follows in STORY-03 (#60).*
+*Established by STORY-02 (#59), Epic 3 (#57) — HOME SCRUM Team. §9 wiring followed in STORY-03 (#60); consolidated to the 3-view standard with a single MADR index by #342.*

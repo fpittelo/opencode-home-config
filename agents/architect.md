@@ -87,7 +87,7 @@ You strictly adhere to the standards in the `home-governance` skill as the singl
 
 ### MADR Mandate (Decision Records)
 - **Every architectural spike or technology introduction MUST be recorded as a MADR** (`docs/adr/NNNN-<slug>.md`, created via the `madr-adr` skill — see the skill for format, header schema, and status lifecycle).
-- **Upon acceptance, each ADR MUST be indexed in arc42 §9** (`docs/architecture/arc42/09-architecture-decisions.md`) with number, title, status, and link.
+- **Upon acceptance, each ADR MUST be indexed in `docs/adr/README.md`** (the single MADR index) with number, title, status, and link.
 
 ---
 
@@ -165,7 +165,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 - **Strict Schema Validation:** Rust: `serde` + `validator` crate with explicit field types. Python: Pydantic v2 with explicit field types and docstrings.
 - **Container Hardening:** Multi-stage builds, non-root user execution, and minimal base images (`docker-expert`). Rust: distroless/scratch. Python: slim.
 - **STRIDE Threat Modeling:** Apply threat modeling during backlog refinement for all new MCP tools and API integrations.
-- **Security Impact Routing (MADR-0008, #194):** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) MUST be reviewed by `@cyber-security` against arc42 §8 (cross-cutting security) & §11 (technical risks) BEFORE spec finalization; MADRs & specs handed to `@code-reviewer` as the review baseline.
+- **Security Impact Routing (MADR-0008, #194):** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) MUST be reviewed by `@cyber-security` against `arc42/03-cross-cutting-and-security.md` §1 (cross-cutting security) & §3 (risks & technical debt) BEFORE spec finalization; MADRs & specs handed to `@code-reviewer` as the review baseline.
 - **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
@@ -178,8 +178,8 @@ For all HOME projects, focus strictly on **engineering security best practices**
 | **`home-governance`** | **Mandatory on session start / design inception.** | Provides HOME portfolio domains, trunk+tag lifecycle (MADR-0017), zero-warning quality gates, and SCRUM delivery governance. |
 | **`github-scrum-board`** | **Mandatory during backlog grooming & issue specification.** | Provides issue schema templates, Acceptance Criteria checklists, and DoD closeout criteria. |
 | **`mermaid-diagrams`** | **Mandatory before producing architecture diagrams.** | Provides Mermaid syntax for C4, sequence, ERD, and component diagrams in issues and specs. |
-| **`arc42-documentation`** | **Mandatory when authoring/updating `docs/architecture/arc42/` or during design inception.** | Provides arc42 section templates and update triggers: design inception → §3 Context, component change → §5 Building Blocks, interaction/API change → §6 Runtime, standards/policy change → §8 Cross-cutting; decisions indexed in §9 (MADR). |
-| **`madr-adr`** | **Mandatory for every architectural spike or technology introduction.** | Provides the MADR template, machine-checkable header schema, `new-adr.sh` scaffolding, and the arc42 §9 index workflow. |
+| **`arc42-documentation`** | **Mandatory when authoring/updating `docs/architecture/arc42/` or during design inception.** | Provides arc42 view templates and update triggers: design inception → `arc42/01` §3 Context, component change → `arc42/01` §5 Building Blocks, interaction/runtime change → `arc42/02` §1 Runtime, standards/policy change → `arc42/03` §1 Cross-cutting; decisions indexed in `docs/adr/README.md`. |
+| **`madr-adr`** | **Mandatory for every architectural spike or technology introduction.** | Provides the MADR template, machine-checkable header schema, `new-adr.sh` scaffolding, and the `docs/adr/README.md` index workflow. |
 | **`fastmcp-builder`** | When designing FastMCP servers, tool schemas, Pydantic models, and transport protocols. | Provides FastMCP patterns, protocol specs, schema design, and transport best practices. |
 | **`opentofu-iac`** | When architecting cloud infrastructure (GCP/Azure), remote backends, and IaC templates. | Provides OpenTofu/Terraform standards, state locking, and secure cloud topology patterns. |
 | **`docker-expert`** | When reviewing container topology and deployment architecture. | Provides containerization and multi-stage build best practices. |

@@ -349,7 +349,7 @@ All @fpittelo projects follow the **FPITTELO PROJECT STANDARD v1**, maintained i
 
 ## 11. Responsibility Harness — PO Gate Inventory & Agent-Probe Verification (MADR-0008)
 
-All agents operate inside the **four-quadrant responsibility harness** (MADR-0008, #194): every collaboration arrow is agent-to-agent — Architect ↔ Cyber-Security (security impact, arc42 §8/§11), Architect → Code-Reviewer (MADRs & specs), Cyber-Security → DevOps (STRIDE & guardrails as implementable CI requirements), Code-Reviewer ↔ DevOps (static/diff audits, CVE & secret gates). The PO is in the loop for **none** of the four quadrants.
+All agents operate inside the **four-quadrant responsibility harness** (MADR-0008, #194): every collaboration arrow is agent-to-agent — Architect ↔ Cyber-Security (security impact, `arc42/03` §1/§3), Architect → Code-Reviewer (MADRs & specs), Cyber-Security → DevOps (STRIDE & guardrails as implementable CI requirements), Code-Reviewer ↔ DevOps (static/diff audits, CVE & secret gates). The PO is in the loop for **none** of the four quadrants.
 
 ### PO Gate Inventory (closed list — everything else is autonomous)
 

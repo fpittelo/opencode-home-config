@@ -367,7 +367,7 @@ Skills are knowledge modules that activate automatically when the conversation m
 
 | Skill | What it does | When it activates |
 |:---|:---|:---|
-| **arc42-documentation** | arc42 documentation method: 12-section templates, Mermaid C4 standards, section update triggers | Authoring/updating `docs/architecture/arc42/`, design inception |
+| **arc42-documentation** | arc42 documentation method: 3 cohesive view templates, Mermaid C4 standards, update triggers | Authoring/updating `docs/architecture/arc42/`, design inception |
 | **coach** | Endurance training, Zwift cycling, kettlebell, Intervals.icu analytics | Athletic coaching questions, workout planning |
 | **docker-expert** | Docker containerization, multi-stage builds, security hardening | Container/Docker questions |
 | **fastmcp-builder** | Designing FastMCP servers, Pydantic v2 schemas, transport protocols | Building MCP tools |
@@ -377,7 +377,7 @@ Skills are knowledge modules that activate automatically when the conversation m
 | **harness-engineering** | Containerized pre-push quality gate (`bash harness/run.sh python\|rust`) | Before pushing any code; when a gate fails |
 | **herdr** | Controls Herdr, a terminal multiplexer for coding agents (panes, tabs, workspaces) | Explicit Herdr mention only; requires `HERDR_ENV=1` |
 | **home-governance** | HOME portfolio context, Swiss privacy rules, Git lifecycle, SCRUM governance | Session start, design inception |
-| **madr-adr** | MADR decision records: template, header schema, `new-adr.sh` scaffolding, arc42 §9 indexing | Architectural spikes, technology introductions |
+| **madr-adr** | MADR decision records: template, header schema, `new-adr.sh` scaffolding, `docs/adr/README.md` indexing | Architectural spikes, technology introductions |
 | **mermaid-diagrams** | Creating diagrams (C4, sequence, ERD, flowcharts) using Mermaid syntax | "Diagram", "visualize", "model", architecture diagrams |
 | **opentofu-iac** | Infrastructure as Code (OpenTofu/Terraform) for GCP/Azure | Cloud infrastructure, IaC questions |
 | **release-automation** | Semantic versioning, tag-from-trunk releases, post-release board hygiene | Release coordination, tag `vX.Y.Z` on `main` |
@@ -514,7 +514,7 @@ flowchart TD
 
 **Since #167 (refines MADR-0004):** the deny tail gains **file-centric secret denies** — `*.env*`, `*.pem*`, `*.key*` block **any command referencing a credential filename**, closing the read-command-family bypass (`head`, `rg`, `strings`, …) that the #158 `cat`-specific deny left open (`*.env*` subsumes it). Token-named files are excluded (command-agnostic `*token*` over-matches); false positives such as `ls *.pem` block in the safe direction.
 
-**Reference:** MADR-0004 (`docs/adr/0004-allow-by-default-bash-permission-posture.md`) and arc42 §8.1.
+**Reference:** MADR-0004 (`docs/adr/0004-allow-by-default-bash-permission-posture.md`) and `arc42/03-cross-cutting-and-security.md` §1.1.
 
 ---
 
