@@ -411,6 +411,40 @@ class NonInheritanceAgentShapeTests(unittest.TestCase):
         proc = run_checker(build_repo(agent_bash={"code-reviewer": headless}))
         self.assert_gate_fails(proc, "agents/code-reviewer.md", "pinned")
 
+    def test_code_reviewer_old_shape_without_trailing_denies_fails(self) -> None:
+        # #358 negative case: the pre-#358 shape (allows, no trailing
+        # secret-file denies) is the append-override vulnerability — agent
+        # rules append AFTER the root deny tail, so `cat *` re-enabled
+        # credential-file reads (e.g. `cat .secrets-home.env`). It must
+        # now fail the pin.
+        old_shape = (
+            ("*", "deny"),
+            ("git status *", "allow"),
+            ("git diff *", "allow"),
+            ("git rev-parse *", "allow"),
+            ("git cat-file *", "allow"),
+            ("cat *", "allow"),
+            ("grep *", "allow"),
+            ("ls *", "allow"),
+        )
+        proc = run_checker(build_repo(agent_bash={"code-reviewer": old_shape}))
+        self.assert_gate_fails(proc, "agents/code-reviewer.md", "pinned")
+
+    def test_code_reviewer_trailing_denies_close_append_override(self) -> None:
+        # #358 semantic guard: with the pinned (new) shape appended after
+        # the root baseline, a credential-file read must resolve to deny
+        # under last-match-wins.
+        merged = list(CHECKER.BASELINE_ROOT_RULES) + list(CODE_REVIEWER_EXPECTED)
+        self.assertEqual(
+            CHECKER.resolve(
+                merged, "cat /home/frede/.config/opencode/.secrets-home.env"
+            ),
+            "deny",
+        )
+        # Zero capability cost: ordinary review reads stay allowed.
+        self.assertEqual(CHECKER.resolve(merged, "cat src/main.py"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "git diff main"), "allow")
+
     def test_code_reviewer_secret_file_class_allow_fails(self) -> None:
         widened = CODE_REVIEWER_EXPECTED + (("*.env*", "allow"),)
         proc = run_checker(build_repo(agent_bash={"code-reviewer": widened}))
