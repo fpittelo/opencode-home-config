@@ -38,7 +38,7 @@ Use this skill to automate project releases, semantic version tagging, release g
    - **Agent-executable since MADR-0016 (#323):** the release object is published by `@devops` via the `GITHUB_RELEASES` MCP server (`create_release` with the curated notes body; `update_release` for follow-up edits). The official pinned `github-mcp-server` remains read-only for releases — only these two home-grown tools write. Standing manual PO action is **not** required in the normal flow (fallback: the PO can still publish in the UI, or edit/revert via `gh`, if `GITHUB_RELEASES` is unavailable; the tool intentionally has no `delete_release` — MADR-0016 YAGNI — so an erroneous publish is PO-disposal material).
 5. **Post-Release Board Hygiene:**
    - Every release automatically triggers a board hygiene cycle executed by `@scrum-master`.
-   - `@scrum-master` audits and closes the completed sprint-marker issue (MADR-0013), cleans the board, moves completed items to `status::done`, and generates the Sprint Retrospective issue.
+   - `@scrum-master` audits and closes the completed sprint-marker issue (MADR-0013), cleans the board, moves completed items to `status::done`, and appends the lightweight 3-bullet retro section to the marker closeout (standalone retrospective issue only on major incident — #339).
 
 ### Rollback & Hotfix:
 - **Rollback:** `git revert` the offending squash commit on `main`, or redeploy the previous tag.
@@ -99,4 +99,4 @@ curl -X POST \
 | **`@cyber-security`** | ❌ Unauthorized to publish releases or tag | Audits secret scanning and dependency vulnerabilities before releases. |
 | **`@architect`** | ✅ Release coordination | Prepares release specs and coordinates `@fpittelo` approval requests. |
 | **`@devops`** | ✅ Release tagging & publishing | Under the PO approval, tags Git releases on `main`, triggers Docker builds, and **publishes the GitHub Release object via `GITHUB_RELEASES` MCP (MADR-0016 — sole release-write authority)**. |
-| **`@scrum-master`** | ✅ Board hygiene & sprint-marker closing | Audits GitHub issue board, closes the sprint-marker issue (MADR-0013), archives cards, and creates Sprint Retrospective upon release. |
+| **`@scrum-master`** | ✅ Board hygiene & sprint-marker closing | Audits GitHub issue board, closes the sprint-marker issue (MADR-0013), archives cards, and appends the 3-bullet retro to the marker closeout upon release (#339). |

@@ -178,7 +178,7 @@ See the [Migration Plan v3.1 (historical)](docs/history/opencode-config-migratio
 
 This repository follows the HOME SCRUM trunk+tag lifecycle (MADR-0017): `main` is the single persistent trunk; feature branches squash-merge into `main` only; releases are semantic tags `vX.Y.Z` + GitHub Releases cut from `main` under one explicit PO approval. All merges require 100% clean CI.
 
-Planning runs on the agent-managed GitHub Projects board **`HOME Squad Planning`** (MADR-0014): `Priority` is groomed by `@architect`, `Sprint` is assigned by `@scrum-master` at dispatch, and the built-in status column stays unmaintained — `status::*` issue labels remain the execution SSOT, sprint-marker issues the execution/DoD/retro record. Milestones are retired (MADR-0013); agents manage the full planning lifecycle with zero PO clicks.
+The GitHub Projects board **`HOME Squad Planning`** (MADR-0014) is an **optional portfolio roadmap view** (demoted by #339): the **execution SSOT is the `status::*` issue labels + sprint-marker sub-issues** — every board transition runs on labels alone, and Projects field writes are optional roadmap visibility that never blocks the loop. Milestones are retired (MADR-0013); agents manage the full lifecycle with zero PO clicks.
 
 ---
 

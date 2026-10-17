@@ -15,7 +15,7 @@ This skill is the operational playbook for **`@scrum-master`** and **`@architect
 - **Demand-Driven Cadence (PO decision A, 2026-10-04, #216):** Sprints execute on demand (often same-day). The date windows in milestone titles are **labels only, not planning commitments** — early/same-day execution is **conformant, not a deviation** (resolves the cadence-honesty flags carried in #201, #215, #216).
 - **Sprint Membership — Sprint Marker Issue (MADR-0013):** Sprint scope is expressed by one **sprint-marker issue** per sprint (epic/sub-issue pattern, precedent #293), created and closed autonomously by `@scrum-master`. Sprint membership is the set of issues sub-scoped to the marker; no milestone is required to groom, queue, dispatch, or close work.
 - **Milestones Are Historical Records (MADR-0013):** Milestones are **never SSOT and never a dependency** — agents cannot manage them (upstream `github-mcp-server` exposes no milestone CRUD). Standing rule: **new issues never receive a milestone**; existing closed issues retain their historical milestone as history.
-- **Planning Board (MADR-0014):** the user project **`HOME Squad Planning`** (Projects v2, owner @fpittelo, project #36) is the **planning SSOT**: `Sprint` iteration field (14-day duration — assignment is a planning label, not a schedule commitment, per PO decision A 2026-10-04/#216) and `Priority` single-select (P0 highest … P3 lowest). `@architect` sets `Priority` at grooming; `@scrum-master` assigns `Sprint` at dispatch — both via `GITHUB_PROJECTS_projects_write`, every write verified by a fresh read (verify-or-escalate covers planning writes). The board's built-in `Status` field stays **unmaintained** (PO decision 2: no status mirror); `status::*` issue labels remain the execution SSOT, and sprint-marker issues remain the execution/DoD/retro record.
+- **Planning Board (MADR-0014, demoted to optional roadmap — #339):** the user project **`HOME Squad Planning`** (Projects v2, owner @fpittelo, project #36) is an **OPTIONAL high-level portfolio roadmap view**, NOT an execution SSOT. The **execution SSOT is the five `status::*` issue labels + sprint-marker sub-issues** — every board transition (groom, dispatch, review, close) is driven by and verified against issue labels alone. Projects v2 `Sprint`/`Priority` field writes are permitted for roadmap visibility but are **never required and never block the loop**: no dual-write at grooming or dispatch, no verify-or-escalate dependency on Projects state for any transition. The board's built-in `Status` field stays **unmaintained** (PO decision 2: no status mirror); sprint-marker issues remain the execution/DoD/closeout record.
 - **Issue Execution:** Sequential issue-by-issue handoff into `main` (the trunk) via squash merge (MADR-0017).
 
 ---
@@ -149,26 +149,13 @@ When all sprint deliverables are merged into `main` (the trunk) and the release 
 
 1. **Board Audit:** Verify all issues in the active sprint (sprint-marker issue) are closed with `status::done`.
 2. **Clear Stale Labels:** Remove lingering `blocker::active` or intermediate status labels (including any reappearance of the retired `status::todo`).
-3. **Close the Sprint Marker Issue:** `@scrum-master` closes the sprint-marker issue autonomously (MADR-0013) — no milestone close is required or possible (milestones are historical records).
-4. **Create Sprint Retrospective Issue:**
-   - Title: `Retrospective: Sprint XX — YYYY-MM-DD`
-   - Labels: `type::spike`, `agent::scrum-master`, `status::done`
-   - Body:
-     ```markdown
-     # Sprint XX Retrospective
+3. **Close the Sprint Marker Issue with Lightweight Retro:** `@scrum-master` closes the sprint-marker issue autonomously (MADR-0013) — no milestone close is required or possible (milestones are historical records). The closing comment on the marker carries a **mandatory lightweight 3-bullet retrospective section** (#339):
+   ```markdown
+   ## 🔁 Sprint XX Retro (3 bullets)
 
-     ## 📊 Sprint Metrics
-     - **Sprint marker:** #<MARKER_ISSUE> (Sprint XX)
-     - **Issues Completed:** X / X (100%)
-     - **Release Tag:** vX.Y.Z
-
-     ## 🌟 What Went Well
-     - [Successful autonomous execution items, clean CI passes]
-
-     ## 🔧 Opportunities for Improvement
-     - [Refactorings, test runtime improvements, schema refinements]
-
-     ## 🚀 Action Items for Next Sprint
-     - [Actionable process improvements for upcoming backlog]
-     ```
-5. **Initialize Next Sprint:** Create the next **sprint-marker issue** (`Sprint XX+1`, epic/sub-issue pattern) and groom initial backlog items with `@architect` — new issues enter at `status::backlog` and are promoted to `status::ready` once groomed; **no milestone is created** (MADR-0013).
+   - **What went well:** <e.g. all issues merged green, zero blockers>
+   - **Improvement opportunity:** <single biggest friction observed>
+   - **Action for next sprint:** <one concrete process adjustment, or "none">
+   ```
+   A **standalone retrospective issue** (`type::spike`) is created ONLY when the sprint experienced a major incident or architectural pivot worth a dedicated record — it is no longer a default hygiene step (#339).
+4. **Initialize Next Sprint:** Create the next **sprint-marker issue** (`Sprint XX+1`, epic/sub-issue pattern) and groom initial backlog items with `@architect` — new issues enter at `status::backlog` and are promoted to `status::ready` once groomed; **no milestone is created** (MADR-0013).

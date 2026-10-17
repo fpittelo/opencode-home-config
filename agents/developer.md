@@ -136,9 +136,10 @@ permission:
   GITHUB_ACTIONS_get_job_logs: allow
   GITHUB_SECURITY_*: deny
   # 311 (MADR-0014): Projects v2 planning namespace is @architect/
-  # @scrum-master-only (planning SSOT: Priority groomed by @architect, Sprint
-  # assigned by @scrum-master) — this explicit deny backstops the global
-  # default-deny baseline (opencode.jsonc permission GITHUB_PROJECTS_*: deny).
+  # @scrum-master-only (optional roadmap view — execution SSOT is the
+  # status::* labels + sprint markers, #339) — this explicit deny backstops
+  # the global default-deny baseline (opencode.jsonc permission
+  # GITHUB_PROJECTS_*: deny).
   GITHUB_PROJECTS_*: deny
   # 323 (MADR-0016): release-write namespace (home-grown GITHUB_RELEASES
   # FastMCP server, exactly two tools: create_release, update_release) is
