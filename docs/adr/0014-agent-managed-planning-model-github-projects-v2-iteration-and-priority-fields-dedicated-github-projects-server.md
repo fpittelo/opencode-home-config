@@ -113,6 +113,10 @@ Operative parts:
    `Priority` is set by `@architect` at grooming; `Sprint` is set by `@scrum-master`
    at dispatch. Every write follows verify-or-escalate (separated calls, fresh read,
    single retry, then `blocker::active` + fallback).
+3. **Sprint-marker issues remain the execution/DoD/retro record** (MADR-0013
+   operative part 2 is unchanged by this decision); the project is a planning
+   visibility layer on top, not a replacement — sprint membership, WIP=1, and board
+   hygiene semantics stay exactly as recorded in MADR-0013.
 3. **Server wiring:** fifth namespaced instance `GITHUB_PROJECTS` in
    `opencode.jsonc` — same pinned binary, `--toolsets=projects`, authenticated via
    `{env:GITHUB_TOKEN_PROJECTS}`. The shared `GITHUB` server keeps its default
@@ -123,12 +127,18 @@ Operative parts:
    tokens validate broad by design — mitigated here by single-scope selection (no
    `repo`, no organization scopes); recorded for STRIDE review.
 5. **Permission baseline:** global default-deny `GITHUB_PROJECTS_*` in the root
-   permission object; allowlist — `@scrum-master` holds full write (the only role
-   that mutates planning fields in steady state; `@architect` receives read-only
-   access for grooming visibility); every other SCRUM agent and the built-in
-   subagents (explore, general, task) deny the namespace (defense in depth, #150
-   pattern). The namespace-exclusivity checker and its regression suite are extended
-   accordingly.
+   permission object; allowlist — `@scrum-master` holds write (steady-state planning
+   field mutations), `@architect` holds read AND write (`projects_get`,
+   `projects_list`, `projects_write`) because the PO's settled grooming convention
+   assigns `Priority` to `@architect` ("read + field groom", issue #308 rev 3);
+   every other SCRUM agent and the built-in subagents (explore, general, task) deny
+   the namespace (defense in depth, #150 pattern). Least-privilege note: the
+   upstream `projects_write` is a consolidated tool (method enum selects the
+   operation), so pattern-based scoping cannot restrict @architect/@scrum-master to
+   individual methods — the residual method-level breadth is accepted for these two
+   roles and mitigated by the write-ownership convention above plus the
+   verify-or-escalate audit trail. The namespace-exclusivity checker and its
+   regression suite are extended accordingly.
 6. **Routing note (label CRUD):** if the delivery loop trips on missing label
    toolset exposure (`list_label`/`label_write`), the fix rides this same permission
    design via the `GITHUB` server — never a parallel exception.
