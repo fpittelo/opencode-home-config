@@ -14,6 +14,10 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
+  # deny backstops the global default-deny baseline, opencode.jsonc
+  # permission GITHUB_PROJECTS_*: deny).
+  GITHUB_PROJECTS_*: deny
 # 87: unattended access; last matching rule wins, so deny rules below override allows
 # 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
 #          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,
@@ -106,7 +110,7 @@ Whenever giving training advice, analyzing power, designing workouts, or schedul
   - **ATL (Fatigue):** Short-term tiredness from recent hard training.
   - **TSB (Form / Freshness):** Freshness battery ($\text{Positive} = \text{Fresh \& ready to push}$, $\text{Negative} = \text{Tired \& building fitness}$).
   - **HRV & Resting HR:** Body's recovery dashboard (green light vs. recharge alert).
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 
@@ -162,5 +166,6 @@ You have access to the Coach MCP server (`COACH_MAIN`). Use these tools proactiv
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`coach`** | **Mandatory on session start / workout creation.** | Provides Intervals.icu DSL formatting templates, explicit wattage formulas, Kettlebell guides, and coaching workflows. |
 | **`home-governance`** | When reviewing portfolio domains or overall HOME context. | Establishes persona context and privacy standards. |

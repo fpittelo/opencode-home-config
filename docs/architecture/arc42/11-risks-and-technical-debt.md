@@ -4,7 +4,7 @@
 
 | Risk / Debt | Impact | Mitigation | Tracking issue |
 | :--- | :--- | :--- | :--- |
-| GitHub MCP server lacks branch-delete and milestone CRUD tools → REST fallbacks needed | Medium — hygiene operations require bash+token sessions | REST fallback documented and executed by @architect; upstream enhancement candidate | #66 retro item 3; upstream issue TBD |
+| GitHub MCP server lacks branch-delete and milestone CRUD tools → REST fallbacks needed | Medium — hygiene operations require bash+token sessions | REST fallback documented and executed by @architect; upstream enhancement candidate; the milestone workflow dependency was removed by MADR-0013 (status labels + sprint marker issues) | #66 retro item 3; upstream issue TBD |
 | Coach agent permission anomalies: lowercase `github_*` deny rule and server-name-as-key patterns (`"COACH MAIN": allow`) may not match | Medium — coach's GitHub isolation may be void | Server-name-as-key part resolved by #108 (keys renamed `COACH_DEV/QA/MAIN`, explicit `COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: allow keys); lowercase `github_*` deny rule retained (harmless: no lowercase-namespaced tools exist) | #56 (F5), #108 |
 | Tool-surface bloat: 2× GitHub + 3× COACH + openrouter servers loaded into every agent context | Medium — token bloat, cross-domain access | Per-agent scoping decision pending; requires ADR | #56 (F6) — ADR candidate |
 | No invariant test suite (parity gap with work config) | Medium — drift (e.g. unregistered model reference) passes CI silently | STORY planned: minimal pytest suite (model registry validity, secret-interpolation-only, exec bit) | #56 (F4) |

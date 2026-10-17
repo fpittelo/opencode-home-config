@@ -127,6 +127,11 @@ permission:
   # access (GITHUB_SECURITY_* is @cyber-security-only, C2).
   GITHUB_ACTIONS_*: allow
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace is @architect/
+  # @scrum-master-only (planning SSOT) — this explicit deny backstops the
+  # global default-deny baseline (opencode.jsonc permission
+  # GITHUB_PROJECTS_*: deny).
+  GITHUB_PROJECTS_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -238,6 +243,7 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on CI/CD design and sprint execution.** | Establishes 3-branch Git lifecycle, pre-flight checks, and zero-tolerance CI pipeline thresholds. |
 | **`release-automation`** | **Mandatory during staging promotion & production release.** | Orchestrates `dev` → `qa` → `main` merges, semantic tagging (`vX.Y.Z`), and release notes. |
 | **`docker-expert`** | **Mandatory when creating or modifying Dockerfile, `.dockerignore`, or compose files.** | Provides production Docker patterns: multi-stage builds, non-root user hardening, layer caching, and minimal base images. |
@@ -250,4 +256,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write workflow files, scripts, commit messages, and PRs in **English**.
 - Log pipeline failures and remediation steps directly as comments on the respective GitHub PR.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).

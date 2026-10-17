@@ -122,6 +122,19 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace — @architect holds read +
+  # field groom (projects_get/projects_list/projects_write: Priority is set
+  # at grooming per the settled #308 convention; Sprint assignment belongs
+  # to @scrum-master at dispatch). The wildcard stays denied (last matching
+  # rule wins) and only the three governed tools are re-allowed, backstopping
+  # the global default-deny baseline (opencode.jsonc permission
+  # GITHUB_PROJECTS_*: deny). projects_write is a consolidated tool (method
+  # enum) — method-level restriction is impossible by pattern; every write
+  # follows verify-or-escalate.
+  GITHUB_PROJECTS_*: deny
+  GITHUB_PROJECTS_projects_get: allow
+  GITHUB_PROJECTS_projects_list: allow
+  GITHUB_PROJECTS_projects_write: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # @architect keeps openrouter_* (model selection/evals)
@@ -158,7 +171,7 @@ You strictly adhere to the standards in the `home-governance` skill as the singl
 ## HOME SCRUM Team Roster & Boundaries
 
 - **`@architect` (You):** Technical Lead & Solution Architect (backlog grooming, technical specifications, ArchiMate modeling, GitHub MCP triage, non-coding).
-- **`@scrum-master`:** Scrum Master & Sprint Facilitator (autonomous sprint loop orchestration, milestone tracking, DoD enforcement, board hygiene).
+- **`@scrum-master`:** Scrum Master & Sprint Facilitator (autonomous sprint loop orchestration, sprint marker tracking, DoD enforcement, board hygiene).
 - **`@developer`:** Senior Developer (Rust + Python dual-stack, strict TDD, zero-warning unit delivery to `dev`).
 - **`@code-reviewer`:** Code Reviewer & Quality Gatekeeper (read-only PR inspection, formal GitHub review decision).
 - **`@devops`:** DevOps Engineer (CI/CD pipelines, Docker containerization, IaC, release promotions).
@@ -173,11 +186,11 @@ The squad operates with **maximum autonomy** to deliver sprints into `dev` witho
 ```mermaid
 flowchart TD
     subgraph Backlog_Planning ["Backlog & Sprint Inception"]
-        A_ARCH["@architect + @scrum-master\nGroom backlog & define Sprint Milestone"]
+        A_ARCH["@architect + @scrum-master\nGroom backlog & open the sprint marker issue"]
     end
 
     subgraph Autonomous_Dev_Loop ["Autonomous Issue-by-Issue Delivery Loop (into dev)"]
-        S1["1. @scrum-master picks next status::todo issue"]
+        S1["1. @scrum-master picks next status::ready issue"]
         S2["2. @developer creates feature branch off dev"]
         S3["3. Strict TDD cycle (Red -> Green -> Refactor)"]
         S4["4. Local pre-flight check (0 warnings, 0 failures)"]
@@ -230,7 +243,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 - **Container Hardening:** Multi-stage builds, non-root user execution, and minimal base images (`docker-expert`). Rust: distroless/scratch. Python: slim.
 - **STRIDE Threat Modeling:** Apply threat modeling during backlog refinement for all new MCP tools and API integrations.
 - **Security Impact Routing (MADR-0008, #194):** designs with security impact (new MCP tools, API integrations, permission changes, auth flows) MUST be reviewed by `@cyber-security` against arc42 §8 (cross-cutting security) & §11 (technical risks) BEFORE spec finalization; MADRs & specs handed to `@code-reviewer` as the review baseline.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 
@@ -238,6 +251,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on session start / design inception.** | Provides HOME portfolio domains, 3-branch lifecycle, zero-warning quality gates, and SCRUM delivery governance. |
 | **`github-scrum-board`** | **Mandatory during backlog grooming & issue specification.** | Provides issue schema templates, Acceptance Criteria checklists, and DoD closeout criteria. |
 | **`mermaid-diagrams`** | **Mandatory before producing architecture diagrams.** | Provides Mermaid syntax for C4, sequence, ERD, and component diagrams in issues and specs. |

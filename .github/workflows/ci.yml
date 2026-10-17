@@ -104,7 +104,7 @@ jobs:
           done
       - name: Verify all skill directories exist
         run: |
-          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering herdr home-governance madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
+          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering herdr home-governance kis-yagni madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
             test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
           done
       - name: Enforce namespace-exclusivity permission invariant (#150, #207)
@@ -153,6 +153,15 @@ jobs:
         # README documentation, .gitignore coverage. stdlib unittest only,
         # runs install.sh against a sandboxed fake $HOME, < 1 s.
         run: python3 tests/test_per_pane_profile_selection.py
+
+      - name: Install-pin consistency regression tests (unittest)
+        # Regression suite for the github-mcp-server supply-chain pin (#310):
+        # exactly one GITHUB_MCP_VERSION assignment in install.sh, the binary
+        # installed at $HOME/.local/bin (when present) reports the pinned
+        # version, and every version literal in opencode.jsonc MCP comment
+        # lines citing "pinned" or "v<digit>" matches the pin (comment-drift
+        # guard). stdlib unittest only, < 1 s, no network.
+        run: python3 harness/config-validation/test_pin_consistency.py
 
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |

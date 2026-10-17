@@ -4,7 +4,7 @@
 
 | Node | Hosts | Infrastructure |
 | :--- | :--- | :--- |
-| Local workstation (VIDAR, Linux) | OpenCode runtime, agent/skill profile (`~/.config/opencode/`), profile-scoped secrets files (`.secrets-home.env` / `.secrets-work.env`, mode 600, MADR-0010), `github-mcp-server` native binary (`~/.local/bin/`, pinned v1.12.2, checksum-verified by `install.sh`) | Bare metal |
+| Local workstation (VIDAR, Linux) | OpenCode runtime, agent/skill profile (`~/.config/opencode/`), profile-scoped secrets files (`.secrets-home.env` / `.secrets-work.env`, mode 600, MADR-0010), `github-mcp-server` native binary (`~/.local/bin/`, pinned v2.0.2, checksum-verified by `install.sh`) | Bare metal |
 | Docker runtime (local) | MCP server container: `COACH_DEV/QA/MAIN` (toggle pattern — one enabled at a time) | Docker Engine; tokens injected via environment |
 | GitHub Actions runners (ubuntu-latest) | CI pipeline jobs (JSONC validation, Gitleaks via Docker) | GitHub-hosted |
 | OpenRouter SaaS | LLM inference + `openrouter` remote MCP endpoint | Public HTTPS, OAuth |

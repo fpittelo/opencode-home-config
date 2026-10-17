@@ -20,8 +20,12 @@ designated whitelist agents:
                     (#252, MADR-0011 C3)
   GITHUB_SECURITY_* key GITHUB_SECURITY_*, allow only cyber-security.md
                     (#252, MADR-0011 C2)
+  GITHUB_PROJECTS_* key GITHUB_PROJECTS_*, wildcard denied for every agent;
+                    architect.md + scrum-master.md hold the governed partial
+                    allow (projects_get, projects_list, projects_write — the
+                    consolidated planning tool; #311, MADR-0014)
 
-Cases are parametrized over all four namespaces (subTest) against a combined
+Cases are parametrized over all five namespaces (subTest) against a combined
 multi-namespace fixture, so a namespace must be enforced on its own merits —
 a checker that silently ignores a namespace fails the negative cases. The
 partial-allow posture gets dedicated negative cases: a missing tool-level
@@ -63,6 +67,10 @@ NAMESPACE_CASES = {
         ("GITHUB_SECURITY_*",),
         ("cyber-security.md",),
     ),
+    "GITHUB_PROJECTS": (
+        ("GITHUB_PROJECTS_*",),
+        (),
+    ),
 }
 
 # Namespace -> agent file -> required tool-level permission keys beyond the
@@ -77,6 +85,18 @@ PARTIAL_ALLOW_CASES = {
             "GITHUB_ACTIONS_actions_list": "allow",
             "GITHUB_ACTIONS_get_job_logs": "allow",
             "GITHUB_ACTIONS_actions_run_trigger": "deny",
+        },
+    },
+    "GITHUB_PROJECTS": {
+        "architect.md": {
+            "GITHUB_PROJECTS_projects_get": "allow",
+            "GITHUB_PROJECTS_projects_list": "allow",
+            "GITHUB_PROJECTS_projects_write": "allow",
+        },
+        "scrum-master.md": {
+            "GITHUB_PROJECTS_projects_get": "allow",
+            "GITHUB_PROJECTS_projects_list": "allow",
+            "GITHUB_PROJECTS_projects_write": "allow",
         },
     },
 }
@@ -235,6 +255,11 @@ class NamespaceExclusivityTests(unittest.TestCase):
 
     def test_deny_in_whitelist_agent_fails(self) -> None:
         for namespace, (keys, allow_agents) in NAMESPACE_CASES.items():
+            if not allow_agents:
+                # GITHUB_PROJECTS (#311, MADR-0014): no wildcard whitelist —
+                # every agent denies the wildcard; covered by the partial-allow
+                # and allow-outside-whitelist cases instead.
+                continue
             with self.subTest(namespace=namespace):
                 insider = sorted(allow_agents)[0].removesuffix(".md")
                 rules = valid_agent_rules(insider)
@@ -295,12 +320,36 @@ class NamespaceExclusivityTests(unittest.TestCase):
         proc = run_checker(build_repo(valid_permission(), {"architect": rules}))
         self.assert_gate_fails(proc, "architect.md", "GITHUB_ACTIONS_actions_get")
 
+    def test_projects_partial_allow_extra_tool_key_fails(self) -> None:
+        """A GITHUB_PROJECTS tool-level key outside the governed three is drift."""
+        rules = valid_agent_rules("scrum-master")
+        rules["GITHUB_PROJECTS_projects_view_write"] = "allow"
+        proc = run_checker(build_repo(valid_permission(), {"scrum-master": rules}))
+        self.assert_gate_fails(
+            proc, "scrum-master.md", "GITHUB_PROJECTS_projects_view_write"
+        )
+
+    def test_projects_tool_key_by_non_partial_agent_fails(self) -> None:
+        """GITHUB_PROJECTS tool-level keys are reserved to architect/scrum-master."""
+        rules = valid_agent_rules("devops")
+        rules["GITHUB_PROJECTS_projects_get"] = "deny"
+        proc = run_checker(build_repo(valid_permission(), {"devops": rules}))
+        self.assert_gate_fails(proc, "devops.md", "GITHUB_PROJECTS_projects_get")
+
     def test_partial_allow_wildcard_flip_fails(self) -> None:
         """The partial-allow agent must keep the namespace wildcard denied."""
-        rules = valid_agent_rules("developer")
-        rules["GITHUB_ACTIONS_*"] = "allow"
-        proc = run_checker(build_repo(valid_permission(), {"developer": rules}))
-        self.assert_gate_fails(proc, "developer.md", "GITHUB_ACTIONS_*")
+        for namespace, partials in PARTIAL_ALLOW_CASES.items():
+            for agent_file in partials:
+                with self.subTest(namespace=namespace, agent=agent_file):
+                    rules = valid_agent_rules(agent_file.removesuffix(".md"))
+                    rules[f"{namespace}_*"] = "allow"
+                    proc = run_checker(
+                        build_repo(
+                            valid_permission(),
+                            {agent_file.removesuffix(".md"): rules},
+                        )
+                    )
+                    self.assert_gate_fails(proc, agent_file, f"{namespace}_*")
 
     def test_agent_without_front_matter_fails(self) -> None:
         root = build_repo(valid_permission(), {})

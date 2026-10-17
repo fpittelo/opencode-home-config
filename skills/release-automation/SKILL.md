@@ -26,7 +26,7 @@ Use this skill to automate project releases, promotion gates, semantic version t
                    |                                               |
                    v                                               v
      [Bumped Release Tag vX.Y.Z]                    [@scrum-master Board Hygiene]
-     [GitHub Release with Notes]                    [Close Milestone & Board Audit]
+     [GitHub Release with Notes]                    [Close Sprint Marker & Board Audit]
 ```
 
 ### Promotion Gate Stages:
@@ -43,10 +43,10 @@ Use this skill to automate project releases, promotion gates, semantic version t
 **Promotion approval (both gates):** ONE mandatory explicit approval from `@fpittelo` per release covers both legs — `dev` → `qa` and `qa` → `main` (normative: `home-governance` Rule 5 — SSOT).
 4. **Automated Release Bumping:**
    - A bumped semantic version tag (`vMAJOR.MINOR.PATCH`) is created on `main` and pushed to origin.
-   - A formal GitHub Release is created, generating notes from milestone history, closed issues, and merged PRs.
+   - A formal GitHub Release is created, generating notes from closed issues and merged PRs.
 5. **Post-Release Board Hygiene:**
    - Merge to `main` automatically triggers a board hygiene cycle executed by `@scrum-master`.
-   - `@scrum-master` audits and closes the completed Sprint Milestone, cleans the board, moves completed items to `status::done`, and generates the Sprint Retrospective issue.
+   - `@scrum-master` audits and closes the completed sprint-marker issue (MADR-0013), cleans the board, moves completed items to `status::done`, and generates the Sprint Retrospective issue.
 
 ---
 
@@ -103,4 +103,4 @@ curl -X POST \
 | **`@cyber-security`** | ❌ Unauthorized to publish releases or promote branches | Audits secret scanning and dependency vulnerabilities before promotions. |
 | **`@architect`** | ✅ Promotion coordination | Prepares promotion specs and coordinates `@fpittelo` approval requests. |
 | **`@devops`** | ✅ Release publishing & promotion | Executes branch merges (`dev` → `qa` → `main`) post-approval, tags Git releases, and triggers Docker builds. |
-| **`@scrum-master`** | ✅ Board hygiene & milestone closing | Audits GitHub issue board, closes milestone, archives cards, and creates Sprint Retrospective upon release to `main`. |
+| **`@scrum-master`** | ✅ Board hygiene & sprint-marker closing | Audits GitHub issue board, closes the sprint-marker issue (MADR-0013), archives cards, and creates Sprint Retrospective upon release to `main`. |

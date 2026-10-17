@@ -23,7 +23,7 @@ opencode-home-config/
 │   ├── developer.md
 │   ├── devops.md
 │   └── scrum-master.md
-├── docs/                     # arc42 architecture, MADRs (12), guides, and history/
+├── docs/                     # arc42 architecture, MADRs (13), guides, and history/
 │   ├── Admin-and-User-Guide.md
 │   ├── adr/
 │   ├── architecture/arc42/
@@ -35,7 +35,7 @@ opencode-home-config/
 │   ├── docs-validation/
 │   ├── run.sh
 │   └── run-config-gate.sh
-├── skills/                   # Personal Skills (14)
+├── skills/                   # Personal Skills (15)
 │   ├── arc42-documentation/
 │   ├── coach/
 │   ├── docker-expert/
@@ -45,6 +45,7 @@ opencode-home-config/
 │   ├── harness-engineering/
 │   ├── herdr/
 │   ├── home-governance/
+│   ├── kis-yagni/
 │   ├── madr-adr/
 │   ├── mermaid-diagrams/
 │   ├── opentofu-iac/
@@ -152,10 +153,20 @@ See the [Migration Plan v3.1 (historical)](docs/history/opencode-config-migratio
 - **Directory hardening:** `~/.config/opencode` is mode 700; `install.sh` fails
   closed if any secrets file is group/world-readable.
 - **Gitleaks scanning:** CI pipeline scans every push and PR.
+- **`GITHUB_PROJECTS` server (MADR-0014):** fifth namespaced MCP instance
+  (`--toolsets=projects`) for the agent-managed Projects v2 planning model
+  (`HOME Squad Planning`); global default-deny `GITHUB_PROJECTS_*` baseline with
+  the governed partial allow reserved to @architect/@scrum-master.
+- **Projects credential:** classic PAT with the `project` scope ONLY
+  (`GITHUB_TOKEN_PROJECTS`), PO-owned, mode 600 in the profile-scoped secrets
+  file, never committed — the shared `GITHUB` server keeps its fine-grained
+  token (zero scope widening).
 
 ## Governance
 
 This repository follows the HOME SCRUM 3-branch lifecycle: `dev` (integration) → `qa` (staging) → `main` (production). All merges require 100% clean CI.
+
+Planning runs on the agent-managed GitHub Projects board **`HOME Squad Planning`** (MADR-0014): `Priority` is groomed by `@architect`, `Sprint` is assigned by `@scrum-master` at dispatch, and the built-in status column stays unmaintained — `status::*` issue labels remain the execution SSOT, sprint-marker issues the execution/DoD/retro record. Milestones are retired (MADR-0013); agents manage the full planning lifecycle with zero PO clicks.
 
 ---
 

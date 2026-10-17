@@ -16,7 +16,7 @@ C4Container
     Container_Boundary(home_profile, "HOME OpenCode Profile (installed to ~/.config/opencode)") {
         Container(opencode_jsonc, "opencode.jsonc", "JSONC", "Provider scoping, default agent + mode gating, MCP server registry, env interpolation")
         Container(agents, "Agent Specs (7)", "Markdown + YAML frontmatter", "Mandates, models, permission rules per agent")
-        Container(skills, "Skills (14)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, ...")
+        Container(skills, "Skills (15)", "Markdown", "Governance, SCRUM board, arc42, mermaid, IaC, TDD, KIS & YAGNI, ...")
         Container(installer, "install.sh", "Bash", "Path-independent symlinking into ~/.config/opencode")
         Container(ci, "CI Pipeline", "GitHub Actions", "JSONC validation, agent/skill presence, diff-scoped Gitleaks scan")
         Container(arc42docs, "arc42 Docs", "Markdown", "Architecture documentation (this tree)")
@@ -27,6 +27,7 @@ C4Container
         Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Native binary process", "Formal PR reviews as @devfpittelo (SoD)")
         Container(mcp_actions, "GITHUB_ACTIONS MCP", "Native binary process", "CI/CD & Actions workflows (MADR-0011)")
         Container(mcp_security, "GITHUB_SECURITY MCP", "Native binary process", "Code/secret/dependency alerts, read-only (MADR-0011)")
+        Container(mcp_projects, "GITHUB_PROJECTS MCP", "Native binary process", "Projects v2 planning — HOME Squad Planning (MADR-0014)")
         Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
         Container(mcp_browser, "BROWSER MCP", "npx @playwright/mcp (pinned, stdio)", "Ephemeral-profile browser automation, loopback-origin allowlist (MADR-0009)")
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
@@ -39,6 +40,7 @@ C4Container
     Rel(agents, mcp_reviewer, "Reviews via (code-reviewer only)", "GITHUB_CODE_REVIEWER_*")
     Rel(agents, mcp_actions, "CI/CD triage via (devops full, developer read-only)", "GITHUB_ACTIONS_*")
     Rel(agents, mcp_security, "Alert triage via (cyber-security read-only)", "GITHUB_SECURITY_*")
+    Rel(agents, mcp_projects, "Planning field groom via (architect/scrum-master only)", "GITHUB_PROJECTS_*")
     Rel(agents, mcp_coach, "Coaching via (coach only)", "COACH_* tools")
     Rel(agents, mcp_browser, "Journey verification via (developer/devops only)", "BROWSER_* tools")
     Rel(agents, mcp_openrouter, "Model catalog via", "openrouter_* tools")
@@ -59,7 +61,7 @@ C4Container
 | :--- | :--- | :--- |
 | `opencode.jsonc` | Single runtime configuration: `enabled_providers: ["openrouter"]`, `default_agent: "architect"` + built-in `build`/`plan` mode disabling (#149), MCP registry, `{env:VAR}` secret interpolation | OpenCode runtime schema (https://opencode.ai/config.json) |
 | `agents/*.md` (7) | Role mandates, model assignments, permission boundaries (allow/deny, last-match-wins) | OpenCode agent loading; frontmatter schema |
-| `skills/*/SKILL.md` (14) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
+| `skills/*/SKILL.md` (15) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode`; provisions `profiles.sh` with the `oc-home()` wrapper and migrates secrets to profile-scoped files (MADR-0010); installs the pinned `github-mcp-server` and Herdr binaries (SHA256-verified, idempotent) | Bash (per-pane wrapper subshells `oc-home` / `oc-work`, MADR-0010) |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled `deep-validation.yml` (MADR-0003) | GitHub Actions |
 | MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker / npx) / streamable-HTTP (remote) |
@@ -77,7 +79,9 @@ C4Container
 - Global default-deny baseline (MADR-0011): `opencode.jsonc` denies `GITHUB_ACTIONS_*` and `GITHUB_SECURITY_*` at the root `permission` level.
 - `GITHUB_ACTIONS_*`: `@devops` only for write operations (`actions_run_trigger`); `@developer` receives read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with explicit deny on `actions_run_trigger`; all other agents deny.
 - `GITHUB_SECURITY_*`: `@cyber-security` only, with `--read-only` flag enforced at process startup and raw secret redaction rules; all other agents deny.
-- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_ACTIONS_* / GITHUB_SECURITY_* MADR-0011) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
+- Global default-deny baseline (MADR-0014): `opencode.jsonc` denies `GITHUB_PROJECTS_*` at the root `permission` level.
+- `GITHUB_PROJECTS_*`: the wildcard stays denied for every agent; `@architect` (read + Priority groom) and `@scrum-master` (Sprint assignment at dispatch) hold the governed partial allow (`projects_get`, `projects_list`, `projects_write` — the consolidated planning tool); all other agents deny.
+- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_ACTIONS_* / GITHUB_SECURITY_* MADR-0011; GITHUB_PROJECTS_* MADR-0014) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
 
 **Mode gating invariants (enforced since #149):**
 - `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).

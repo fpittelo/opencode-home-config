@@ -43,6 +43,10 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
+  # deny backstops the global default-deny baseline, opencode.jsonc
+  # permission GITHUB_PROJECTS_*: deny).
+  GITHUB_PROJECTS_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -173,6 +177,7 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on PR review inspection.** | Provides Definition of Done, 3-branch lifecycle, and zero-tolerance CI thresholds. |
 | **`test-driven-development`** | When reviewing feature PRs or bugfixes. | Verifies test-first discipline, assertion quality, and test coverage. |
 | **`fastmcp-builder`** | When reviewing FastMCP servers, tool schemas, or transports. | Validates FastMCP signatures, Pydantic schemas, and protocol compliance. |
@@ -186,4 +191,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write review comments, suggestions, and summaries in **English**.
 - Be precise, constructive, and provide exact code snippets for requested modifications.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
