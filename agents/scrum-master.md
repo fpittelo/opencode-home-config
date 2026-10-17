@@ -32,6 +32,17 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace — @scrum-master holds the
+  # full steady-state planning write (Sprint assignment at dispatch;
+  # projects_get/projects_list/projects_write). The wildcard stays denied
+  # (last matching rule wins) and only the three governed tools are
+  # re-allowed, backstopping the global default-deny baseline
+  # (opencode.jsonc permission GITHUB_PROJECTS_*: deny). projects_write is a
+  # consolidated tool (method enum) — every write follows verify-or-escalate.
+  GITHUB_PROJECTS_*: deny
+  GITHUB_PROJECTS_projects_get: allow
+  GITHUB_PROJECTS_projects_list: allow
+  GITHUB_PROJECTS_projects_write: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
