@@ -1,6 +1,6 @@
 # Skill: madr-adr — MADR Decision Records
 
-Authoritative specification for **MADR** (Markdown Anybody Decision Records) in HOME repositories. Every architectural spike or technology introduction MUST be recorded as a numbered MADR under `docs/adr/` and indexed in arc42 §9.
+Authoritative specification for **MADR** (Markdown Anybody Decision Records) in HOME repositories. Every architectural spike or technology introduction MUST be recorded as a numbered MADR under `docs/adr/` and indexed in `docs/adr/README.md` (the single MADR index).
 
 **Mandated for:** `@architect` (creation, acceptance, indexing). Lint enforcement is owned by STORY-04 (#61).
 
@@ -83,7 +83,7 @@ An ADR is **conforming** if and only if ALL of the following hold. A file missin
 1. **Scaffold:** `bash skills/madr-adr/scripts/new-adr.sh "<title>"` — generates `docs/adr/NNNN-<slug>.md` from the template with the next sequence number. The script refuses to overwrite existing files and exits non-zero on misuse.
 2. **Author:** fill every section — no placeholder text may remain at commit time.
 3. **Propose → Accept:** new ADRs start as `proposed`. On `@fpittelo` (Product Owner) acceptance, set `Status: accepted`.
-4. **Index:** upon acceptance, add the entry to the **arc42 §9 index** (`docs/architecture/arc42/09-architecture-decisions.md`) — number, title, status, link. The `docs/adr/README.md` inventory mirrors this index.
+4. **Index:** upon acceptance, add the entry to the single authoritative index **`docs/adr/README.md`** — number, title, status, link.
 5. **Commit:** ADR files and index updates travel on the feature branch of the work that prompted the decision (or their own `docs/<n>-adr-...` branch) — standard trunk+tag lifecycle applies (MADR-0017).
 
 ---
@@ -96,7 +96,7 @@ proposed ──▶ accepted ──▶ superseded (by MADR-NNNN)
 ```
 
 - **proposed:** drafted, awaiting PO acceptance.
-- **accepted:** active and indexed in §9.
+- **accepted:** active and indexed in `docs/adr/README.md`.
 - **superseded:** replaced — the old ADR links forward (`Status: superseded (superseded by MADR-NNNN)`), the new ADR references it.
 - **deprecated:** deliberately retired without replacement.
 
@@ -106,4 +106,4 @@ proposed ──▶ accepted ──▶ superseded (by MADR-NNNN)
 
 - One decision per ADR. Short and honest beats exhaustive and vague.
 - "Negative" consequences are mandatory — no decision is free.
-- Do not backfill history: pre-MADR decisions are back-indexed as candidates (see arc42 §9 back-index table) only when they are actually needed going forward.
+- Do not backfill history: pre-MADR decisions are back-indexed as candidates (see the back-index table in `docs/architecture/arc42/03-cross-cutting-and-security.md` §5) only when they are actually needed going forward.

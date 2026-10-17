@@ -1,6 +1,6 @@
 # Architecture Decision Records (MADR)
 
-This directory holds the HOME project's Architecture Decision Records in **MADR** format. The authoritative index lives in **arc42 §9**: [`docs/architecture/arc42/09-architecture-decisions.md`](../architecture/arc42/09-architecture-decisions.md).
+This directory holds the HOME project's Architecture Decision Records in **MADR** format. **This README is the single authoritative MADR index** (the former duplicate arc42 §9 index table was retired by #342; arc42 references it from `docs/architecture/arc42/03-cross-cutting-and-security.md` §5).
 
 ## Creating an ADR
 
@@ -15,7 +15,7 @@ This scaffolds the next sequential `NNNN-<slug>.md` from the template (refuses t
 | Status | Meaning |
 | :--- | :--- |
 | `proposed` | Drafted, awaiting Product Owner acceptance |
-| `accepted` | Active — must be indexed in arc42 §9 |
+| `accepted` | Active — must be indexed in this README (the single MADR index) |
 | `superseded` | Replaced by a newer MADR (links forward) |
 | `deprecated` | Deliberately retired without replacement |
 
