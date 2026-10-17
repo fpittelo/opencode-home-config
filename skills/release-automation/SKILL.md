@@ -35,7 +35,7 @@ Use this skill to automate project releases, semantic version tagging, release g
 4. **Automated Release Bumping:**
    - Under the PO approval, a bumped semantic version tag (`vMAJOR.MINOR.PATCH`) is created on `main` and pushed to origin.
    - A formal GitHub Release is created, generating notes from closed issues and merged PRs.
-   - **Agent-executable since MADR-0016 (#323):** the release object is published by `@devops` via the `GITHUB_RELEASES` MCP server (`create_release` with the curated notes body; `update_release` for follow-up edits). The official pinned `github-mcp-server` remains read-only for releases — only these two home-grown tools write. Standing manual PO action is **not** required in the normal flow (fallback: the PO can still publish in the UI, or edit/revert via `gh`, if `GITHUB_RELEASES` is unavailable; the tool intentionally has no `delete_release` — MADR-0016 YAGNI — so an erroneous publish is PO-disposal material).
+   - **Agent-executable (MADR-0020):** the release object is published by `@devops` with the native `gh` CLI (`gh release create` with the curated notes body; `gh release edit` for follow-up edits) under the single PO approval. The token is injected inline as `GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}"` (the #304 shell-assignment pattern — **not** the `env` command). Standing manual PO action is **not** required in the normal flow (fallback: the PO can still publish in the UI). **Guardrail:** agents MUST NOT use `gh release delete` — the retired MADR-0016 server intentionally had no delete capability; `gh release delete` is recorded as a bash deny candidate if the PO wants machine-enforced parity.
 5. **Post-Release Board Hygiene:**
    - Every release automatically triggers a board hygiene cycle executed by `@scrum-master`.
    - `@scrum-master` audits and closes the completed sprint-marker issue (MADR-0013), cleans the board, moves completed items to `status::done`, and appends the lightweight 3-bullet retro section to the marker closeout (standalone retrospective issue only on major incident — #339).
@@ -59,34 +59,23 @@ Use this skill to automate project releases, semantic version tagging, release g
 
 ---
 
-## 3. Execution Commands (GitHub CLI / API)
+## 3. Execution Commands (GitHub CLI)
 
-### Via GitHub CLI (`gh`):
+### Via GitHub CLI (`gh`) — primary (MADR-0020):
 ```bash
-gh release create v1.1.0 \
+GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}" gh release create v1.1.0 \
   --target main \
   --title "Release v1.1.0" \
   --generate-notes \
-  --notes "Automated release generated from milestone history, closed issues, and merged PRs."
+  --notes "Automated release generated from closed issues and merged PRs."
 ```
 
-### Via GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN`:
-```bash
-curl -X POST \
-  -H "Accept: application/vnd.github+json" \
-  -H "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  https://api.github.com/repos/:owner/:repo/releases \
-  -d '{
-    "tag_name": "v1.1.0",
-    "target_commitish": "main",
-    "name": "Release v1.1.0",
-    "body": "Automated release generated from milestone history and closed issues.",
-    "draft": false,
-    "prerelease": false,
-    "generate_release_notes": true
-  }'
-```
+The token is injected inline as `GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}"` (the #304 shell-assignment pattern — **not** the `env` command). Follow-up edits use `gh release edit v1.1.0 ...` under the same injection.
+
+**Guardrail:** agents MUST NOT use `gh release delete` — the retired MADR-0016 server intentionally had no delete capability; `gh release delete` is recorded as a bash deny candidate if the PO wants machine-enforced parity.
+
+### Fallback: GitHub REST API
+The REST endpoints (`POST /repos/{owner}/{repo}/releases`, `PATCH /repos/{owner}/{repo}/releases/{id}`) remain the underlying API, but the `curl` transport is **bash-denied** in this posture — use the `gh` CLI above. A plain-REST fallback is only available through a non-`curl` client if one is ever needed.
 
 ---
 
@@ -98,5 +87,5 @@ curl -X POST \
 | **`@code-reviewer`** | ❌ Unauthorized to publish releases or tag | Inspects PRs targeting `main`; provides formal decisions. |
 | **`@cyber-security`** | ❌ Unauthorized to publish releases or tag | Audits secret scanning and dependency vulnerabilities before releases. |
 | **`@architect`** | ✅ Release coordination | Prepares release specs and coordinates `@fpittelo` approval requests. |
-| **`@devops`** | ✅ Release tagging & publishing | Under the PO approval, tags Git releases on `main`, triggers Docker builds, and **publishes the GitHub Release object via `GITHUB_RELEASES` MCP (MADR-0016 — sole release-write authority)**. |
+| **`@devops`** | ✅ Release tagging & publishing | Under the PO approval, tags Git releases on `main`, triggers Docker builds, and **publishes the GitHub Release object via the native `gh` CLI (`gh release create`; MADR-0020 — sole release-write authority)**. |
 | **`@scrum-master`** | ✅ Board hygiene & sprint-marker closing | Audits GitHub issue board, closes the sprint-marker issue (MADR-0013), archives cards, and appends the 3-bullet retro to the marker closeout upon release (#339). |

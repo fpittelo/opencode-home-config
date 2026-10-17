@@ -1,6 +1,6 @@
 # MADR-0016: Home-grown GITHUB_RELEASES Python FastMCP server for agent-side release publishing
 
-- **Status:** accepted
+- **Status:** superseded (superseded by MADR-0020)
 - **Date:** 2026-10-17
 - **Deciders:** @fpittelo (PO — Option A selection), @architect (spec), @cyber-security (MADR-0008 security approval with 11 conditions)
 

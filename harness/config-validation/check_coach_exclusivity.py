@@ -15,8 +15,7 @@ pass per namespace:
 
 Governed namespaces (#150 for COACH_*, #207/MADR-0009 for BROWSER_*, #252 /
 MADR-0011 for the extended GitHub MCP namespaces, #311/MADR-0014 for the
-Projects v2 planning namespace, #323/MADR-0016 for the release-write
-namespace):
+Projects v2 planning namespace):
 
   ==================  ==========================  ============================
   Namespace           Canonical patterns          Sole allow whitelist
@@ -36,7 +35,6 @@ namespace):
                                                   (projects_get, projects_list,
                                                   projects_write — #311,
                                                   MADR-0014)
-  GITHUB_RELEASES_*   GITHUB_RELEASES_*           devops.md (#323, MADR-0016)
   ==================  ==========================  ============================
 
 Partial-allow posture (#252, MADR-0011 C3): one designated agent may hold
@@ -94,16 +92,6 @@ NAMESPACE_POLICIES = {
         # below); every other agent denies the namespace.
         "allow_agents": frozenset(),
         "provenance": "#311 (MADR-0014)",
-    },
-    "GITHUB_RELEASES": {
-        "keys": ("GITHUB_RELEASES_*",),
-        # #323 (MADR-0016): @devops alone is the release authority
-        # (release-automation §4 SoD) — the home-grown GITHUB_RELEASES
-        # FastMCP server exposes exactly two release-write tools
-        # (create_release, update_release; no delete), so the wildcard
-        # stays allow for @devops.md and denied for every other agent.
-        "allow_agents": frozenset({"devops.md"}),
-        "provenance": "#323 (MADR-0016)",
     },
 }
 
@@ -305,8 +293,7 @@ def main(argv: list[str]) -> int:
         f"partial allow and GITHUB_SECURITY_* is @cyber-security-only "
         f"(#252, MADR-0011), GITHUB_PROJECTS_* wildcard stays denied with "
         f"the @architect/@scrum-master governed partial allow "
-        f"(#311, MADR-0014), GITHUB_RELEASES_* is @devops-only "
-        f"(#323, MADR-0016)"
+        f"(#311, MADR-0014)"
     )
     return 0
 

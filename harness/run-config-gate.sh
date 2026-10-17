@@ -112,15 +112,7 @@ python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_cons
 # root tier patterns in an agent is now the defect.
 python3 harness/config-validation/check_bash_permission_tiers.py . || fail "check_bash_permission_tiers.py failed"
 python3 harness/config-validation/test_check_bash_permission_tiers.py || fail "test_check_bash_permission_tiers.py failed"
-# 17/17 GITHUB_RELEASES server supply-chain + quality gate (#323 Slice B,
-# MADR-0016 condition 10): the home-grown Python FastMCP server in
-# tools/github-releases-mcp is synced strictly from its committed uv.lock,
-# linted (ruff), strictly type-checked (mypy --strict), tested with zero
-# warnings at >= 80% coverage (pytest -W error), and dependency-audited
-# (pip-audit --strict). NOT a repoint of harness/run.sh (root pyproject
-# intentionally absent, MADR-0016).
-bash harness/config-validation/check_releases_server.sh || fail "check_releases_server.sh failed"
-# 18/18 YAML front-matter validity gate for agents/*.md (#338 AC1-AC2):
+# 17/17 YAML front-matter validity gate for agents/*.md (#338 AC1-AC2):
 # every agent file's front-matter block must have proper --- delimiters,
 # parse as YAML (duplicate keys rejected), and carry the mandatory schema
 # (description, mode, openrouter/<slug> model, temperature in [0, 2],
@@ -128,4 +120,4 @@ bash harness/config-validation/check_releases_server.sh || fail "check_releases_
 # front-matter passed the indentation-insensitive namespace checker).
 python3 harness/config-validation/check_agent_frontmatter.py . || fail "check_agent_frontmatter.py failed"
 python3 harness/config-validation/test_check_agent_frontmatter.py || fail "test_check_agent_frontmatter.py failed"
-echo "PASS run-config-gate: all 18 gates green (${REPO_ROOT})"
+echo "PASS run-config-gate: all 17 gates green (${REPO_ROOT})"

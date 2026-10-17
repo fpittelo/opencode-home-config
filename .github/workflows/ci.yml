@@ -183,19 +183,6 @@ jobs:
         # only, < 1 s.
         run: python3 harness/config-validation/test_check_bash_permission_tiers.py
 
-      - name: GITHUB_RELEASES server supply-chain + quality gate (#323, MADR-0016)
-        # Slice B of #323 (MADR-0016 condition 10): the home-grown Python
-        # FastMCP server (tools/github-releases-mcp) synced strictly from its
-        # committed uv.lock, linted (ruff), strictly type-checked
-        # (mypy --strict), tested with zero warnings at >= 80% coverage
-        # (pytest -W error) and dependency-audited (pip-audit --strict,
-        # editable self-install skipped). Own gate script, located inside the
-        # config-validation block by design — NOT a repoint of harness/run.sh
-        # (root pyproject intentionally absent, MADR-0016).
-        run: |
-          command -v uv >/dev/null 2>&1 || pip install "uv==0.11.17"
-          bash harness/config-validation/check_releases_server.sh
-
       - name: Enforce YAML front-matter validity for agents/*.md (#338)
         # AC1-AC2 of #338: every agent file's front-matter block must have
         # proper --- delimiters, parse as YAML (duplicate keys rejected), and

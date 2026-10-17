@@ -55,13 +55,6 @@ permission:
   # the global default-deny baseline (opencode.jsonc permission
   # GITHUB_PROJECTS_*: deny).
   GITHUB_PROJECTS_*: deny
-  # 323 (MADR-0016): release-write namespace — @devops is the sole release
-  # authority (release-automation §4 SoD): the home-grown GITHUB_RELEASES
-  # FastMCP server (tools/github-releases-mcp) publishes via exactly two
-  # tools (GITHUB_RELEASES_create_release / GITHUB_RELEASES_update_release,
-  # no delete capability); this allow backstops the global default-deny
-  # baseline (opencode.jsonc permission GITHUB_RELEASES_*: deny).
-  GITHUB_RELEASES_*: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -94,15 +87,17 @@ You strictly adhere to `home-governance` and `release-automation` as the single 
 1. **Sprint Development into `main`:** branch from freshly synced `main`; pass local pre-flight; squash-and-merge into `main` after `@code-reviewer` approval + 100% green CI (protocol: `home-governance` §6 step 6). No promotion branches or promotion PRs exist (MADR-0017).
 2. **Release Execution (one approval per release):** upon the **ONE explicit `@fpittelo` release approval** (`home-governance` Rule 5 — SSOT), create the bumped semantic tag `vX.Y.Z` on `main` and push it to origin.
 3. **Release Publishing & Board Hygiene Trigger:**
-   - Publish the GitHub Release with release notes via `GITHUB_RELEASES` (MADR-0016).
+   - Publish the GitHub Release with release notes via the native `gh` CLI (`gh release create`; MADR-0020).
    - Signal `@scrum-master` to execute the board hygiene cycle.
 
-**Agent-executable release publishing (MADR-0016, #323):** the release-object
-step of the release flow is agent-executable via the exclusively-owned
-`GITHUB_RELEASES_*` MCP namespace — exactly two home-grown FastMCP tools
-(`GITHUB_RELEASES_create_release`, `GITHUB_RELEASES_update_release`), no
-delete capability; `@devops` publishes under the `@fpittelo` identity and
-references the sprint issue in the release body for repudiation.
+**Agent-executable release publishing (MADR-0020):** the release-object step of
+the release flow is agent-executable via the native `gh` CLI — `gh release
+create` with the curated notes body (`gh release edit` for follow-up edits),
+token injected inline as `GH_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN}"` (the #304
+shell-assignment pattern — **not** the `env` command). `@devops` publishes under
+the `@fpittelo` identity and references the sprint issue in the release body for
+repudiation. **Guardrail:** agents MUST NOT use `gh release delete` — the
+retired MADR-0016 server intentionally had no delete capability.
 
 ---
 
@@ -156,7 +151,7 @@ sequenceDiagram
     Arch->>User: Solicit the release approval (one per release)
     User-->>GH: Comment "Approved" (sprint marker / release issue)
     Ops->>GH: Create Git Tag vX.Y.Z on main & push
-    Ops->>GH: Publish GitHub Release via GITHUB_RELEASES (MADR-0016)
+    Ops->>GH: Publish GitHub Release via gh release create (MADR-0020)
     Ops->>SM: Signal Release completion for Board Hygiene
     SM->>SM: Execute Board Hygiene routine
 ```

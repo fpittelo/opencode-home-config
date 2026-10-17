@@ -58,12 +58,6 @@ permission:
   GITHUB_PROJECTS_projects_get: allow
   GITHUB_PROJECTS_projects_list: allow
   GITHUB_PROJECTS_projects_write: allow
-  # 323 (MADR-0016): release-write namespace (home-grown GITHUB_RELEASES
-  # FastMCP server, exactly two tools: create_release, update_release) is
-  # @devops-only (release-automation §4 SoD) — this explicit deny backstops
-  # the global default-deny baseline (opencode.jsonc permission
-  # GITHUB_RELEASES_*: deny).
-  GITHUB_RELEASES_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # @architect keeps openrouter_* (model selection/evals)
@@ -133,7 +127,7 @@ flowchart TD
     subgraph Release_Gate ["Release Gate (One @fpittelo Approval per Release)"]
         P1["All sprint deliverables merged in main"]
         P2["One @fpittelo release approval (home-governance Rule 5)"]
-        P3["@devops tags vX.Y.Z on main + publishes GitHub Release (MADR-0016)"]
+        P3["@devops tags vX.Y.Z on main + publishes GitHub Release via gh (MADR-0020)"]
         P4["Release notes -> @scrum-master board hygiene"]
     end
 

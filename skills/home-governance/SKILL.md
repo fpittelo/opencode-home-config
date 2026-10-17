@@ -139,7 +139,7 @@ Every repository maintains exactly **one** persistent branch: `main` — the tru
 - **Red-trunk policy:** if `main` is ever red, the next action is **revert-first** (revert the offending squash commit) — never fix-forward on a red trunk.
 
 ### Rule 5: Release Approval Gate
-- Every release requires **one mandatory explicit approval from @fpittelo** before tagging — the PO decides once; `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release under that approval (MADR-0008, PO gate inventory (a); MADR-0016 for the release-object publish). **This is the normative statement of the release approval protocol; all other documents point here.**
+- Every release requires **one mandatory explicit approval from @fpittelo** before tagging — the PO decides once; `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release under that approval (MADR-0008, PO gate inventory (a); MADR-0020 for the release-object publish via native `gh release create`). **This is the normative statement of the release approval protocol; all other documents point here.**
 
 ### Rule 6: Release & Board Hygiene
 - Every release is a bumped semantic version (Git tag `vX.Y.Z` on `main` + GitHub Release with notes).
@@ -171,7 +171,7 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 5. **Self-Remediation Circuit Breaker:** Agents are capped at **3 consecutive attempts** to fix pre-flight or CI failures before escalating with `blocker::active`.
 6. **Single-Owner PR Merge Protocol:** Assigned agent opens PR targeting `main` (`status::review`). Once `@code-reviewer` gives formal approval on GitHub and CI is green, the PR author merges into `main` via squash-and-merge and sets `status::done`.
 7. **Autonomous Handoff & DoD Verification:** `@scrum-master` verifies all 5 DoD criteria, posts a closing summary comment, closes the issue, and immediately triggers the next prioritized `status::ready` issue.
-8. **Release:** When all sprint deliverables are merged into `main`, `@architect` & `@devops` solicit the single `@fpittelo` release approval (Rule 5); `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release (MADR-0016) — no promotion PRs exist (MADR-0017).
+8. **Release:** When all sprint deliverables are merged into `main`, `@architect` & `@devops` solicit the single `@fpittelo` release approval (Rule 5); `@devops` then tags `vX.Y.Z` on `main` and publishes the GitHub Release via native `gh release create` (MADR-0020) — no promotion PRs exist (MADR-0017).
 
 ### Parallel-Session Governance
 
