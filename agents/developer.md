@@ -30,98 +30,13 @@ permission:
     "/home/frede/.config/**/*.pem": deny
     "/home/frede/.config/**/*.key": deny
     "/home/frede/.config/**/*token*": deny
-  bash:
-    # 158 (MADR-0004): allow-by-default posture with catastrophic-deny guardrails
-    # (PO directive 2026-10-03) — supersedes the #123 per-agent allowlist policy
-    # (AC4 of #89). ORDERING: broad rules first, deny rules LAST — opencode
-    # evaluates rules in order and the LAST matching rule wins. opencode also
-    # splits compound commands (&&, ;, |) and evaluates EVERY segment, so one
-    # denied segment blocks the whole command. Three tiers: (1) "*": allow for
-    # routine work; (2) ask-tier single checkpoint for destructive-but-recoverable
-    # ops; (3) hard deny tail for catastrophic / irreversible / bypass commands.
-    "*": allow
-    # --- ask-tier (single checkpoint; catastrophic variants hard-denied below) ---
-    "rm *": ask
-    "rm /tmp/opencode/*": allow
-    "rm -r /tmp/opencode/*": allow
-    "pip install*": ask
-    "pip3 install*": ask
-    "uv pip install*": ask
-    "*-m pip install*": ask
-    "npm install -g*": ask
-    "npm i -g*": ask
-    "kill*": ask
-    "pkill*": ask
-    "killall*": ask
-    "chmod *": ask
-    "chmod 600 *": allow
-    "chmod 700 *": allow
-    "chown *": ask
-    "systemctl*": ask
-    # --- hard deny tail (catastrophic / irreversible / bypass) ---
-    "sudo*": deny
-    "rm -rf /*": deny
-    "rm -fr /*": deny
-    "rm -rf /": deny
-    "rm -rf ~*": deny
-    "rm -rf $HOME*": deny
-    "rm -rf ${HOME}*": deny
-    "mkfs*": deny
-    "dd *of=/dev/*": deny
-    "shred*": deny
-    "wipefs*": deny
-    "blockdev*": deny
-    "fdisk*": deny
-    "sfdisk*": deny
-    "gdisk*": deny
-    "parted*": deny
-    "truncate * /dev/*": deny
-    "* > /dev/sd*": deny
-    "* > /dev/nvme*": deny
-    "* > /dev/mmcblk*": deny
-    "* > /dev/vd*": deny
-    "* > /dev/hd*": deny
-    "mv * /dev/sd*": deny
-    "mv * /dev/nvme*": deny
-    "mv * /dev/mmcblk*": deny
-    "shutdown*": deny
-    "reboot*": deny
-    "halt*": deny
-    "poweroff*": deny
-    "systemctl poweroff*": deny
-    "systemctl reboot*": deny
-    "systemctl halt*": deny
-    "crontab*": deny
-    "systemd-run*": deny
-    "chmod -R * /*": deny
-    "chown -R * /*": deny
-    "find * -delete*": deny
-    "find * -exec rm*": deny
-    "git push --force*": deny
-    "git push -f*": deny
-    "git filter-branch*": deny
-    "git filter-repo*": deny
-    "git clean*": deny
-    "git reset --hard*": deny
-    "curl*": deny
-    "wget*": deny
-    "bash -c *": deny
-    "sh *": deny
-    "python* -c*": deny
-    "node -e*": deny
-    "node --eval*": deny
-    "perl -e*": deny
-    "ruby -e*": deny
-    "printenv*": deny
-    "env": deny
-    "cat /proc/*/environ*": deny
-    # 167 (MADR-0004 Security Considerations): file-centric secret denies — block
-    # any command referencing a credential filename (closes the head/rg/strings
-    # read-family bypass; "*.env*" subsumes the #158 cat-specific deny; "*token*"
-    # skipped — over-matches command-agnostically).
-    "*.env*": deny
-    "*.pem*": deny
-    "*.key*": deny
+  # 340: bash inherits the root permission.bash baseline (opencode.jsonc) —
+  # verified on opencode 1.19.0 via `opencode debug agent`: an agent WITHOUT a
+  # `bash:` key receives every config-level bash rule, while a partial agent
+  # bash map is appended AFTER the root deny tail (allow rules there could
+  # widen the posture). Re-stating the mirrored tiers is now the defect; the
+  # root block is the single source of truth (MADR-0004 five-file mirroring
+  # superseded by root inheritance per #340; enforced by Gate 16).
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
   # 252 (MADR-0011): extended GitHub MCP namespaces (C3) — @developer gets

@@ -1,19 +1,31 @@
 #!/usr/bin/env python3
-"""Enforce the bash ask/deny tier invariants (#320 Slice B, MADR-0015).
+"""Enforce the bash tier invariants after root inheritance (#340).
 
-Three checks over the mirrored bash permission tiers:
+Design shift (#340): the MADR-0004 five-file mirroring of the bash tiers is
+SUPERSEDED by root inheritance. Verified opencode semantics (empirical probe
+via ``opencode debug agent``, opencode 1.19.0):
 
-  1. DRIFT GUARD — the ask-tier list and the deny-tier list are identical
-     (order-sensitive) across all five mirrored locations: the root
-     ``permission.bash`` block of opencode.jsonc and the four allow-default
-     agent specs (agents/architect.md, agents/developer.md,
-     agents/devops.md, agents/cyber-security.md). The tiers are duplicated
-     verbatim by design (MADR-0004); a single-file edit silently changes
-     the fleet's effective policy, so any divergence is a finding.
-  2. DENY-TAIL FROZEN — the deny tier of the root block equals
-     BASELINE_DENY_TAIL, the exact ordered pattern list captured from
-     origin/dev before the MADR-0015 delta: no removal, no reorder, and no
-     allow/ask rule interleaved inside the tail.
+  * An agent spec that OMITS the ``bash:`` key receives every config-level
+    bash rule of ``opencode.jsonc`` (probe: agent with no ``bash:`` key
+    resolved to exactly the root rule list, zero agent rules).
+  * An agent that declares a (partial) ``bash:`` map has its rules APPENDED
+    AFTER all config-level rules in the last-match-wins list (probe: an
+    agent allow for a root-denied marker pattern overrode the config deny).
+
+Consequences enforced below:
+
+  1. ROOT BASELINE INTEGRITY — the root ``permission.bash`` block of
+     opencode.jsonc equals BASELINE_ROOT_RULES exactly (order-sensitive pin
+     of the MADR-0015 delta: ``"*"`` allow head + ask tier + frozen deny
+     tail). The root block is the single source of truth; any edit must be
+     a deliberate, reviewed change to this constant.
+  2. CLEAN AGENT INHERITANCE — each of the four allow-default agent specs
+     (agents/architect.md, agents/developer.md, agents/devops.md,
+     agents/cyber-security.md) either omits ``bash:`` entirely or carries
+     ONLY its documented role-deviation patterns (devops: ``docker *``
+     allow; cyber-security: audit-tool allows). Re-stating any root tier
+     pattern in an agent is now the DEFECT (it appends after the root deny
+     tail and can widen the posture), not the requirement.
   3. LAST-MATCH-WINS TRUTH TABLE — a static resolver evaluates command
      strings against the ordered root rule list (fnmatch-style glob,
      last match wins, opencode semantics) and every expected verdict of
@@ -30,7 +42,8 @@ import re
 import sys
 from pathlib import Path
 
-# The five mirrored locations: root config + the four allow-default agents.
+# The four allow-default agent specs that used to mirror the tiers verbatim
+# (MADR-0004) and now inherit the root baseline (#340).
 AGENT_FILES = ("architect.md", "developer.md", "devops.md", "cyber-security.md")
 
 # Deny-tail baseline captured from origin/dev HEAD before the #320 Slice B
@@ -96,6 +109,63 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     "*.pem*",
     "*.key*",
 )
+
+# Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
+# order-sensitive: single ask checkpoint per destructive-but-recoverable
+# family, plus the three workspace-scoped allow carve-outs.
+BASELINE_ASK_TIER: tuple[tuple[str, str], ...] = (
+    ("rm *", "ask"),
+    ("rm /tmp/opencode/*", "allow"),
+    ("rm -r /tmp/opencode/*", "allow"),
+    ("pip install*", "ask"),
+    ("pip3 install*", "ask"),
+    ("uv pip install*", "ask"),
+    ("*-m pip install*", "ask"),
+    ("npm install -g*", "ask"),
+    ("npm i -g*", "ask"),
+    ("kill*", "ask"),
+    ("pkill*", "ask"),
+    ("killall*", "ask"),
+    ("chmod *", "ask"),
+    ("chmod 600 *", "allow"),
+    ("chmod 700 *", "allow"),
+    ("chown *", "ask"),
+    ("systemctl*", "ask"),
+)
+
+# The full pinned root bash block: allow head + ask tier + deny tail. The
+# root block of opencode.jsonc must equal this list exactly (#340).
+BASELINE_ROOT_RULES: tuple[tuple[str, str], ...] = (
+    (("*", "allow"),) + BASELINE_ASK_TIER + tuple(
+        (pattern, "deny") for pattern in BASELINE_DENY_TAIL
+    )
+)
+
+# Documented role-deviation patterns each agent MAY carry instead of the
+# full inheritance (#340). Anything else — including any root tier pattern —
+# is a defect. These are all redundant under the root "*": allow legibility
+# signatures kept from MADR-0004; re-stating them as an agent bash map is
+# permitted for documentation but discouraged (they would sit after the
+# deny tail in the merged rule list).
+AGENT_DEVIATIONS: dict[str, frozenset[str]] = {
+    "architect.md": frozenset(),
+    "developer.md": frozenset(),
+    "devops.md": frozenset({"docker *"}),
+    "cyber-security.md": frozenset(
+        {
+            "gitleaks*",
+            "pip-audit*",
+            "trivy*",
+            "cargo audit *",
+            "cargo deny *",
+            "cargo metadata *",
+            "cargo tree *",
+            "sha256sum *",
+            "opencode debug *",
+            "opencode agent list*",
+        }
+    ),
+}
 
 # Last-match-wins truth table of the ratified delta (MADR-0015): every
 # verdict must hold against the real ordered rule list.
@@ -172,105 +242,113 @@ def root_rules(root: Path, failures: list[str]) -> list[tuple[str, str]] | None:
     return [(str(pattern), str(tier)) for pattern, tier in bash.items()]
 
 
-def agent_rules(
+def agent_bash(
     root: Path, agent: Path, failures: list[str]
-) -> list[tuple[str, str]] | None:
-    """Ordered (pattern, tier) pairs of an agent spec's YAML bash block."""
+) -> tuple[bool, list[tuple[str, str]]]:
+    """(present, rules) of an agent spec's YAML bash block.
+
+    present=False means the agent omits the bash key entirely — the
+    legitimate inherited posture (#340). Parse/read problems are recorded
+    as failures; comments and blank lines inside the block are skipped.
+    """
     rel = agent.relative_to(root)
     try:
         text = agent.read_text(encoding="utf-8")
     except OSError as exc:
         failures.append(f"{rel}: unreadable ({exc})")
-        return None
+        return False, []
     match = FRONT_MATTER_RE.match(text)
     if not match:
         failures.append(f"{rel}: no YAML front-matter found")
-        return None
+        return False, []
     lines = match.group(1).splitlines()
     start = next(
         (i for i, line in enumerate(lines) if BASH_HEADER_RE.match(line)), None
     )
     if start is None:
-        failures.append(f"{rel}: no 'bash:' permission block in YAML front-matter")
-        return None
+        return False, []  # inherited posture — no bash key at all
     rules: list[tuple[str, str]] = []
     for line in lines[start + 1 :]:
-        if NEXT_KEY_RE.match(line) or not line.strip():
-            break  # the next permission key (read/edit/GITHUB_*) or block end
+        if NEXT_KEY_RE.match(line):
+            break  # the next permission key (read/edit/GITHUB_*) — block end
         rule = RULE_RE.match(line)
         if rule:
             rules.append((rule.group(1), rule.group(2)))
-    if not rules:
-        failures.append(f"{rel}: no permission rules found under 'bash:'")
-        return None
-    return rules
+    return True, rules
 
 
-def tier_lists(rules: list[tuple[str, str]]) -> tuple[list[str], list[str]]:
-    """Ordered ask patterns and ordered deny patterns of one location."""
-    ask = [pattern for pattern, tier in rules if tier == "ask"]
-    deny = [pattern for pattern, tier in rules if tier == "deny"]
-    return ask, deny
-
-
-def check_tier_drift(
-    locations: dict[str, list[tuple[str, str]]], failures: list[str]
-) -> None:
-    """Ask and deny tiers must be identical (order-sensitive) everywhere."""
-    reference = locations.get("opencode.jsonc")
-    if reference is None:
-        return  # the root failure is already recorded
-    ref_ask, ref_deny = tier_lists(reference)
-    for name, rules in locations.items():
-        if name == "opencode.jsonc":
-            continue
-        ask, deny = tier_lists(rules)
-        if ask != ref_ask:
-            failures.append(
-                f"{name}: ask tier diverges from opencode.jsonc "
-                f"(drift guard, MADR-0015): found {ask}, expected {ref_ask}"
-            )
-        if deny != ref_deny:
-            failures.append(
-                f"{name}: deny tier diverges from opencode.jsonc "
-                f"(drift guard, MADR-0015): found {deny}, expected {ref_deny}"
-            )
-
-
-def check_deny_tail_frozen(
+def check_root_baseline(
     rules: list[tuple[str, str]], rel: str, failures: list[str]
 ) -> None:
-    """The root deny tier equals the baseline, contiguous and unmodified."""
-    deny = [pattern for pattern, tier in rules if tier == "deny"]
-    baseline = list(BASELINE_DENY_TAIL)
-    if deny != baseline:
-        if len(deny) != len(baseline):
+    """The root block equals BASELINE_ROOT_RULES (order-sensitive pin)."""
+    baseline = list(BASELINE_ROOT_RULES)
+    ask_len = 1 + len(BASELINE_ASK_TIER)
+    if rules == baseline:
+        return
+    failures.append(
+        f"{rel}: root bash block has {len(rules)} rules, the MADR-0015 "
+        f"baseline has {len(baseline)} — no removal, no insertion (the root "
+        f"block is the single source of truth, #340)"
+    )
+    diverged_at: int | None = None
+    for index in range(min(len(rules), len(baseline))):
+        if rules[index] != baseline[index]:
+            diverged_at = index
+            break
+    if diverged_at is None:
+        # Prefix equality: the change sits at the end (removal/insertion).
+        diverged_at = min(len(rules), len(baseline))
+    region = "deny tail" if diverged_at >= ask_len else "ask tier"
+    expected = (
+        baseline[diverged_at] if diverged_at < len(baseline) else "end-of-list"
+    )
+    failures.append(
+        f"{rel}: root bash block {region} diverges from the MADR-0015 "
+        f"baseline at position {diverged_at}: expected {expected!r} — fix "
+        f"the config, not the baseline constant"
+    )
+
+
+def check_agent_inheritance(root: Path, failures: list[str]) -> None:
+    """Agents inherit the root baseline; only documented deviations may stay."""
+    root_patterns = {pattern for pattern, _ in BASELINE_ROOT_RULES}
+    for name in AGENT_FILES:
+        agent = root / "agents" / name
+        rel = agent.relative_to(root)
+        present, rules = agent_bash(root, agent, failures)
+        if not agent.is_file():
+            failures.append(f"{rel}: missing agent spec file")
+            continue
+        if not present:
+            continue  # clean inheritance (#340)
+        if not rules:
             failures.append(
-                f"{rel}: deny tail has {len(deny)} patterns, the MADR-0015 "
-                f"baseline has {len(baseline)} — no removal, no insertion"
+                f"{rel}: 'bash:' block present but carries no rules — drop "
+                f"the key entirely to inherit the root baseline (#340)"
             )
-        else:
-            for index, (actual, expected) in enumerate(zip(deny, baseline)):
-                if actual != expected:
-                    failures.append(
-                        f"{rel}: deny tail diverges from the MADR-0015 "
-                        f"baseline at position {index}: found {actual!r}, "
-                        f"expected {expected!r}"
-                    )
-                    break
-    # Structural freeze: the deny tier is a contiguous tail — no allow/ask
-    # rule may be interleaved inside it (MADR-0015: the deny tail is the
-    # load-bearing wall of fleet isolation).
-    first_deny = next((i for i, (_, tier) in enumerate(rules) if tier == "deny"), None)
-    if first_deny is not None:
-        interleaved = [
-            pattern for pattern, tier in rules[first_deny:] if tier != "deny"
-        ]
-        if interleaved:
-            failures.append(
-                f"{rel}: non-deny rule(s) {interleaved} sit inside the deny "
-                f"tail — the MADR-0015 baseline forbids insertions there"
-            )
+            continue
+        allowed = AGENT_DEVIATIONS[name]
+        for pattern, tier in rules:
+            if pattern in root_patterns:
+                failures.append(
+                    f"{rel}: bash pattern {pattern!r} re-states the root "
+                    f"baseline (opencode.jsonc) — duplication is the defect "
+                    f"since #340 (an agent bash map appends AFTER the root "
+                    f"deny tail and can widen the posture); drop it and "
+                    f"inherit"
+                )
+            elif pattern not in allowed:
+                failures.append(
+                    f"{rel}: bash pattern {pattern!r} is not a documented "
+                    f"role deviation for this agent (allowed: "
+                    f"{sorted(allowed) if allowed else 'none'}) — route a "
+                    f"new role signature through @architect first (#340)"
+                )
+            elif tier != "allow":
+                failures.append(
+                    f"{rel}: role deviation {pattern!r} must be allow-tier, "
+                    f"found {tier!r} (#340)"
+                )
 
 
 def resolve(rules: list[tuple[str, str]], command: str) -> str:
@@ -306,29 +384,23 @@ def main(argv: list[str]) -> int:
         print(f"error: REPO_ROOT is not a directory: {root}", file=sys.stderr)
         return 1
     failures: list[str] = []
-    locations: dict[str, list[tuple[str, str]]] = {}
     root_rule_list = root_rules(root, failures)
     if root_rule_list is not None:
-        locations["opencode.jsonc"] = root_rule_list
-        check_deny_tail_frozen(root_rule_list, "opencode.jsonc", failures)
+        check_root_baseline(root_rule_list, "opencode.jsonc", failures)
         check_truth_table(root_rule_list, "opencode.jsonc", failures)
-    for name in AGENT_FILES:
-        agent = root / "agents" / name
-        rules = agent_rules(root, agent, failures)
-        if rules is not None:
-            locations[f"agents/{name}"] = rules
-    check_tier_drift(locations, failures)
+    check_agent_inheritance(root, failures)
     if failures:
         print("FAIL check_bash_permission_tiers: bash tier invariant violated:")
         for failure in failures:
             print(f"  {failure}")
         return 1
     print(
-        f"PASS check_bash_permission_tiers: ask/deny tiers identical across "
-        f"{len(locations)} mirrored locations, deny tail frozen at the "
-        f"MADR-0015 baseline ({len(BASELINE_DENY_TAIL)} patterns), "
-        f"{len(TRUTH_TABLE)}-case last-match-wins truth table green "
-        f"(#320, MADR-0015)"
+        f"PASS check_bash_permission_tiers: root permission.bash equals the "
+        f"MADR-0015 baseline (allow head + {len(BASELINE_ASK_TIER)} ask + "
+        f"{len(BASELINE_DENY_TAIL)} deny rules, order-sensitive), "
+        f"{len(TRUTH_TABLE)}-case last-match-wins truth table green, and "
+        f"{len(AGENT_FILES)} allow-default agents inherit the root baseline "
+        f"with zero root re-statements (#340, opencode 1.19.0 verified)"
     )
     return 0
 
