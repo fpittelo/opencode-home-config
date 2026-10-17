@@ -220,3 +220,9 @@ The per-pane profile selection regression suite (stdlib `unittest`, gate 14 of 1
 ```bash
 python3 tests/test_per_pane_profile_selection.py
 ```
+
+The agent front-matter validity gate (#338, `harness/config-validation/check_agent_frontmatter.py`) structurally parses the YAML front-matter block of every `agents/*.md` — `---` delimiters, YAML parseability with duplicate keys rejected, and the mandatory schema (`description`, `mode`, `openrouter/<slug>` model, `temperature` in [0, 2], non-empty `permission` mapping) — closing the #325 defect class where corrupted front-matter passed the indentation-insensitive namespace-exclusivity checker:
+
+```bash
+python3 harness/config-validation/check_agent_frontmatter.py .
+```
