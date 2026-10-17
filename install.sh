@@ -239,6 +239,7 @@ if [ ! -f "$SECRETS_FILE" ]; then
 export OPENROUTER_HOME_API_KEY=""
 export GITHUB_PERSONAL_ACCESS_TOKEN=""
 export GITHUB_TOKEN_CODE_REVIEWER=""  # token for @devfpittelo machine account — @code-reviewer identity
+export GITHUB_TOKEN_PROJECTS=""       # token for the GITHUB_PROJECTS MCP server (MADR-0014) — value required before the server is usable
 export GITHUB_TOKEN_RELEASES=""       # token for the GITHUB_RELEASES MCP server (MADR-0016) — value required before the server is usable
 export INTERVALS_API_KEY=""
 export INTERVALS_ATHLETE_ID=""
