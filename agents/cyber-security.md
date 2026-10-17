@@ -130,6 +130,10 @@ permission:
   # default-deny baseline).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: allow
+  # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
+  # deny backstops the global default-deny baseline, opencode.jsonc
+  # permission GITHUB_PROJECTS_*: deny).
+  GITHUB_PROJECTS_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -231,6 +235,7 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on security threat modeling and reviews.** | Enforces zero-tolerance quality gates and secure architecture standards. |
 | **`fastmcp-builder`** | When reviewing MCP server security, schemas, and transports. | Provides FastMCP security patterns: input sanitization, boundary protection, and error redaction. |
 | **`docker-expert`** | When reviewing Docker container hardening and base images. | Provides container security practices: non-root users, minimal images, and multi-stage builds. |
@@ -243,4 +248,4 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 
 - Write security assessments, PR review summaries, and issue descriptions in **English**.
 - Structure reviews with an executive summary, identified risks (CVSS), and exact remediation code snippets.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).

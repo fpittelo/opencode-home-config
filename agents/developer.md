@@ -128,6 +128,11 @@ permission:
   GITHUB_ACTIONS_actions_list: allow
   GITHUB_ACTIONS_get_job_logs: allow
   GITHUB_SECURITY_*: deny
+  # 311 (MADR-0014): Projects v2 planning namespace is @architect/
+  # @scrum-master-only (planning SSOT: Priority groomed by @architect, Sprint
+  # assigned by @scrum-master) — this explicit deny backstops the global
+  # default-deny baseline (opencode.jsonc permission GITHUB_PROJECTS_*: deny).
+  GITHUB_PROJECTS_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -190,7 +195,7 @@ When unsure which language a project uses, check the project's ADRs or ask `@arc
 
 - **Strict Test-Driven Development (TDD):** Red-Green-Refactor discipline, 100% test coverage for critical paths, zero warnings.
 - **Security Best Practices:** Zero hardcoded secrets (`gitleaks`), clean dependency audits, strict input validation.
-- **KIS & YAGNI (#180):** see `home-governance` §9 — SSOT (minimal diff satisfying the ACs; over-delivery is a defect).
+- **KIS & YAGNI (#180):** `kis-yagni` skill — **mandatory on every task** (see table above); policy SSOT: `home-governance` §9 (minimal diff satisfying the ACs; over-delivery is a defect).
 
 ---
 
@@ -214,7 +219,7 @@ flowchart TD
 ```
 
 ### Handoff Contract (Board State Machine)
-- Pick **only** issues assigned to you and labeled `status::in-progress` by `@scrum-master` — never self-dispatch a `status::todo` story.
+- Pick **only** issues assigned to you and labeled `status::in-progress` by `@scrum-master` — never self-dispatch a `status::backlog`/`status::ready` story.
 - Cut your branch as `feature/<issue-#>-<slug>` from `dev`; your **PR targets `dev` ONLY**.
 - Set `status::review` when the PR is open and CI is green; **never merge without a formal `APPROVE`** from `@code-reviewer` (on `REQUEST_CHANGES`, return to the TDD cycle).
 
@@ -282,6 +287,7 @@ If you encounter an unexpected failure or limitation with the **GitHub MCP Serve
 
 | Skill | When to Activate | How It Helps |
 | :--- | :--- | :--- |
+| **`kis-yagni`** | **Mandatory on every task — before design, implementation, review, or board decisions.** | Enforces minimal-diff delivery: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding. Policy SSOT: `home-governance` §9. |
 | **`home-governance`** | **Mandatory on session start / feature onboarding.** | Establishes 3-branch Git lifecycle, pre-flight quality gates, TDD mandates, and Definition of Done. |
 | **`test-driven-development`** | **Mandatory before implementing any feature or bugfix.** | Enforces TDD workflow: red → green → refactor. Ensures zero warnings and pristine test suites. |
 | **`fastmcp-builder`** | **Mandatory before writing MCP server code (Python).** | Provides authoritative FastMCP patterns, Pydantic schemas, error handling, and testing practices. |
