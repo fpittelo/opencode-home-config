@@ -1,19 +1,24 @@
 name: Harness Runner Image Build
 
-# MADR-0003 D4 (#133): image builds are on-demand only. Runner images serve
-# other repositories and change rarely, so they are NOT rebuilt on every
-# harness/docker/** push anymore. Triggers:
-#   - workflow_dispatch: manual rebuild of the selected branch's images
-#     (published under the branch tag, e.g. :dev).
-#   - push of version tags matching harness-v* (e.g. harness-v1.0.0):
-#     publishes the images tagged with that exact git tag for traceability.
-# Build-only verification of these images lives in deep-validation.yml.
+# MADR-0003 D4 (#133) + MADR-0017 (trunk+tag): runner images serve other
+# repositories and change rarely, so they are NOT rebuilt on every
+# harness/docker/** push. Triggers:
+#   - workflow_dispatch: manual rebuild of the selected ref's images.
+#   - push to main (the trunk): publishes :latest.
+#   - push of a release tag v* (e.g. v1.28.0): publishes :vX.Y.Z.
+#   - pull_request touching harness/docker/**: build-only verification
+#     (never pushed).
+# Build-only verification of these images also lives in deep-validation.yml.
 
 on:
   workflow_dispatch:
   push:
-    tags:
-      - 'harness-v*'
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'harness/docker/**'
+      - '.github/workflows/harness-image-build.yml'
 
 env:
   REGISTRY: ghcr.io
@@ -49,7 +54,6 @@ jobs:
         with:
           images: ${{ env.PYTHON_IMAGE }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
@@ -58,13 +62,10 @@ jobs:
         with:
           context: ./harness/docker
           file: ./harness/docker/Dockerfile.python
-          # Literal true, not a condition (#142 A6): the former
-          # `push: ${{ github.event_name != 'pull_request' }}` was
-          # constant-true (this workflow only triggers on
-          # workflow_dispatch and harness-v* tag pushes - never
-          # pull_request). The literal is required because
-          # build-push-action defaults push to false.
-          push: true
+          # Verify-only on pull_request, publish otherwise (#142 A6
+          # revisited: the condition is live again now that this workflow
+          # also triggers on pull_request for harness/docker/** changes).
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -93,7 +94,6 @@ jobs:
         with:
           images: ${{ env.RUST_IMAGE }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
@@ -102,7 +102,7 @@ jobs:
         with:
           context: ./harness/docker
           file: ./harness/docker/Dockerfile.rust
-          push: true # dead condition removed, see build-python (#142 A6)
+          push: ${{ github.event_name != 'pull_request' }} # verify-only on PR, see build-python
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -131,7 +131,6 @@ jobs:
         with:
           images: ${{ env.DOCS_VALIDATOR_IMAGE }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
@@ -140,7 +139,7 @@ jobs:
         with:
           context: ./harness/docker
           file: ./harness/docker/Dockerfile.docs-validator
-          push: true # dead condition removed, see build-python (#142 A6)
+          push: ${{ github.event_name != 'pull_request' }} # verify-only on PR, see build-python
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
