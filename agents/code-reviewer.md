@@ -36,6 +36,14 @@ permission:
     "cat *": allow
     "grep *": allow
     "ls *": allow
+    # 358: trailing secret-file denies — agent rules append AFTER the root
+    # deny tail (last-match-wins), so without these the `cat *`/`grep *`
+    # allows re-enabled credential-file reads (e.g. `cat
+    # /home/frede/.config/opencode/.secrets-home.env`). Zero capability
+    # cost: the reviewer never reads credential files.
+    "*.env*": deny
+    "*.pem*": deny
+    "*.key*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
   # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
@@ -71,6 +79,7 @@ You strictly adhere to `home-governance` as the single source of truth (SSOT).
 ### Strict Boundary: Read-Only Local Environment
 - **You are strictly Read-Only (`edit: deny`, `write: deny`). Never attempt to modify files directly.**
 - Use read-only bash commands (`git status`, `git diff`, `cat`, `grep`, `ls`) and GitHub MCP tools.
+- **Secret-file guard (#358):** trailing bash denies (`*.env*` / `*.pem*` / `*.key*`) close the append-override of the root secret-file denies — never read credential files (`.env`, `.pem`, `.key`); they are not needed for review.
 - Provide actionable review feedback via GitHub PR review comments so the author can apply them.
 
 ## Identity & Separation of Duty

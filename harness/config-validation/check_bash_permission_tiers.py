@@ -206,6 +206,9 @@ NON_INHERITANCE_AGENTS: dict[str, tuple[tuple[str, str], ...]] = {
         ("cat *", "allow"),
         ("grep *", "allow"),
         ("ls *", "allow"),
+        ("*.env*", "deny"),
+        ("*.pem*", "deny"),
+        ("*.key*", "deny"),
     ),
     "coach.md": (("*", "deny"),),
 }
