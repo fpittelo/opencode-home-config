@@ -38,7 +38,7 @@
   "mcp": {
     // #109: native binary transport (MADR-0002 decision point 3) — replaces the
     // former `docker run` of ghcr.io/github/github-mcp-server@sha256:508a0857…
-    // (v1.12.2, commit 85598ba6 — same build as the installed binary). The binary
+    // (commit 85598ba6 — the formerly pinned build). The binary
     // is installed by install.sh at ~/.local/bin/github-mcp-server, version-pinned
     // + SHA256-verified against the release checksums file. Native startup is
     // milliseconds vs ~0.6 s per container spawn (2x per session, #106 baseline).
@@ -62,9 +62,9 @@
     // one server instance can only carry one token/identity.
     // #109: native binary transport (same pinned build as GITHUB, installed by
     // install.sh). #107 toolset restriction preserved on the binary transport:
-    // --toolsets=context,repos,pull_requests — 32 tools / ~80 KB vs 45 / ~124 KB
-    // default (−35% schema, #106 baseline). Review work needs no issues/labels
-    // toolsets.
+    // --toolsets=context,repos,pull_requests — 33 tools / ~83 KB vs 46 / ~127 KB
+    // default (−35% schema, #106 baseline; re-measured on v2.0.2). Review work
+    // needs no issues/labels toolsets.
     "GITHUB_CODE_REVIEWER": {
       "type": "local",
       "command": [
@@ -80,7 +80,7 @@
     // toolsets (C1) — the shared GITHUB server keeps its default toolsets, so
     // per-agent permission scoping stays possible and schemas stay lean for
     // agents that do not need extended capabilities. Tool names verified
-    // against the pinned v1.12.2 binary: --toolsets=actions exposes exactly
+    // against the pinned v2.0.2 binary: --toolsets=actions exposes exactly
     // actions_get, actions_list, actions_run_trigger, get_job_logs (namespaced
     // GITHUB_ACTIONS_*). Write-capable server: @devops holds the full
     // namespace; @developer is pinned to the read-only triage tools with the

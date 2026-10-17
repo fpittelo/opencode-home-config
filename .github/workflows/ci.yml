@@ -154,6 +154,15 @@ jobs:
         # runs install.sh against a sandboxed fake $HOME, < 1 s.
         run: python3 tests/test_per_pane_profile_selection.py
 
+      - name: Install-pin consistency regression tests (unittest)
+        # Regression suite for the github-mcp-server supply-chain pin (#310):
+        # exactly one GITHUB_MCP_VERSION assignment in install.sh, the binary
+        # installed at $HOME/.local/bin (when present) reports the pinned
+        # version, and every version literal in opencode.jsonc MCP comment
+        # lines citing "pinned" or "v<digit>" matches the pin (comment-drift
+        # guard). stdlib unittest only, < 1 s, no network.
+        run: python3 harness/config-validation/test_pin_consistency.py
+
       - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
         run: |
           python3 harness/docs-validation/check_links.py .
