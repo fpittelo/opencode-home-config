@@ -141,6 +141,12 @@ permission:
   # deny backstops the global default-deny baseline, opencode.jsonc
   # permission GITHUB_PROJECTS_*: deny).
   GITHUB_PROJECTS_*: deny
+  # 323 (MADR-0016): release-write namespace (home-grown GITHUB_RELEASES
+  # FastMCP server, exactly two tools: create_release, update_release) is
+  # @devops-only (release-automation §4 SoD) — this explicit deny backstops
+  # the global default-deny baseline (opencode.jsonc permission
+  # GITHUB_RELEASES_*: deny).
+  GITHUB_RELEASES_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

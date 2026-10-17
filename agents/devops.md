@@ -139,6 +139,13 @@ permission:
   # global default-deny baseline (opencode.jsonc permission
   # GITHUB_PROJECTS_*: deny).
   GITHUB_PROJECTS_*: deny
+  # 323 (MADR-0016): release-write namespace — @devops is the sole release
+  # authority (release-automation §4 SoD): the home-grown GITHUB_RELEASES
+  # FastMCP server (tools/github-releases-mcp) publishes via exactly two
+  # tools (GITHUB_RELEASES_create_release / GITHUB_RELEASES_update_release,
+  # no delete capability); this allow backstops the global default-deny
+  # baseline (opencode.jsonc permission GITHUB_RELEASES_*: deny).
+  GITHUB_RELEASES_*: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -173,6 +180,13 @@ You strictly adhere to `home-governance` and `release-automation` as the single 
 3. **Release Tagging & Board Hygiene Trigger:**
    - Upon merging into `main`, create a bumped semantic release tag (e.g., `v1.2.0`) and publish a GitHub Release with release notes.
    - Signal `@scrum-master` to execute the board hygiene cycle.
+
+**Agent-executable release publishing (MADR-0016, #323):** the release-object
+step of the promotion flow is agent-executable via the exclusively-owned
+`GITHUB_RELEASES_*` MCP namespace — exactly two home-grown FastMCP tools
+(`GITHUB_RELEASES_create_release`, `GITHUB_RELEASES_update_release`), no
+delete capability; `@devops` publishes under the `@fpittelo` identity and
+references the sprint issue in the release body for repudiation.
 
 ---
 

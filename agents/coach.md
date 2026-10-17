@@ -17,7 +17,13 @@ permission:
   # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
   # deny backstops the global default-deny baseline, opencode.jsonc
   # permission GITHUB_PROJECTS_*: deny).
-  GITHUB_PROJECTS_*: deny
+GITHUB_PROJECTS_*: deny
+  # 323 (MADR-0016): release-write namespace (home-grown GITHUB_RELEASES
+  # FastMCP server, exactly two tools: create_release, update_release) is
+  # @devops-only (release-automation §4 SoD) — this explicit deny backstops
+  # the global default-deny baseline (opencode.jsonc permission
+  # GITHUB_RELEASES_*: deny).
+  GITHUB_RELEASES_*: deny
 # 87: unattended access; last matching rule wins, so deny rules below override allows
 # 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
 #          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,
