@@ -379,7 +379,16 @@
       "*.key*": "deny",
       // #352 (MADR-0020 no-delete parity, PO decision (a) 2026-10-17): tail
       // append — release deletion is machine-denied for every agent.
-      "gh release delete*": "deny"
+      "gh release delete*": "deny",
+      // #362 (Sprint 23 spike, upstream anomalyco/opencode#56545): recursive
+      // file-reading commands (grep -r/rg/ls -R) bypass filename-pattern
+      // denies because the command string names only the directory. Path-
+      // scoped deny closes the bypass against the secrets directory itself
+      // (verified live: `grep -r X ~/.config/opencode/` returned
+      // .secrets-home.env contents). Matches with or without trailing slash;
+      // also covers ~/.config/opencode.jsonc. Repo/worktree paths unaffected
+      // (no ".config/opencode" substring).
+      "*/.config/opencode*": "deny"
     }
   },
   "compaction": {

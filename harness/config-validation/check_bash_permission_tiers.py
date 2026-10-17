@@ -123,6 +123,10 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # append — the retired MADR-0016 server intentionally had no delete
     # capability; release deletion is machine-denied for every agent.
     "gh release delete*",
+    # #362 (Sprint 23 spike, upstream anomalyco/opencode#56545): path-scoped
+    # deny closing the recursive-read bypass against the secrets directory
+    # (grep -r X ~/.config/opencode/ returned .secrets-home.env contents).
+    "*/.config/opencode*",
 )
 
 # Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
