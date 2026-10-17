@@ -20,6 +20,7 @@
 | [MADR-0012](../../adr/0012-promotion-topology-eliminate-per-release-reconcile-prs.md) | Promotion topology — retain three branches, promote with merge commits (never squash); per-release reconcile PRs retired | accepted | 2026-10-10 |
 | [MADR-0013](../../adr/0013-board-state-management-without-milestone-tooling.md) | Board state management without milestone tooling — five-state status labels as SSOT, sprint marker issues for sprint scope, milestones demoted to historical records, verify-or-escalate board writes | accepted | 2026-10-13 |
 | [MADR-0014](../../adr/0014-agent-managed-planning-model-github-projects-v2-iteration-and-priority-fields-dedicated-github-projects-server.md) | Agent-managed planning model — GitHub Projects v2 `Sprint` iteration + `Priority` fields as planning SSOT (no status mirror), dedicated `GITHUB_PROJECTS` server, single-`project`-scope classic token, verify-or-escalate project writes | accepted | 2026-10-17 |
+| [MADR-0015](../../adr/0015-security-conditioned-bash-ask-tier-permission-slimming.md) | Security-conditioned bash ask-tier permission slimming — scoped `rm /tmp/opencode/*` + restrictive-only `chmod 600/700` allows, `pip3`/`uv pip`/`-m pip` ask-tier parity fixes (closes pre-existing bypass), five-file mirroring with CI drift guard; deny tail frozen | accepted | 2026-10-17 |
 
 ## Decisions currently embodied in config/specs (pre-MADR, to be back-indexed)
 
