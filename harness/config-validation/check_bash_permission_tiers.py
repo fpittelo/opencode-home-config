@@ -217,6 +217,9 @@ NON_INHERITANCE_AGENTS: dict[str, tuple[tuple[str, str], ...]] = {
         ("*.env*", "deny"),
         ("*.pem*", "deny"),
         ("*.key*", "deny"),
+        # 362: path-scoped deny closing the recursive-read bypass against
+        # the secrets directory (upstream anomalyco/opencode#56545).
+        ("*/.config/opencode*", "deny"),
     ),
     "coach.md": (("*", "deny"),),
 }
@@ -248,6 +251,11 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("gh release create v1.0.0", "allow"),
     ("gh release view v1.0.0", "allow"),
     ("gh release edit", "allow"),
+    # 362: path-scoped deny closes the recursive-read bypass against the
+    # secrets directory (upstream anomalyco/opencode#56545).
+    ("grep -r X ~/.config/opencode/", "deny"),
+    ("grep -r X ~/.config/opencode/sub/", "deny"),
+    ("grep -r X secrets/", "allow"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
