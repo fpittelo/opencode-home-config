@@ -75,6 +75,7 @@ Send **only the fields required for the specific operation** — never pre-fill 
 
 - **`GITHUB_issue_write` (`method: "update"`):** send ONLY `method`, `owner`, `repo`, `issue_number`, plus the field(s) actually being changed. **NEVER include `parent_issue_number`** — it is valid on `create` only; sending it on update is a rejected call.
 - **`GITHUB_add_issue_comment`:** send ONLY `owner`, `repo`, `issue_number`, `body`. **NEVER include `comment_id`** (see #251 parameter guidance below).
+- **`GITHUB_PROJECTS_projects_write` (MADR-0014):** planning-board writes via the `GITHUB_PROJECTS_projects_write` allow — `Sprint` iteration assigned at dispatch, `Priority` left to `@architect` at grooming (never re-set by scrum-master). Item references use `(item_owner, item_repo, issue_number)`; field updates reference fields by name (`{"name": "Sprint", "value": "<iteration-id>"}`). bulk `update_project_items` is preferred over per-item loops. Every write is confirmed by a fresh read (`get_project_item` / `list_project_items`) before reporting success.
 - **On a schema/validation-type failure:** do not change strategy — retry **once** with the minimal payload for that operation. If the retry also fails, follow the verify-or-escalate rule (`github-scrum-board` §5): fresh-read to establish true state, then escalate with the exact tool name, JSON arguments, and error output.
 
 ---

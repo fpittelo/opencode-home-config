@@ -32,7 +32,7 @@ C4Context
 
 | Channel | Protocol | Notes |
 | :--- | :--- | :--- |
-| GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`) | stdio → native binary (pinned v1.12.2, SHA256-verified by `install.sh`) | Personal-access-token authenticated; SoD split per #68. |
+| GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`, `GITHUB_ACTIONS`, `GITHUB_SECURITY`, `GITHUB_PROJECTS`) | stdio → native binary (pinned v2.0.2, SHA256-verified by `install.sh`) | Personal-access-token authenticated; SoD split per #68; extended toolsets + planning board per MADR-0011/MADR-0014. |
 | Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → Docker container | Environment-scoped (dev/qa/main) Intervals.icu access. |
 | Playwright browser MCP (`BROWSER`, MADR-0009 #207) | stdio → npx `@playwright/mcp` (pinned 0.0.83; pin-time registry audit by `install.sh` — npx re-resolves per session) | Ephemeral-profile browser automation for user-journey verification against coach-web dev/qa lanes; loopback-origin allowlist; @developer/@devops only. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
