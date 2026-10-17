@@ -44,6 +44,7 @@ Use this skill to automate project releases, promotion gates, semantic version t
 4. **Automated Release Bumping:**
    - A bumped semantic version tag (`vMAJOR.MINOR.PATCH`) is created on `main` and pushed to origin.
    - A formal GitHub Release is created, generating notes from closed issues and merged PRs.
+   - **Agent-executable since MADR-0016 (#323):** the release object is published by `@devops` via the `GITHUB_RELEASES` MCP server (`create_release` with the curated notes body; `update_release` for follow-up edits). The official pinned `github-mcp-server` remains read-only for releases — only these two home-grown tools write. Standing manual PO action is **not** required in the normal flow (fallback: the PO can still publish in the UI, or edit/revert via `gh`, if `GITHUB_RELEASES` is unavailable; the tool intentionally has no `delete_release` — MADR-0016 YAGNI — so an erroneous publish is PO-disposal material).
 5. **Post-Release Board Hygiene:**
    - Merge to `main` automatically triggers a board hygiene cycle executed by `@scrum-master`.
    - `@scrum-master` audits and closes the completed sprint-marker issue (MADR-0013), cleans the board, moves completed items to `status::done`, and generates the Sprint Retrospective issue.
@@ -102,5 +103,5 @@ curl -X POST \
 | **`@code-reviewer`** | ❌ Unauthorized to publish releases or promote branches | Inspects PRs targeting `dev`, `qa`, and `main`; provides formal decisions. |
 | **`@cyber-security`** | ❌ Unauthorized to publish releases or promote branches | Audits secret scanning and dependency vulnerabilities before promotions. |
 | **`@architect`** | ✅ Promotion coordination | Prepares promotion specs and coordinates `@fpittelo` approval requests. |
-| **`@devops`** | ✅ Release publishing & promotion | Executes branch merges (`dev` → `qa` → `main`) post-approval, tags Git releases, and triggers Docker builds. |
+| **`@devops`** | ✅ Release publishing & promotion | Executes branch merges (`dev` → `qa` → `main`) post-approval, tags Git releases, triggers Docker builds, and **publishes the GitHub Release object via `GITHUB_RELEASES` MCP (MADR-0016 — sole release-write authority)**. |
 | **`@scrum-master`** | ✅ Board hygiene & sprint-marker closing | Audits GitHub issue board, closes the sprint-marker issue (MADR-0013), archives cards, and creates Sprint Retrospective upon release to `main`. |
