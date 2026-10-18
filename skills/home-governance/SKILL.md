@@ -130,7 +130,7 @@ Every repository maintains exactly **one** persistent branch: `main` — the tru
 
   **Python projects:**
   ```bash
-  ruff check . && black --check . && isort --check-only . && mypy --strict . && pytest -W error --cov=.
+  ruff check . && black --check . && isort --check-only . && mypy --strict . && pytest -W error --cov=. --cov-fail-under=80
   ```
 
   **Mixed-language repos:** Run both gates in their respective directories.
