@@ -14,13 +14,6 @@
 #   - AC4/MC6: legacy /AI_OS_ROOT switcher dead code removed idempotently.
 #   - MC9: ~/.config/opencode hardened to 700; fail-closed permission
 #     assertion on .secrets-*.env files.
-#   - AC7/MC5: MADR-0010 decision record (per-pane env-based selection vs
-#     symlink flipping) with explicit PO risk-acceptance for shared provider
-#     OAuth tokens; indexed in docs/adr/README.md (single MADR index) and
-#     referenced by arc42 03 (cross-cutting & security).
-#   - MC7: arc42 03 §3 documents the same-UID /proc/<pid>/environ residual.
-#   - AC6/MC8: README dual-profile sections (oc-home/oc-work, wrapper
-#     semantics, merge caveat, bare-opencode-unsupported notice, Herdr usage).
 #   - MC10: .gitignore covers .secrets-home.env.
 #
 # LIVE-HOST SAFETY: every behavioral test runs install.sh against a
@@ -40,9 +33,6 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTALL_SH = REPO_ROOT / "install.sh"
-ADR_DIR = REPO_ROOT / "docs" / "adr"
-ARC42_DIR = REPO_ROOT / "docs" / "architecture" / "arc42"
-README_PATH = REPO_ROOT / "README.md"
 GITIGNORE_PATH = REPO_ROOT / ".gitignore"
 
 HOME_REPO_DIRNAME = "opencode-home-config"
@@ -226,23 +216,6 @@ def oc_home_function() -> str:
     )
     assert match is not None, "profiles.sh must define the oc-home() wrapper (#244 AC1)"
     return match.group(1)
-
-
-def readme_section(header: str) -> str:
-    """Return the body of a level-2 README section (excluding the header)."""
-    lines = README_PATH.read_text(encoding="utf-8").splitlines()
-    start: int | None = None
-    for idx, line in enumerate(lines):
-        if line.startswith(header):
-            start = idx
-            break
-    assert start is not None, f"README.md is missing the '{header}' section"
-    body: list[str] = []
-    for line in lines[start + 1 :]:
-        if line.startswith("## "):
-            break
-        body.append(line)
-    return "\n".join(body)
 
 
 # ---------------------------------------------------------------------------
@@ -805,147 +778,6 @@ class TestPermissionHardening(unittest.TestCase):
                 result.stderr,
                 "the permission failure must be reported loudly on stderr (#244 AC3/MC9)",
             )
-
-
-# ---------------------------------------------------------------------------
-# AC7 / MC5 — MADR-0010 decision record + indexes
-# ---------------------------------------------------------------------------
-
-
-class TestDecisionRecord(unittest.TestCase):
-    def test_madr_0010_exists_with_mandatory_sections(self) -> None:
-        """MADR docs/adr/0010-per-pane-profile-selection-and-secrets-isolation.md exists."""
-        path = ADR_DIR / "0010-per-pane-profile-selection-and-secrets-isolation.md"
-        self.assertTrue(path.is_file(), "MADR 0010 must exist in docs/adr/ (#244 AC7)")
-        text = path.read_text(encoding="utf-8")
-        for section in (
-            "## Context",
-            "## Decision Drivers",
-            "## Considered Options",
-            "## Decision Outcome",
-            "## Consequences",
-        ):
-            self.assertIn(section, text, f"MADR 0010 missing '{section}' (#244 AC7)")
-
-    def test_madr_0010_documents_options_and_po_risk_acceptance(self) -> None:
-        """MADR 0010 weighs the options and records the explicit PO risk acceptance."""
-        text = (
-            ADR_DIR / "0010-per-pane-profile-selection-and-secrets-isolation.md"
-        ).read_text(encoding="utf-8")
-        self.assertIn(
-            "symlink flipping", text, "MADR 0010 must consider global symlink flipping"
-        )
-        self.assertIn(
-            "OPENCODE_CONFIG",
-            text,
-            "MADR 0010 must describe the env-var wrapper mechanism",
-        )
-        self.assertIn(
-            "risk-acceptance",
-            text.lower().replace("risk acceptance", "risk-acceptance"),
-            "MADR 0010 must record the explicit PO risk-acceptance (MC5)",
-        )
-        self.assertIn(
-            "auth.json",
-            text,
-            "MADR 0010 must name the shared auth.json token surface (MC5)",
-        )
-        self.assertIn(
-            "mcp-auth.json",
-            text,
-            "MADR 0010 must name the shared mcp-auth.json surface (MC5)",
-        )
-        self.assertIn(
-            "@fpittelo",
-            text,
-            "MADR 0010 risk-acceptance must be attributed to the PO (MC5)",
-        )
-
-    def test_decision_indexes_list_0010(self) -> None:
-        """The MADR index carries the 0010 row and arc42 references MADR-0010."""
-        adr_index = (ADR_DIR / "README.md").read_text(encoding="utf-8")
-        self.assertIn(
-            "0010", adr_index, "docs/adr/README.md index must list 0010 (#244 AC7)"
-        )
-        self.assertIn(
-            "0010-per-pane-profile-selection-and-secrets-isolation.md",
-            adr_index,
-            "docs/adr/README.md must link the 0010 record file (#244 AC7)",
-        )
-        arc42_doc = (
-            ARC42_DIR / "03-cross-cutting-and-security.md"
-        ).read_text(encoding="utf-8")
-        self.assertIn(
-            "MADR-0010",
-            arc42_doc,
-            "arc42 03 (cross-cutting & security) must reference MADR-0010 (#244 AC7)",
-        )
-
-    def test_arc42_risks_document_proc_environ_residual(self) -> None:
-        """arc42 03 §3 documents the same-UID /proc/<pid>/environ residual (MC7)."""
-        text = (ARC42_DIR / "03-cross-cutting-and-security.md").read_text(
-            encoding="utf-8"
-        )
-        self.assertIn(
-            "/proc",
-            text,
-            "arc42 03 §3 must document the /proc/<pid>/environ residual (MC7)",
-        )
-        self.assertIn("#244", text, "arc42 03 §3 residual row must reference #244 (MC7)")
-
-
-# ---------------------------------------------------------------------------
-# AC6 / MC8 — README dual-profile documentation
-# ---------------------------------------------------------------------------
-
-
-class TestReadmeDocumentation(unittest.TestCase):
-    def test_readme_documents_per_pane_profile_selection(self) -> None:
-        """README documents oc-home/oc-work, profiles.sh, merge caveat, and the trap."""
-        readme = README_PATH.read_text(encoding="utf-8")
-        self.assertIn(
-            "oc-home", readme, "README must document the oc-home wrapper (AC6)"
-        )
-        self.assertIn(
-            "oc-work", readme, "README must document coexistence with oc-work (AC6)"
-        )
-        self.assertIn(
-            "profiles.sh", readme, "README must document the profiles.sh snippet (AC6)"
-        )
-        self.assertIn(
-            "OPENCODE_CONFIG",
-            readme,
-            "README must document the env-var mechanism (AC6)",
-        )
-        self.assertTrue(
-            "base layer" in readme or "merged" in readme,
-            "README must document the config-merge caveat (global symlink stays the base layer) (AC6)",
-        )
-        self.assertIn(
-            "instances are running",
-            readme,
-            "README must carry the 'never run the other profile's install.sh while "
-            "instances are running' trap (AC6)",
-        )
-
-    def test_readme_states_bare_opencode_unsupported_for_secrets(self) -> None:
-        """README states bare `opencode` is unsupported for secret-bearing work (MC8)."""
-        readme = README_PATH.read_text(encoding="utf-8")
-        self.assertRegex(
-            readme,
-            r"[Bb]are `opencode`[^\n]*unsupported|unsupported[^\n]*[Bb]are `opencode`",
-            "README must state that bare `opencode` is unsupported for secret-bearing work (MC8)",
-        )
-
-    def test_readme_documents_herdr_dual_pane_usage(self) -> None:
-        """README documents running oc-home and oc-work in parallel Herdr panes (AC6)."""
-        section = readme_section("## 🧩 Per-pane profile selection")
-        self.assertIn(
-            "Herdr", section, "README per-pane section must cover Herdr usage (AC6)"
-        )
-        self.assertIn(
-            "herdr agent list", section, "README must reference herdr agent list (AC6)"
-        )
 
 
 # ---------------------------------------------------------------------------

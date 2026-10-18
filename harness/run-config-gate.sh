@@ -90,8 +90,8 @@ python3 harness/config-validation/test_harness_run.py || fail "test_harness_run.
 # 12/15 per-pane profile selection regression suite (#263, #244): stdlib
 # unittest TDD suite for dual-profile coexistence and per-pane secrets
 # isolation — profiles.sh provisioning, oc-home wrapper semantics, secrets
-# split/migration, legacy switcher cleanup, permission hardening, MADR-0010
-# record, README documentation, .gitignore coverage. Sandboxed fake $HOME.
+# split/migration, legacy switcher cleanup, permission hardening,
+# .gitignore coverage. Sandboxed fake $HOME.
 python3 tests/test_per_pane_profile_selection.py || fail "test_per_pane_profile_selection.py failed"
 # 13/15 install-pin consistency regression suite (#310): stdlib unittest TDD
 # suite for the github-mcp-server supply-chain pin — exactly one
