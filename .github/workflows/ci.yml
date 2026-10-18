@@ -3,11 +3,13 @@ name: CI Pipeline
 # MADR-0003 D1 (#134): single native per-PR quality gate - zero Docker,
 # target wall-clock < 90 s. Runs on every PR targeting main and every push
 # to main (trunk+tag delivery, MADR-0017).
-# Coverage (unchanged from the former 4-job pipeline): JSONC validation,
-# install.sh syntax, agent/skill presence, namespace-exclusivity permission
-# invariant (#150 COACH_*, #207 BROWSER_*), native docs validators (links,
-# MADR schema, mermaid syntax), diff-scoped secret scan, and the
-# label-conditional architecture gate.
+# All 17 config gates are delegated to harness/run-config-gate.sh (#366) -
+# the single source of truth shared with the local pre-flight gate: JSONC
+# validation, install.sh syntax, agent/skill presence, namespace-exclusivity
+# permission invariant (#150 COACH_*, #207 BROWSER_*), native docs
+# validators (links, MADR schema, mermaid syntax) and their regression
+# suites. Only genuinely CI-only steps remain inline: the diff-scoped
+# secret scan and the label-conditional architecture gate.
 # Deep checks (full-history secret scan, Chromium render validation, image
 # builds) moved to the scheduled deep-validation workflow (MADR-0003 D2-D4,
 # #133) where their latency is irrelevant.
@@ -49,177 +51,21 @@ jobs:
           #   2. architecture gate: diffs
           #      github.event.pull_request.base.sha..GITHUB_SHA; the base tip
           #      is the merge ref's first parent (1 hop).
-          #   3. the validation steps: check out the PR merge ref (standard
+          #   3. the config gate script (harness/run-config-gate.sh):
+          #      operates on the checked-out PR merge ref (standard
           #      pull_request semantics).
           # Full-history scanning never happens on PR/push events with this
           # action regardless of checkout depth; the scan range is always
           # bound to the event's commits.
           fetch-depth: 60
 
-      - name: Validate opencode.jsonc (JSONC with comment stripping)
-        run: |
-          python3 -c "
-          import json, sys
-          def strip_jsonc(text):
-              result = []
-              i = 0
-              in_string = False
-              escape = False
-              while i < len(text):
-                  c = text[i]
-                  if in_string:
-                      result.append(c)
-                      if escape:
-                          escape = False
-                      elif c == '\\\\':
-                          escape = True
-                      elif c == '\"':
-                          in_string = False
-                  else:
-                      if c == '\"':
-                          in_string = True
-                          result.append(c)
-                      elif c == '/' and i + 1 < len(text) and text[i+1] == '/':
-                          while i < len(text) and text[i] != '\n':
-                              i += 1
-                          continue
-                      else:
-                          result.append(c)
-                  i += 1
-              return ''.join(result)
-          with open('opencode.jsonc') as f:
-              content = f.read()
-          try:
-              json.loads(strip_jsonc(content))
-              print('opencode.jsonc is valid JSONC')
-          except json.JSONDecodeError as e:
-              print(f'Invalid JSONC: {e}', file=sys.stderr)
-              sys.exit(1)
-          "
-      - name: Check install.sh syntax
-        run: bash -n install.sh
-      - name: Verify all agent files exist
-        run: |
-          for agent in architect coach code-reviewer cyber-security developer devops scrum-master; do
-            test -f "agents/$agent.md" || { echo "Missing agents/$agent.md"; exit 1; }
-          done
-      - name: Verify all skill directories exist
-        run: |
-          for skill in arc42-documentation coach docker-expert fastmcp-builder find-skills github-scrum-board harness-engineering herdr home-governance kis-yagni madr-adr mermaid-diagrams opentofu-iac release-automation test-driven-development; do
-            test -f "skills/$skill/SKILL.md" || { echo "Missing skills/$skill/SKILL.md"; exit 1; }
-          done
-      - name: Enforce namespace-exclusivity permission invariant (#150, #207)
-        # AC1-AC3 of #150 + AC3 of #207 (MADR-0009): global default-deny
-        # baselines for the COACH_* and BROWSER_* MCP namespaces in
-        # opencode.jsonc, explicit per-agent restatement in agents/, and the
-        # sole allow whitelists (agents/coach.md for COACH_*; agents/
-        # developer.md + agents/devops.md for BROWSER_*).
-        run: python3 harness/config-validation/check_coach_exclusivity.py .
-
-      - name: Namespace-exclusivity checker regression tests (unittest)
-        # Regression suite for check_coach_exclusivity.py (#142 A1 pattern):
-        # both governed namespaces (COACH_* #150, BROWSER_* #207/MADR-0009),
-        # negative cases per invariant layer (baseline, restatement,
-        # whitelist, pattern drift), real-repo positive control. stdlib
-        # unittest only, < 1 s.
-        run: python3 harness/config-validation/test_check_coach_exclusivity.py
-
-      - name: Enforce BROWSER MCP launch-flag invariant (#219)
-        # AC3 of #219 (MADR-0009): the mcp.BROWSER command array in
-        # opencode.jsonc must carry the mandated hardening flags —
-        # --isolated (ephemeral profile), --no-webmcp (WebMCP tool-poisoning
-        # vector), a loopback --allowed-origins allowlist covering localhost
-        # and 127.0.0.1, and a scoped /tmp --output-dir.
-        run: python3 harness/config-validation/check_browser_launch_flags.py .
-
-      - name: BROWSER launch-flag checker regression tests (unittest)
-        # Regression suite for check_browser_launch_flags.py (#142 A1
-        # pattern): negative cases per mandated flag and value shape,
-        # real-repo positive control. stdlib unittest only, < 1 s.
-        run: python3 harness/config-validation/test_check_browser_launch_flags.py
-
-      - name: Harness native-gate toolchain pinning regression tests (unittest)
-        # Regression suite for harness/run.sh (#256 AC5): deps retains dev
-        # extras (uv sync --all-extras), the native gate resolves tools from
-        # the project .venv (never host PATH) and exits 3 when the venv or a
-        # required tool is missing, and the container fallback keeps its
-        # security flags. stdlib unittest only, < 1 s.
-        run: python3 harness/config-validation/test_harness_run.py
-
-      - name: Per-pane profile selection regression tests (unittest)
-        # TDD regression suite for dual-profile coexistence and per-pane
-        # secrets isolation (#244, wired into the gates by #263): profiles.sh
-        # provisioning, oc-home wrapper semantics, secrets split/migration,
-        # legacy switcher cleanup, permission hardening, MADR-0010 record,
-        # README documentation, .gitignore coverage. stdlib unittest only,
-        # runs install.sh against a sandboxed fake $HOME, < 1 s.
-        run: python3 tests/test_per_pane_profile_selection.py
-
-      - name: Install-pin consistency regression tests (unittest)
-        # Regression suite for the github-mcp-server supply-chain pin (#310):
-        # exactly one GITHUB_MCP_VERSION assignment in install.sh, the binary
-        # installed at $HOME/.local/bin (when present) reports the pinned
-        # version, and every version literal in opencode.jsonc MCP comment
-        # lines citing "pinned" or "v<digit>" matches the pin (comment-drift
-        # guard). stdlib unittest only, < 1 s, no network.
-        run: python3 harness/config-validation/test_pin_consistency.py
-
-      - name: Enforce bash tier root-baseline integrity + clean agent inheritance (#340)
-        # #340 (superseding the #320/MADR-0015 five-file drift guard): the
-        # root opencode.jsonc permission.bash block is pinned to the MADR-0015
-        # baseline (allow head + ask tier + frozen deny tail, order-sensitive),
-        # the 17-case last-match-wins truth table holds on the root block, and
-        # each of the four allow-default agent specs either omits bash:
-        # entirely (root inheritance, opencode 1.19.0 verified) or carries
-        # only documented role-deviation patterns — re-stating root tier
-        # patterns in an agent is now the defect. #350: every agent spec is
-        # parsed in block AND flow style (scalar/flow mapping), and the three
-        # non-inheritance agents (scrum-master, code-reviewer, coach) must
-        # match their pinned order-sensitive bash shapes — incl. the
-        # scrum-master trailing secret-file denies that close the
-        # append-override of the root *.env*/*.pem*/*.key* denies.
-        run: python3 harness/config-validation/check_bash_permission_tiers.py .
-
-      - name: Bash permission tier checker regression tests (unittest)
-        # Regression suite for check_bash_permission_tiers.py (#142 A1
-        # pattern): sandboxed fake-repo negative cases per invariant layer
-        # (root baseline pin, clean agent inheritance/duplication defect,
-        # truth-table ordering, #350 non-inheritance shape/order/flow-style
-        # violations), real-repo positive control. stdlib unittest only,
-        # < 1 s.
-        run: python3 harness/config-validation/test_check_bash_permission_tiers.py
-
-      - name: Enforce YAML front-matter validity for agents/*.md (#338)
-        # AC1-AC2 of #338: every agent file's front-matter block must have
-        # proper --- delimiters, parse as YAML (duplicate keys rejected), and
-        # carry the mandatory schema (description, mode, openrouter/<slug>
-        # model, temperature in [0, 2], non-empty permission mapping). Closes
-        # the #325 defect class (corrupted front-matter passed the
-        # indentation-insensitive namespace-exclusivity checker).
-        run: python3 harness/config-validation/check_agent_frontmatter.py .
-
-      - name: Agent front-matter checker regression tests (unittest)
-        # Regression suite for check_agent_frontmatter.py (#338 AC3, #142 A1
-        # pattern): negative cases per defect class (bad delimiter, invalid
-        # YAML, duplicate key, missing field, wrong type, out-of-range
-        # temperature, non-openrouter model shape), real-repo positive
-        # control over all 7 agent files. stdlib unittest only, < 1 s.
-        run: python3 harness/config-validation/test_check_agent_frontmatter.py
-
-      - name: Docs validation (links, MADR, mermaid syntax - native, no Docker)
-        run: |
-          python3 harness/docs-validation/check_links.py .
-          python3 harness/docs-validation/check_madr.py .
-          # --syntax: native structural mermaid validation (MADR-0003 D1);
-          # render-level validation stays in the deep-validation workflow
-          # (MADR-0003 D2, #133).
-          python3 harness/docs-validation/check_mermaid.py --syntax .
-
-      - name: Mermaid syntax checker regression tests (unittest)
-        # Regression suite for check_mermaid.py --syntax (defect classes
-        # from #134; wired into the gates by #142 A1 after the #138 review
-        # found it executed by no gate). stdlib unittest only, < 1 s.
-        run: python3 harness/docs-validation/test_check_mermaid_syntax.py
+      - name: Run config gate (harness/run-config-gate.sh)
+        # Single source of truth for all 17 gates (#366): the exact script
+        # that runs as the local pre-flight gate. The script is stdlib-only
+        # (python3 + bash, both preinstalled on ubuntu-latest), resolves all
+        # paths relative to the repository root (its default REPO_ROOT), and
+        # exits non-zero on the first failing gate - which fails this job.
+        run: bash harness/run-config-gate.sh
 
       - name: Scan for secrets (gitleaks, diff-scoped)
         # Pinned to the v3.0.0 commit SHA (no @master/@main; v2 is Node 20 and
