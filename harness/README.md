@@ -158,7 +158,7 @@ This split prevents flaky tests caused by external network availability and clos
 
 - **Multi-stage builds:** build tools and caches are not present in the final image.
 - **Non-root user:** all containers run as `harness` (UID/GID 1000).
-- **Minimal base images:** `python:3.12-slim-bookworm` and `rust:1.81.0-slim-bookworm`.
+- **Minimal base images:** `python:3.12-slim-bookworm` and `rust:1.88.0-slim-bookworm`.
 - **Zero hardcoded secrets:** credentials are injected via GitHub Actions `secrets.GITHUB_TOKEN` and `{env:VAR}` interpolation.
 - **Read-only root filesystem:** runtime root is read-only; only `/workspace`, `/tmp`, and named cache volumes are writable.
 - **HOME trunk+tag lifecycle (MADR-0017):** image builds follow the single trunk `main`; releases are semantic tags cut from `main` under the single explicit `@fpittelo` release approval (`home-governance` Rule 5).
