@@ -63,14 +63,7 @@ This section is for the person who sets up and maintains the OpenCode environmen
 
 ### 2.2 Installation
 
-```bash
-# 1. Clone the config repo
-git clone git@github.com:fpittelo/opencode-home-config.git ~/projects/opencode-home-config
-
-# 2. Run the installer
-cd ~/projects/opencode-home-config
-chmod +x install.sh && ./install.sh
-```
+Clone-and-install commands: SSOT is [README — Installation](../README.md).
 
 **What `install.sh` does:**
 
@@ -91,7 +84,7 @@ The installer is **idempotent** — running it again will update the symlinks bu
 
 ### 2.3 Secrets Management
 
-Secrets live in the profile-scoped file `~/.config/opencode/.secrets-home.env` (never committed to Git, chmod 600, umask 077). They are loaded **per pane** by the `oc-home` wrapper subshell (MADR-0010) — there is no global rc sourcing and no systemd import. Bare `opencode` is unsupported for secret-bearing work: always launch a profile via `oc-home` (or `oc-work` for the EPFL profile).
+Secrets mechanics (profile-scoped files, per-pane wrapper-subshell sourcing, bare-`opencode` restriction): SSOT is [README — Per-pane profile selection](../README.md) and arc42 [Security & Privacy §1.1](architecture/arc42/03-cross-cutting-and-security.md).
 
 **Required environment variables (HOME profile):**
 
@@ -134,70 +127,15 @@ done
 
 ### 2.4 Directory Structure
 
-The recommended directory layout on VIDAR:
-
-```
-~/projects/
-├── opencode-home-config/     ← HOME config repo (this repo, global default)
-├── opencode-work-config/      ← WORK config repo (GitLab, for EPFL projects)
-├── HOME/                      ← personal projects (HOME profile)
-│   └── my-personal-project/
-└── WORK/                      ← EPFL work projects (WORK profile)
-    └── my-epfl-service/
-```
-
-- **Config repos** (`opencode-home-config/`, `opencode-work-config/`) live directly under `~/projects/` — they are tooling, not workspaces.
-- **Project directories** (`HOME/`, `WORK/`) group projects by context.
+SSOT: [README — Recommended Directory Structure on VIDAR](../README.md).
 
 ### 2.5 Trunk+Tag Git Lifecycle
 
-All work follows a **trunk+tag** lifecycle (MADR-0017): a single persistent trunk `main`, with releases cut from it as semantic tags.
-
-```
-main (trunk) → tag vX.Y.Z + GitHub Release
-```
-
-| Branch | Purpose | Who can merge into it? |
-|:---|:---|:---|
-| `main` | Trunk — the single integration and production branch; every feature branch merges here | Any squad member via PR, after `@code-reviewer` approval + 100% green CI |
-
-**Feature branches** are created from `main`:
-
-```
-feature/<issue-#>-<slug>    # New features
-fix/<issue-#>-<slug>        # Bug fixes
-chore/<issue-#>-<slug>      # Maintenance
-```
-
-**Releases** are tag-from-trunk: `@devops` tags `vX.Y.Z` on `main` and publishes a GitHub Release under **one explicit @fpittelo approval per release** (Rule 5). There are no promotion branches and no promotion PRs — `dev` and `qa` are retired.
-
-**Rules:** see `home-governance` §5 — SSOT (single trunk, feature-branch isolation, zero-warning CI, squash merge into `main`, release approval, release & board hygiene). Rollback is `git revert` on trunk or redeploying the previous tag; hotfixes branch from the released tag.
+SSOT: the `home-governance` skill §5 ([SKILL.md](../skills/home-governance/SKILL.md), MADR-0017) — single trunk `main`, feature-branch isolation, squash merge, tag-from-trunk releases under explicit PO approval; summarized in [README — Governance](../README.md).
 
 ### 2.6 MCP Servers
 
-OpenCode connects to external services via **MCP (Model Context Protocol) servers**. The HOME profile defines 9 local servers (plus the remote `openrouter` endpoint): the five GitHub servers run as a pinned native binary (the two core servers plus the MADR-0011 extended-toolset servers and the MADR-0014 planning server), the three Coach servers as Docker containers, and the Playwright browser server via pinned `npx`:
-
-| MCP Server | Runtime | Environment Variables | Purpose |
-|:---|:---|:---|:---|
-| `GITHUB` | Native binary `github-mcp-server` v2.0.2 at `~/.local/bin/` (installed + SHA256-verified by `install.sh`) | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub issues, PRs, releases, branches |
-| `GITHUB_CODE_REVIEWER` | Same binary, restricted to `--toolsets=context,repos,pull_requests` | `GITHUB_TOKEN_CODE_REVIEWER` | PR review as @devfpittelo (separation of duties) |
-| `GITHUB_ACTIONS` | Same binary, restricted to `--toolsets=actions` | `GITHUB_PERSONAL_ACCESS_TOKEN` | GitHub Actions runs/jobs triage (MADR-0011) — full namespace for @devops; read-only triage tools for @developer (`actions_run_trigger` denied) |
-| `GITHUB_SECURITY` | Same binary, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | `GITHUB_PERSONAL_ACCESS_TOKEN` | Code scanning, secret scanning, and Dependabot alert triage — @cyber-security only (MADR-0011) |
-| `GITHUB_PROJECTS` | Same binary, restricted to `--toolsets=projects` | `GITHUB_TOKEN_PROJECTS` | GitHub Projects v2 roadmap board (`HOME Squad Planning` — MADR-0014; optional roadmap view since #339): optional `Sprint`/`Priority` writes by @scrum-master/@architect only; classic PAT scoped to `project` only |
-| `COACH_DEV` | `ghcr.io/fpittelo/coach:dev` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (dev branch of coach service) |
-| `COACH_QA` | `ghcr.io/fpittelo/coach:qa` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (qa staging) |
-| `COACH_MAIN` | `ghcr.io/fpittelo/coach:latest` | `INTERVALS_API_KEY`, `INTERVALS_ATHLETE_ID` | Training plans (production) |
-| `BROWSER` | `npx @playwright/mcp@0.0.83` (pinned; pin-time registry audit by `install.sh` — npx re-resolves per session) — launched with `--isolated`, `--no-webmcp`, `--block-service-workers`, `--image-responses omit`, a loopback `--allowed-origins` allowlist, and a scoped `--output-dir` | none | Browser automation for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
-
-**How they work:**
-- All servers communicate via stdin/stdout (stdio transport).
-- The GitHub servers spawn the native binary directly (`~/.local/bin/github-mcp-server stdio`, #109) — millisecond startup vs ~0.6 s per container spawn (#106 baseline). The binary version is pinned and its SHA256 checksum is verified against the release checksums file by `install.sh`.
-- The Coach servers are started with `docker run -i --rm`; containers are automatically removed (`--rm`) when the session ends.
-- Environment variables are injected from the profile-scoped secrets file (`.secrets-home.env` / `.secrets-work.env`) sourced by the `oc-home` / `oc-work` wrapper subshell, via `{env:VAR}` interpolation (MADR-0010).
-- **Availability (#150):** Coach MCP tools are exposed exclusively to the `@coach` agent — `opencode.jsonc` sets a global default-deny baseline (`COACH_DEV_*` / `COACH_QA_*` / `COACH_MAIN_*`: deny) and every SCRUM agent denies them explicitly (see §3.4).
-- **Availability (#207, MADR-0009):** Browser MCP tools (`BROWSER_*`) are exposed exclusively to the `@developer` and `@devops` agents — `opencode.jsonc` sets a global default-deny baseline (`BROWSER_*`: deny) and every other SCRUM agent denies them explicitly (see §3.4).
-- **Availability (#252, MADR-0011):** `GITHUB_ACTIONS_*` is @devops-only for writes (`actions_run_trigger`) with read-only triage tools granted to @developer; `GITHUB_SECURITY_*` is @cyber-security-only (read-only enforced at process startup). The global default-deny baseline (`GITHUB_ACTIONS_*` / `GITHUB_SECURITY_*`: deny) covers every other persona, and every SCRUM agent re-states the denies explicitly (see §3.4).
-- **Availability (MADR-0014, demoted #339):** `GITHUB_PROJECTS_*` is @scrum-master and @architect only (optional roadmap writes — the execution SSOT is the `status::*` labels + sprint markers); every other SCRUM agent and built-in subagent denies the namespace. Every roadmap-field write follows verify-or-escalate (fresh read after write). The invariant is machine-enforced by the config gate (§3.4).
+SSOT: arc42 [Context & Building Blocks §5](architecture/arc42/01-context-and-building-blocks.md) — C4 container view, building-block table, and the namespace-exclusivity invariants; runtime registry: [opencode.jsonc](../opencode.jsonc).
 
 ### 2.7 Herdr Agent Runtime
 
@@ -268,22 +206,7 @@ new release ships a newer integration.
 
 ### 2.8 CI/CD Pipeline
 
-The GitHub Actions CI pipeline (`.github/workflows/ci.yml`) runs on every PR targeting `main` and every push to `main` (trunk+tag, MADR-0017):
-
-| Check | What it does | Failure condition |
-|:---|:---|:---|
-| **JSONC validation** | Strips `//` comments and parses `opencode.jsonc` as valid JSON | Malformed JSONC |
-| **install.sh syntax** | `bash -n install.sh` | Syntax error |
-| **Agent/skill presence** | Verifies all 7 agent files and 15 skill directories exist | Missing file |
-| **Permission invariants** | Namespace exclusivity (`COACH_*`, `BROWSER_*`, `GITHUB_ACTIONS_*`, `GITHUB_SECURITY_*`) and mandated BROWSER launch flags | Baseline/restatement/flag drift |
-| **Regression tests** | unittest suites for the config checkers, harness runner, and per-pane profile selection | Test failure |
-| **Docs validation** | Link, MADR schema, and Mermaid syntax checks (`harness/docs-validation/`) | Broken link, bad MADR, bad Mermaid |
-| **Gitleaks scan** | Diff-scoped secret scan of the event's commits (gitleaks-action v3) | Any hardcoded secret detected |
-| **Architecture gate** | PRs labeled `requires-architecture` must touch `docs/adr/**` or `docs/architecture/arc42/**` | Label without architecture changes |
-
-Deep checks (full-history secret scan, render-level Mermaid validation, image builds) run on the scheduled `deep-validation.yml` workflow (MADR-0003) — they never gate PRs.
-
-**Quality gate:** The pipeline must pass with **zero warnings and zero failures** before any merge.
+SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-security.md) — per-PR gate composition, deep-validation split, and the 0-warnings/0-failures merge gate; harness details: [harness/README.md](../harness/README.md); workflow: [.github/workflows/ci.yml](../.github/workflows/ci.yml).
 
 ### 2.9 Troubleshooting
 
@@ -329,287 +252,59 @@ This section is for anyone who uses OpenCode day-to-day. No deep technical knowl
 
 ### 3.1 Starting a Session
 
-```bash
-# Navigate to your project
-cd ~/projects/HOME/my-personal-project
-
-# Launch the HOME profile (sources the profile-scoped secrets)
-oc-home
-```
-
-That's it. The wrapper loads the HOME profile (agents, skills, MCP tools, and models) and starts an interactive session. Since #149, every new session **launches directly into the `@architect` primary agent** (`"default_agent": "architect"` in `opencode.jsonc`), and the built-in generic `BUILD` and `PLAN` modes are **disabled/hidden** (`"agent": { "build": { "disable": true }, "plan": { "disable": true } }`) — the mode switcher only offers the governed HOME SCRUM agents.
+SSOT: [README — Per-pane profile selection](../README.md) — launch `oc-home` from your project directory; the wrapper sources the profile-scoped secrets and starts OpenCode with the HOME config.
 
 ### 3.2 Agents
 
-Agents are AI personas with specific roles, permissions, and model assignments. The HOME profile has 7 agents:
-
-| Agent | Role | Model | Can edit files? | Can run bash? |
-|:---|:---|:---|:---|:---|
-| **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | DeepSeek V4.1 Flash | Yes | Yes |
-| **@coach** | Athletic Coach & Longevity Advisor — Zwift cycling, kettlebell, Intervals.icu analytics | GLM 5.3 Flash | No | No |
-| **@code-reviewer** | PR Quality Gatekeeper — inspects pull requests and approves/rejects | DeepSeek V4.1 Flash | No | No |
-| **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | DeepSeek V4.1 Flash | No | Yes |
-| **@developer** | Senior Developer — Rust + Python dual-stack, strict TDD, writes production code | GLM 5.3 Flash | Yes | Yes |
-| **@devops** | DevOps Engineer — CI/CD pipelines, Docker, release automation, infrastructure | DeepSeek V4.1 Flash | Yes | Yes |
-| **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.3 Flash | No | No |
-
-**How agents work:**
-- **@architect is the default primary agent** — every session starts in the governed Solution Architect persona (#149): `agents/architect.md` declares `mode: primary` and `opencode.jsonc` sets `"default_agent": "architect"`.
-- **Built-in `BUILD` and `PLAN` modes are disabled** (#149): `"agent": { "build": { "disable": true }, "plan": { "disable": true } }` removes them from the TUI mode switcher, so only governed HOME SCRUM agents are offered.
-- **Primary agents** (architect, coach) are available directly in the main session.
-- **Subagents** (code-reviewer, cyber-security, developer, devops, scrum-master) are dispatched by the primary agent when their specialty is needed.
-- Each agent has a **temperature** setting (0.1–0.3) — lower means more deterministic, higher means more creative.
-- **Bash access (#158):** @architect, @developer, @devops and @cyber-security run bash **allow-by-default with catastrophic-deny guardrails** (ask-tier checkpoints on destructive-but-recoverable operations) — see §3.8. @code-reviewer is read-only and @scrum-master / @coach have no bash (separation of duties).
+SSOT: the agent specs ([agents/](../agents/)) — role mandates, model assignments, permission boundaries; invariants summarized in arc42 [Building Block View §5.2](architecture/arc42/01-context-and-building-blocks.md).
 
 ### 3.3 Skills
 
-Skills are knowledge modules that activate automatically when the conversation matches their domain. The HOME profile has 15 skills:
-
-| Skill | What it does | When it activates |
-|:---|:---|:---|
-| **arc42-documentation** | arc42 documentation method: 3 cohesive view templates, Mermaid C4 standards, update triggers | Authoring/updating `docs/architecture/arc42/`, design inception |
-| **coach** | Endurance training, Zwift cycling, kettlebell, Intervals.icu analytics | Athletic coaching questions, workout planning |
-| **docker-expert** | Docker containerization, multi-stage builds, security hardening | Container/Docker questions |
-| **fastmcp-builder** | Designing FastMCP servers, Pydantic v2 schemas, transport protocols | Building MCP tools |
-| **find-skills** | Discovers and installs new skills from the ecosystem | "How do I do X?" or "Find a skill for X" |
-| **github-scrum-board** | Sprint management, issue templates, DoD enforcement | GitHub issue/PR/sprint-marker management |
-| **kis-yagni** | Minimal-diff delivery discipline: smallest change satisfying the ACs, brief evidence, over-delivery is a review finding | Every task — mandatory for all agents |
-| **harness-engineering** | Containerized pre-push quality gate (`bash harness/run.sh python\|rust`) | Before pushing any code; when a gate fails |
-| **herdr** | Controls Herdr, a terminal multiplexer for coding agents (panes, tabs, workspaces) | Explicit Herdr mention only; requires `HERDR_ENV=1` |
-| **home-governance** | HOME portfolio context, Swiss privacy rules, Git lifecycle, SCRUM governance | Session start, design inception |
-| **madr-adr** | MADR decision records: template, header schema, `new-adr.sh` scaffolding, `docs/adr/README.md` indexing | Architectural spikes, technology introductions |
-| **mermaid-diagrams** | Creating diagrams (C4, sequence, ERD, flowcharts) using Mermaid syntax | "Diagram", "visualize", "model", architecture diagrams |
-| **opentofu-iac** | Infrastructure as Code (OpenTofu/Terraform) for GCP/Azure | Cloud infrastructure, IaC questions |
-| **release-automation** | Semantic versioning, tag-from-trunk releases, post-release board hygiene | Release coordination, tag `vX.Y.Z` on `main` |
-| **test-driven-development** | TDD workflow (Red → Green → Refactor) | Writing or modifying implementation code |
-
-**How skills activate:** Skills load automatically when the conversation topic matches their description. You don't need to do anything — just ask a question and the relevant skill provides context to the agent.
+SSOT: each skill's frontmatter ([skills/](../skills/)); the tracked 15-skill inventory is listed in [README](../README.md).
 
 **External skills channel (`~/.agents/skills/`):** Some skills are installed outside this repo via the Vercel `skills` CLI into `~/.agents/skills/` — that channel is **not** covered by this repository's CI-validated surface. Wrapper skills may declare cross-skill dependencies as prose (e.g. "Call the Skill tool with X") that `skills add` does **not** auto-install. After any external skill install, verify with `npx skills list` and a smoke invocation in a fresh session. Precedents: #101 (`grill-me` was non-functional until its `grilling` dependency was installed manually) and #77 (external-skills governance).
 
 ### 3.4 MCP Tools
 
-MCP tools connect OpenCode to external services. The HOME profile defines 10 MCP servers (9 local + 1 remote): the five GitHub servers run as native binary processes, the three Coach servers as Docker containers (only one Coach environment is enabled at a time — currently COACH_DEV), the Playwright browser server via pinned `npx`, and `openrouter` as a remote endpoint:
-
-| MCP Tool | Runtime | What it provides |
-|:---|:---|:---|
-| **GITHUB** | Native binary `github-mcp-server` v2.0.2 | Create/read GitHub issues, PRs, releases, branches, commits as @fpittelo. The agent you're talking to right now uses this. |
-| **GITHUB_CODE_REVIEWER** | Same native binary, restricted toolsets | Formal PR reviews as @devfpittelo (@code-reviewer only — separation of duties) |
-| **GITHUB_ACTIONS** | Native binary `github-mcp-server` v2.0.2, restricted to `--toolsets=actions` | GitHub Actions runs/jobs (MADR-0011): @devops holds the full namespace; @developer has read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with `actions_run_trigger` denied |
-| **GITHUB_SECURITY** | Native binary `github-mcp-server` v2.0.2, `--toolsets=code_security,secret_protection,dependabot` with `--read-only` | Code scanning, secret scanning, and Dependabot alerts for @cyber-security triage (MADR-0011; read-only enforced at process startup) |
-| **GITHUB_PROJECTS** | Native binary `github-mcp-server` v2.0.2, restricted to `--toolsets=projects` | GitHub Projects v2 roadmap board (`HOME Squad Planning`, MADR-0014; optional roadmap view since #339): optional `Sprint`/`Priority` writes; @scrum-master and @architect only, all other agents denied |
-| **COACH_DEV** | Docker container `ghcr.io/fpittelo/coach:dev` | Training plan management (dev branch of coach service — experimental) |
-| **COACH_QA** | Docker container `ghcr.io/fpittelo/coach:qa` | Training plan management (qa staging — disabled; enabled by toggling, see §2.6) |
-| **COACH_MAIN** | Docker container `ghcr.io/fpittelo/coach:latest` | Training plan management (production coach service — disabled; enabled by toggling, see §2.6) |
-| **BROWSER** | `npx @playwright/mcp@0.0.83` (pinned; `--isolated` ephemeral profile, `--no-webmcp`, `--block-service-workers`, `--image-responses omit`, loopback `--allowed-origins` allowlist, scoped `--output-dir`) | Browser automation (navigate, click, accessibility-tree snapshots, console output) for user-journey verification against coach-web dev/qa lanes (MADR-0009) |
-| **openrouter** | Remote endpoint (`mcp.openrouter.ai`) | Model catalog & docs lookup via OpenRouter |
-
-The coach containers connect to Intervals.icu for workout analytics, training plans, and athlete data.
-
-**Coach MCP availability (#150):** Coach tools (`COACH_DEV_*`, `COACH_QA_*`, `COACH_MAIN_*`) are exclusively available to the **@coach** agent. A global default-deny baseline in `opencode.jsonc` denies all three Coach namespaces for every other persona — including built-in subagents (`explore`, `general`, `task`) — and each SCRUM agent re-states the deny explicitly in its spec. This keeps personal biometric and training data (Intervals.icu) isolated to the coaching workflow. The invariant is machine-enforced by the config gate (`harness/config-validation/check_coach_exclusivity.py`, run locally via `bash harness/run-config-gate.sh` and in CI).
-
-**Browser MCP availability (#207, MADR-0009):** Browser tools (`BROWSER_*`) are available to the **@developer** and **@devops** agents only. The same global default-deny baseline (`BROWSER_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every other SCRUM agent re-states the deny explicitly in its spec. The server runs with an ephemeral in-memory profile (`--isolated`), WebMCP disabled (`--no-webmcp`), service workers blocked (`--block-service-workers`), image responses omitted (`--image-responses omit`), a loopback-origin allowlist (`--allowed-origins` — upstream documents it as not a security boundary), and a scoped `--output-dir`; the pinned `@playwright/mcp` version is audited at pin time by `install.sh` (npx re-resolves from the registry each session). The namespace-exclusivity invariant (COACH_* and BROWSER_*) and the mandated launch flags are machine-enforced by the same config gate.
-
-**GitHub Actions & Security MCP availability (#252, MADR-0011):** `GITHUB_ACTIONS_*` is @devops-only for writes (`actions_run_trigger`), with read-only triage tools granted to @developer; `GITHUB_SECURITY_*` is @cyber-security-only, with the `--read-only` flag enforced at process startup and raw secret payloads redacted before recording. The global default-deny baseline (`GITHUB_ACTIONS_*` / `GITHUB_SECURITY_*`: deny in `opencode.jsonc`) covers every other persona — including built-in subagents — and every SCRUM agent re-states the denies explicitly in its spec. The namespace-exclusivity invariant is machine-enforced by the same config gate.
+SSOT: arc42 [Context & Building Blocks §5](architecture/arc42/01-context-and-building-blocks.md) and [opencode.jsonc](../opencode.jsonc) — same server registry and availability invariants as §2.6.
 
 ### 3.5 Models
 
-The HOME profile uses **OpenRouter only** — no direct Google or Anthropic API keys needed. All models are accessed through a single OpenRouter API key.
-
-**Configured models:**
-
-| Model ID | Display Name | Role |
-|:---|:---|:---|
-| `google/gemini-3.8-flash` | Gemini 3.8 Flash | **Default model** (main session + small model) |
-| `openai/gpt-6-luna` | GPT-6 Luna | Available for selection |
-| `moonshotai/kimi-k2.7-code` | Kimi K2.7 Code | Available for selection |
-| `z-ai/glm-5.3-flash` | GLM 5.3 Flash | Used by @developer, @scrum-master, @coach |
-| `deepseek/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | Used by @architect, @code-reviewer, @cyber-security, @devops |
-| `z-ai/glm-5.3` | GLM 5.3 | Available for selection |
-| `qwen/qwen3.8-2.4t-a95b` | Qwen 3.8 2.4T A95B | Available for selection |
-
-**How to change the default model:** Edit line 16 of `opencode.jsonc`:
-```jsonc
-"model": "openrouter/google/gemini-3.8-flash",
-```
+SSOT: [opencode.jsonc](../opencode.jsonc) — OpenRouter-only provider scoping and the configured model catalog.
 
 ### 3.6 Daily Workflow
 
-Here's a simple step-by-step for working on a project:
-
-```mermaid
-flowchart TD
-    A["1. Open a terminal or Herdr pane"] --> B["2. cd to your project"]
-    B --> C["3. Launch oc-home (HOME profile + secrets)"]
-    C --> D["4. Ask @architect to plan the work"]
-    D --> E["5. @developer creates a feature branch"]
-    E --> F["6. @developer implements (TDD: Red → Green → Refactor)"]
-    F --> G["7. @developer pushes & opens PR to main"]
-    G --> H["8. @code-reviewer inspects the PR"]
-    H --> I["9. @developer squash-merges into main"]
-    I --> J["10. @scrum-master verifies DoD & closes issue"]
-```
-
-**Step-by-step:**
-
-1. **Open a terminal or Herdr pane** — one pane per context; HOME and WORK can run simultaneously in separate panes (MADR-0010).
-
-2. **Navigate to your project:**
-   ```bash
-   cd ~/projects/HOME/my-personal-project
-   ```
-
-3. **Launch the HOME profile:**
-   ```bash
-   oc-home
-   ```
-   The wrapper sources the profile-scoped secrets and starts OpenCode with the HOME config (MADR-0010). Never use bare `opencode` for secret-bearing work.
-
-4. **Ask @architect to plan the work:** Describe what you want to build. The architect will create or groom GitHub issues, define acceptance criteria, and assign work to the right agents.
-
-5. **@developer creates a feature branch:** The developer branches off `main` with `feature/<issue-#>-<slug>`.
-
-6. **@developer implements using TDD:** Red (write failing test) → Green (make it pass) → Refactor (clean up).
-
-7. **@developer pushes and opens a PR to `main`:** The PR description references the issue (`Resolves #<issue-#>`).
-
-8. **@code-reviewer inspects the PR:** Read-only inspection, formal APPROVE or REQUEST_CHANGES.
-
-9. **@developer squash-merges into `main`:** CI must be 100% clean (0 warnings, 0 failures).
-
-10. **@scrum-master verifies DoD and closes the issue:** The Definition of Done is checked and the issue is closed.
+SSOT: arc42 [Runtime & Delivery §1.1](architecture/arc42/02-runtime-and-delivery.md) (autonomous issue-by-issue delivery loop) and the `home-governance` skill §6 ([SKILL.md](../skills/home-governance/SKILL.md)).
 
 ### 3.7 Dos and Donts
 
-| Do | Don't |
-|:---|:---|
-| ✅ Use feature branches (`feature/<issue-#>-<slug>`) | ❌ Commit directly to `main` |
-| ✅ Reference the issue in your PR (`Resolves #<issue-#>`) | ❌ Open a PR without an issue |
-| ✅ Run `install.sh` after cloning the repo | ❌ Manually edit symlinks (use `install.sh`) |
-| ✅ Keep `.secrets-home.env` / `.secrets-work.env` at chmod 600 | ❌ Share or print secret values |
-| ✅ Verify CI is green before merging | ❌ Merge a PR with failing CI |
-| ✅ Use OpenRouter for all AI models (HOME profile) | ❌ Add direct Google/Anthropic API keys |
-| ✅ Ask @architect to plan before @developer codes | ❌ Jump straight to coding without a plan |
-| ✅ Launch panes via `oc-home` / `oc-work` | ❌ Run secret-bearing work with bare `opencode` |
+SSOT: the `home-governance` skill §5 ([SKILL.md](../skills/home-governance/SKILL.md)) — feature-branch isolation, issue-referenced PRs, clean-CI merge gate, secrets hygiene.
 
 ### 3.8 Permission Posture & Safety Guardrails
 
-*Since #158 (MADR-0004, 2026-10-03), the bash permission posture is **allow-by-default with catastrophic-deny guardrails**, replacing the former ask/deny-default + allowlist scheme (#86 → #89 → #123).*
-
-**How bash permissions work.** OpenCode evaluates the permission rules in order and the **last matching rule wins**. Compound commands (`&&`, `;`, `|`) are split, and **every segment** is evaluated — one denied segment blocks the whole command. The posture has three tiers:
-
-| Tier | Behaviour | Examples |
-|:---|:---|:---|
-| **Allow (default)** | Runs unprompted | `git *`, `python3 script.py`, `pytest*`, `bash harness/run-config-gate.sh`, everyday file operations |
-| **Ask (single checkpoint)** | One confirmation prompt | `rm *`, `pip install*`, `npm install -g*` / `npm i -g*`, `kill*` / `pkill*` / `killall*`, `chmod *`, `chown *`, `systemctl*` |
-| **Deny (hard block)** | Blocked, no prompt | Catastrophic / irreversible / bypass commands (below) |
-
-**Hard deny tail (catastrophic / irreversible / bypass):** `sudo*`; `rm -rf` on `/`, `~` or `$HOME`; disk and device tools (`mkfs*`, `dd *of=/dev/*`, `shred*`, `wipefs*`, `blockdev*`, `fdisk*` / `sfdisk*` / `gdisk*`, `parted*`, `truncate * /dev/*`); writes and moves to block devices (`* > /dev/sd*` and the nvme/mmcblk/vd/hd variants, `mv * /dev/…`); power-off (`shutdown*`, `reboot*`, `halt*`, `poweroff*`, `systemctl poweroff*` / `reboot*` / `halt*`); persistence (`crontab*`, `systemd-run*`); recursive permission changes on absolute paths (`chmod -R * /*`, `chown -R * /*`); bulk deletion (`find * -delete*`, `find * -exec rm*`); git history destruction (`git push --force*` / `-f*`, `git filter-branch*`, `git filter-repo*`, `git clean*`, `git reset --hard*`); network fetchers (`curl*`, `wget*`); inline-code interpreters (`bash -c *`, `sh *`, `python* -c*`, `node -e*` / `--eval*`, `perl -e*`, `ruby -e*`); environment and secret reads (`printenv*`, `env`, `cat /proc/*/environ*`); file-centric secret denies (`*.env*`, `*.pem*`, `*.key*` — any command referencing a credential filename, #167).
-
-**Unchanged by #158:**
-
-- File `read`/`edit` credential denies (`.secrets-*.env`, `*.env`, `*.pem`, `*.key`, `*token*`, `~/.config/**`) — the bash-level `*.env*` / `*.pem*` / `*.key*` / `printenv*` / `env` / `cat /proc/*/environ*` denies close the primary secret store for the bash tool (file-tool read denies are not enforced on bash output).
-- `COACH_*` MCP denies (#150) — Coach tools remain @coach-only (see §3.4).
-- `@code-reviewer` keeps its read-only bash allowlist; `@scrum-master` and `@coach` keep zero-bash charters (separation of duties).
-
-**Since #167 (refines MADR-0004):** the deny tail gains **file-centric secret denies** — `*.env*`, `*.pem*`, `*.key*` block **any command referencing a credential filename**, closing the read-command-family bypass (`head`, `rg`, `strings`, …) that the #158 `cat`-specific deny left open (`*.env*` subsumes it). Token-named files are excluded (command-agnostic `*token*` over-matches); false positives such as `ls *.pem` block in the safe direction.
-
-**Reference:** MADR-0004 (`docs/adr/0004-allow-by-default-bash-permission-posture.md`) and `arc42/03-cross-cutting-and-security.md` §1.1.
+SSOT: arc42 [Security & Privacy §1.1](architecture/arc42/03-cross-cutting-and-security.md) and [MADR-0004](adr/0004-allow-by-default-bash-permission-posture.md) — allow-by-default with catastrophic-deny guardrails, last-match-wins evaluation, per-segment compound-command checks, file-centric secret denies (#167).
 
 ---
 
 ## 4. Switching Between HOME and WORK Profiles
 
-The OpenCode configuration supports **two profiles**: HOME (personal projects, this repo) and WORK (EPFL projects, GitLab repo). Since MADR-0010, profiles run **per pane**: HOME and WORK instances coexist simultaneously (one Herdr pane each), each pane's profile fixed by the wrapper that launched it (`oc-home` / `oc-work`).
+SSOT for profile-switching mechanics (per-pane wrappers, secrets sourcing, base-layer merge, simultaneous HOME/WORK panes): [README — Per-pane profile selection](../README.md).
 
 ### 4.1 How Profile Selection Works
 
-A pane's profile is determined by the **wrapper that launched it** (defined in `~/.config/opencode/profiles.sh`):
-
-| Wrapper launched | Pane profile | Use case |
-|:---|:---|:---|
-| `oc-home` | **HOME** | Personal projects under `~/projects/HOME/` |
-| `oc-work` | **WORK** | EPFL projects under `~/projects/WORK/` |
-
-Each wrapper sources its profile-scoped secrets file (`.secrets-home.env` / `.secrets-work.env`, mode 600) inside a subshell and starts OpenCode with the profile config. The global symlink (`~/.config/opencode/opencode.jsonc`) remains the **base layer** for bare `opencode`, which is unsupported for secret-bearing work. Each profile has its own agents, skills, models, and MCP configuration.
-
-**Profile comparison:**
-
-| Feature | HOME | WORK |
-|:---|:---|:---|
-| **Repo** | `fpittelo/opencode-home-config` (GitHub) | `isgov/ea/opencode-work-config` (GitLab) |
-| **Agents** | 7 | 8 |
-| **Skills** | 15 | 20 |
-| **MCP: GITHUB** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
-| **MCP: COACH** | ✅ Enabled | ❌ Disabled (deep-merge shielding) |
-| **AI providers** | OpenRouter only | EPFL AI + OpenRouter |
-| **Default model** | `google/gemini-3.8-flash` (via OpenRouter) | EPFL AI default |
-| **Directory** | `~/projects/HOME/` | `~/projects/WORK/` |
+Wrapper semantics and the HOME/WORK comparison: see [README](../README.md) — 'Per-pane profile selection'.
 
 ### 4.2 Switch to HOME Profile
 
-Launch the HOME profile in a pane (from your project directory):
-
-```bash
-cd ~/projects/HOME/my-personal-project
-oc-home
-```
-
-The wrapper sources the HOME secrets and starts OpenCode with the HOME profile (MADR-0010). To re-provision the wrapper or secrets files, re-run the HOME installer:
-
-```bash
-cd ~/projects/opencode-home-config && ./install.sh
-```
-
-**HOME pane profile:**
-- **7 agents** available (architect, coach, code-reviewer, cyber-security, developer, devops, scrum-master)
-- **15 skills** available (arc42-documentation, coach, docker-expert, fastmcp-builder, find-skills, github-scrum-board, harness-engineering, herdr, home-governance, kis-yagni, madr-adr, mermaid-diagrams, opentofu-iac, release-automation, test-driven-development)
-- **9 MCP servers** defined (GITHUB + GITHUB_CODE_REVIEWER + GITHUB_ACTIONS + GITHUB_SECURITY as native binaries, COACH_DEV as the active Coach container, BROWSER via pinned npx, openrouter remote; COACH_QA/COACH_MAIN disabled)
-- **OpenRouter only** — all AI models via `OPENROUTER_HOME_API_KEY`
-- **Use for:** personal projects under `~/projects/HOME/`
+Launch `oc-home` from your project directory; re-provision with the HOME `install.sh` — see [README](../README.md).
 
 ### 4.3 Switch to WORK Profile
 
-Launch the WORK profile in a separate pane (from your EPFL project directory):
-
-```bash
-cd ~/projects/WORK/my-epfl-project
-oc-work
-```
-
-The wrapper sources the WORK secrets and starts OpenCode with the WORK profile (mirrored mechanism, work repo #177). To re-provision, re-run the WORK installer:
-
-```bash
-cd ~/projects/opencode-work-config && ./install.sh
-```
-
-**WORK pane profile:**
-- **8 agents** available (includes EPFL-specific agents)
-- **20 skills** available (includes all HOME skills + EPFL-specific skills)
-- **GITHUB + COACH MCPs are disabled** (deep-merge shielding sets `"enabled": false`)
-- **EPFL AI + OpenRouter** — EPFL AI as default, OpenRouter as fallback
-- **Use for:** EPFL projects under `~/projects/WORK/`
+Launch `oc-work` from your EPFL project directory; re-provision with the WORK `install.sh` (mirrored mechanism, work repo #177) — see [README](../README.md).
 
 ### 4.4 Verify Active Profile
 
-A pane's profile is fixed by the wrapper that launched it — check the running instances:
-
-```bash
-herdr agent list
-```
-
-To inspect the global **base-layer** symlink (used only by bare `opencode`, unsupported for secret-bearing work):
-
-```bash
-ls -la ~/.config/opencode/opencode.jsonc
-```
-
-**Output examples:**
-
-| Output | Base layer |
-|:---|:---|
-| `→ ~/projects/opencode-home-config/opencode.jsonc` | HOME config |
-| `→ ~/projects/opencode-work-config/opencode.jsonc` | WORK config |
+Verification: `herdr agent list` recognizes each OpenCode instance; the base-layer symlink is inspected with `ls -la ~/.config/opencode/opencode.jsonc` — see [README](../README.md).
 
 ### 4.5 Project-Level Overrides (Deep-Merge Shielding)
 
@@ -640,20 +335,10 @@ This means even if a project under `~/projects/WORK/` somehow had access to the 
 |:---|:---|
 | ⚠️ **Do NOT mix profiles** | Launch each context in its own pane via its wrapper (`oc-home` / `oc-work`); never run EPFL work from a HOME pane or personal work from a WORK pane. |
 | ⚠️ **Profile is fixed at pane launch** | OpenCode loads the config at session start; a pane's profile is fixed by the wrapper that launched it. To change profile, close the pane and relaunch with the other wrapper. |
-| ⚠️ **Secrets are per-pane, but residuals remain** | Each profile sources its own secrets file (`.secrets-home.env` / `.secrets-work.env`, mode 600) inside the wrapper subshell — no global rc sourcing, no systemd import. The cross-profile residual risks below are accepted (STRIDE review #253 / MADR-0010). |
+| ⚠️ **Secrets are per-pane, but residuals remain** | Each profile sources its own secrets file (`.secrets-home.env` / `.secrets-work.env`, mode 600) inside the wrapper subshell — no global rc sourcing, no systemd import. The cross-profile residual risks are accepted (STRIDE review #253 / MADR-0010). |
 | ⚠️ **Don't edit the symlink directly** | The global base-layer symlink is managed by `install.sh` only. Manually editing it can break the path. |
 
-**Cross-profile residual risks (mirror of README §"Residual risks", RR1–RR9):**
-
-1. Same-UID `/proc/<pid>/environ` exposure of a running pane's environment (RR1).
-2. Shared `~/.local/share/opencode/` (`auth.json`, `mcp-auth.json`, session DB, logs, tool output) — **explicit PO risk-acceptance (@fpittelo, 2026-10-10)**: provider OAuth logins are global; switching profiles does not switch identities (RR2).
-3. Config-merge key leakage across profiles via the global base layer (RR3) — mitigated by the `{env:}`-only invariant (CI-enforced).
-4. Herdr screen history must stay OFF — re-verify after Herdr or opencode upgrades (RR4).
-5. Pane children inherit that pane's profile secrets — never run untrusted code from a profile pane (RR5).
-6. The systemd user environment must be secret-free post-migration — `install.sh` unsets and verifies; re-check after upgrades (RR6).
-7. Secrets files live outside any repo — host backups and dotfile copies are secret-bearing; keep them out of any synced store (RR7).
-8. The legacy shared `.secrets.env` is emptied/removed after migration — do not recreate it; the wrappers no longer read it (RR8).
-9. The WORK installer (work repo #177) still rewrites `profiles.sh` wholesale and removes `oc-home()`; re-run HOME `install.sh` to restore it (RR9).
+**Cross-profile residual risks (RR1–RR9):** single SSOT in [README — Residual risks](../README.md) (STRIDE review #253 / MADR-0010, accepted).
 
 ---
 
