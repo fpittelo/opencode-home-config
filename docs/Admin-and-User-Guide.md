@@ -421,10 +421,10 @@ The HOME profile uses **OpenRouter only** — no direct Google or Anthropic API 
 | Model ID | Display Name | Role |
 |:---|:---|:---|
 | `google/gemini-3.8-flash` | Gemini 3.8 Flash | **Default model** (main session + small model) |
-| `openai/gpt-6-luna` | GPT-6 Luna | Used by @architect (deep reasoning for architecture/ADRs) |
-| `moonshotai/kimi-k2.7-code` | Kimi K2.7 Code | Used by @developer (coding-specialized) |
-| `z-ai/glm-5.3-flash` | GLM 5.3 Flash | Used by @scrum-master, @coach |
-| `deepseek/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | Used by @code-reviewer, @cyber-security, @devops |
+| `openai/gpt-6-luna` | GPT-6 Luna | Available for selection |
+| `moonshotai/kimi-k2.7-code` | Kimi K2.7 Code | Available for selection |
+| `z-ai/glm-5.3-flash` | GLM 5.3 Flash | Used by @developer, @scrum-master, @coach |
+| `deepseek/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | Used by @architect, @code-reviewer, @cyber-security, @devops |
 | `z-ai/glm-5.3` | GLM 5.3 | Available for selection |
 | `qwen/qwen3.8-2.4t-a95b` | Qwen 3.8 2.4T A95B | Available for selection |
 
