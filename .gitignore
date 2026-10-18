@@ -26,3 +26,7 @@ target/
 __pycache__/
 .coverage
 .coverage.*
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
