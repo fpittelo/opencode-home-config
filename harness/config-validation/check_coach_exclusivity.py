@@ -60,6 +60,8 @@ import re
 import sys
 from pathlib import Path
 
+from jsonc_utils import strip_jsonc
+
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 
 # Governed namespaces: canonical permission patterns plus the only agent
@@ -155,33 +157,6 @@ PARTIAL_ALLOW_POLICIES: dict[str, dict[str, dict[str, str]]] = {
 def namespace_key_re(prefix: str) -> re.Pattern[str]:
     """Permission-key matcher for one namespace (pattern-drift detection)."""
     return re.compile(rf"^\s*({prefix}[A-Za-z0-9_]*\*?):\s*(allow|deny)\s*$")
-
-
-def strip_jsonc(text: str) -> str:
-    """Strip // comments (mirrors the run-config-gate/ci.yml JSONC validator)."""
-    out: list[str] = []
-    i, in_str, esc = 0, False, False
-    while i < len(text):
-        c = text[i]
-        if in_str:
-            out.append(c)
-            if esc:
-                esc = False
-            elif c == "\\":
-                esc = True
-            elif c == '"':
-                in_str = False
-        elif c == '"':
-            in_str = True
-            out.append(c)
-        elif c == "/" and text[i + 1 : i + 2] == "/":
-            while i < len(text) and text[i] != "\n":
-                i += 1
-            continue
-        else:
-            out.append(c)
-        i += 1
-    return "".join(out)
 
 
 def check_global_baseline(root: Path, failures: list[str]) -> None:
