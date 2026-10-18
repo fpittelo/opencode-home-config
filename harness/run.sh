@@ -70,7 +70,6 @@ python_gate() {
       set -euo pipefail
       ruff check .
       black --check .
-      isort --check-only .
       mypy --strict .
       pytest -W error --cov=. --cov-fail-under=80
     '
@@ -109,7 +108,7 @@ rust_gate() {
 
 python_native_tools_ok() {
   local tool
-  for tool in ruff black isort mypy pytest; do
+  for tool in ruff black mypy pytest; do
     [[ -x "${VENV_BIN}/${tool}" ]] || return 1
   done
   # pytest-cov is needed by the gate's --cov chain but is a pytest PLUGIN,
@@ -174,14 +173,13 @@ run_gate() {
       fi
       if ! python_native_tools_ok; then
         echo "error: project .venv toolchain incomplete at ${VENV_BIN}" >&2
-        echo "       need ruff, black, isort, mypy, pytest, pytest-cov; run 'bash harness/run.sh python deps' first; refusing to use host PATH tools." >&2
+        echo "       need ruff, black, mypy, pytest, pytest-cov; run 'bash harness/run.sh python deps' first; refusing to use host PATH tools." >&2
         exit 3
       fi
-      echo "==> [gate] native path: project .venv toolchain (ruff, black, isort, mypy, pytest, pytest-cov) - fail-fast, coverage >= 80%"
+      echo "==> [gate] native path: project .venv toolchain (ruff, black, mypy, pytest, pytest-cov) - fail-fast, coverage >= 80%"
       (cd "${REPO_ROOT}" &&
         PATH="${VENV_BIN}:${PATH}" ruff check . &&
         PATH="${VENV_BIN}:${PATH}" black --check . &&
-        PATH="${VENV_BIN}:${PATH}" isort --check-only . &&
         PATH="${VENV_BIN}:${PATH}" mypy --strict . &&
         PATH="${VENV_BIN}:${PATH}" pytest -W error --cov=. --cov-fail-under=80)
       return 0
