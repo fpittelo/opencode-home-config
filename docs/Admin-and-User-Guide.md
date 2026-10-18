@@ -223,6 +223,7 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 | `herdr: command not found` | Herdr binary not installed | Re-run `install.sh` (installs the pinned binary to `~/.local/bin/herdr`) |
 | OpenCode panes show no live state in the Herdr sidebar | Integration files missing or stale (e.g. after a Herdr upgrade) | `herdr integration install opencode`, then restart the OpenCode panes; verify with `herdr integration status` |
 | OpenCode conversation lost after `herdr server stop` | Session snapshots disabled or Herdr stopped uncleanly | Keep session snapshots at defaults (ON); restart with `herdr` — the layout restores and OpenCode resumes via its session ID |
+| GitHub MCP issue-label writes silently no-op in subagent sessions | `GITHUB_issue_write` intermittently drops the `labels` array param during serialization (server executes the zero-field payload it receives) | Re-apply labels from the main session (`GITHUB_issue_write`, labels-only update), then fresh-read verify — proven Sprint 24 pattern (#370/#372/#373/#376/#389) |
 
 ### 2.10 GitHub PAT Permissions Checklist
 
