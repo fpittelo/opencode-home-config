@@ -9,11 +9,16 @@ name: Deep Validation
 #     on main for defects the fast per-PR path cannot see (render-level
 #     Mermaid failures, pre-existing secrets).
 #   - push to main (= every trunk merge): nothing reaches production
-#     without full-history secret scanning, render-level Mermaid
-#     validation and image-build verification.
+#     without full-history secret scanning and render-level Mermaid
+#     validation.
 #   - push of a release tag v* (= every tag-from-trunk release, MADR-0017):
 #     the same full-history scan and render validation run at release time.
 #   - workflow_dispatch: manual on-demand deep checks.
+#
+# Image-build verification (#375): the image-build-verification job runs only
+# on cron/workflow_dispatch. On push/tag events harness-image-build.yml already
+# builds all three images, so building them here too duplicated every trunk
+# push (6 builds -> 3).
 
 on:
   schedule:
@@ -71,10 +76,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Pull published docs-validator image (build fallback)
+      - name: Pull published docs-validator image (digest-pinned, build fallback)
+        # #375: digest-pinned (tag alone is mutable - #142 A5). On push/tag
+        # events harness-image-build.yml republishes :latest concurrently, so
+        # pulling :latest here raced the publish (nondeterministic). The digest
+        # is the OCI image index of the docs-validator; refresh it when the
+        # validator image changes (harness/README.md §4). If the digest is not
+        # available, the build fallback builds from the checked-out commit
+        # (also deterministic).
         run: |
-          docker pull ghcr.io/fpittelo/harness-docs-validator:latest || \
-            docker build -f harness/docker/Dockerfile.docs-validator -t ghcr.io/fpittelo/harness-docs-validator:latest harness/docker
+          IMAGE=ghcr.io/fpittelo/harness-docs-validator
+          DIGEST=sha256:92770b9c4df72106912c195cb230ee66bb4267a5aa607b8d77cfdc981c3074ca
+          docker pull "${IMAGE}@${DIGEST}" \
+            && docker tag "${IMAGE}@${DIGEST}" "${IMAGE}:latest" \
+            || docker build -f harness/docker/Dockerfile.docs-validator -t "${IMAGE}:latest" harness/docker
 
       - name: Run docs validation in hardened container
         # Identical invocation to the former per-PR docs-quality-gate job
@@ -100,6 +115,10 @@ jobs:
 
   image-build-verification:
     name: Verify Harness Image Build (${{ matrix.name }})
+    # #375: build verification is redundant on push/tag events, where
+    # harness-image-build.yml already builds all three images. Keep it on the
+    # deep cadence (cron) and manual dispatch only.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

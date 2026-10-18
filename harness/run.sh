@@ -33,6 +33,10 @@ REPO_ROOT="${3:-$(git rev-parse --show-toplevel)}"
 # from the project venv, never from the host PATH.
 VENV_BIN="${REPO_ROOT}/.venv/bin"
 
+# Runner images use the mutable :latest tag, not a digest (#375): accepted
+# deviation from the CI digest-pinning doctrine (#142 A5). This is a local-only
+# script with no concurrent publisher to race, and the images are rebuilt on
+# every trunk push (non-reproducible), so a hardcoded digest would go stale.
 PYTHON_IMAGE="ghcr.io/fpittelo/harness-runner-python:latest"
 RUST_IMAGE="ghcr.io/fpittelo/harness-runner-rust:latest"
 

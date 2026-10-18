@@ -127,6 +127,7 @@ The workflow `.github/workflows/harness-image-build.yml` builds and publishes bo
 - Authentication uses the repository's `GITHUB_TOKEN` via `docker/login-action`.
 - BuildKit layer caching is enabled through GitHub Actions cache (`type=gha`).
 - PR builds are **not** pushed; they only verify that the Dockerfiles still build.
+- `deep-validation.yml` pulls the docs-validator image **digest-pinned** (#375): `:latest` is republished on the same push-to-main event, so a tag pull would race the publish. Refresh the pinned digest (the OCI image index from `docker buildx imagetools inspect ghcr.io/fpittelo/harness-docs-validator:latest`) whenever the validator image changes.
 
 ---
 
