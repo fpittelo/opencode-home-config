@@ -294,6 +294,35 @@
     // #150 pattern).
     "openrouter_*": "deny",
     "GITHUB_CODE_REVIEWER_*": "deny",
+    // #372 (audit finding C4, MADR-0008): root read/edit baselines. Same
+    // inheritance argument as #340's bash dedup: agents inherit the root
+    // read/edit rules, so the ~/.config denylist belongs here once instead of
+    // mirrored in every agent file (step 2, #373, removes the per-agent
+    // restatements). Mirrors exactly the 8-rule read block and the 7-rule
+    // edit block currently in agents/*.md. Pattern semantics per #89/#121:
+    // targeted denylist, no "*" catch-all — opencode evaluates relative read
+    // paths against these patterns, so a catch-all deny breaks normal
+    // project reads (verified empirically in PR #121). #365 is the most
+    // recent root-baseline precedent (openrouter_*/GITHUB_CODE_REVIEWER_*).
+    "read": {
+      "/home/frede/.config/**": "deny",
+      "/home/frede/projects/**": "allow",
+      "/home/frede/.config/opencode/**": "allow",
+      "/home/frede/.config/opencode/.secrets-*.env": "deny",
+      "/home/frede/.config/**/*.env": "deny",
+      "/home/frede/.config/**/*.pem": "deny",
+      "/home/frede/.config/**/*.key": "deny",
+      "/home/frede/.config/**/*token*": "deny"
+    },
+    "edit": {
+      "/home/frede/projects/**": "allow",
+      "/home/frede/.config/opencode/**": "allow",
+      "/home/frede/.config/opencode/.secrets-*.env": "deny",
+      "/home/frede/.config/**/*.env": "deny",
+      "/home/frede/.config/**/*.pem": "deny",
+      "/home/frede/.config/**/*.key": "deny",
+      "/home/frede/.config/**/*token*": "deny"
+    },
     // #158 (MADR-0004): allow-by-default bash posture with catastrophic-deny
     // guardrails (PO directive 2026-10-03) — supersedes the #86-era ask-default +
     // short allowlist. Last matching rule wins: broad rules first, deny rules
