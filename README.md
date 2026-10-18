@@ -23,7 +23,7 @@ opencode-home-config/
 │   ├── developer.md
 │   ├── devops.md
 │   └── scrum-master.md
-├── docs/                     # arc42 architecture, MADRs (13), guides, and history/
+├── docs/                     # arc42 architecture, MADRs (21), guides, and history/
 │   ├── Admin-and-User-Guide.md
 │   ├── adr/
 │   ├── architecture/arc42/

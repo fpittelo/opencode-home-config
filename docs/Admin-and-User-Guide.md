@@ -345,13 +345,13 @@ Agents are AI personas with specific roles, permissions, and model assignments. 
 
 | Agent | Role | Model | Can edit files? | Can run bash? |
 |:---|:---|:---|:---|:---|
-| **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | GLM 5.3 Flash | Yes | Yes |
+| **@architect** | Technical Lead & Solution Architect — designs systems, writes specs, grooms backlog | DeepSeek V4.1 Flash | Yes | Yes |
 | **@coach** | Athletic Coach & Longevity Advisor — Zwift cycling, kettlebell, Intervals.icu analytics | GLM 5.3 Flash | No | No |
 | **@code-reviewer** | PR Quality Gatekeeper — inspects pull requests and approves/rejects | DeepSeek V4.1 Flash | No | No |
 | **@cyber-security** | Security Specialist — threat modeling, secret scanning, vulnerability auditing | DeepSeek V4.1 Flash | No | Yes |
 | **@developer** | Senior Developer — Rust + Python dual-stack, strict TDD, writes production code | GLM 5.3 Flash | Yes | Yes |
 | **@devops** | DevOps Engineer — CI/CD pipelines, Docker, release automation, infrastructure | DeepSeek V4.1 Flash | Yes | Yes |
-| **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GPT-6 Luna | No | No |
+| **@scrum-master** | Scrum Master — sprint facilitation, DoD enforcement, board hygiene | GLM 5.3 Flash | No | No |
 
 **How agents work:**
 - **@architect is the default primary agent** — every session starts in the governed Solution Architect persona (#149): `agents/architect.md` declares `mode: primary` and `opencode.jsonc` sets `"default_agent": "architect"`.
