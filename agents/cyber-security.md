@@ -4,24 +4,6 @@ mode: subagent
 model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.1
 permission:
-# 87: unattended read-only access; last matching rule wins, so deny rules override allows
-# 89 (AC1): targeted ~/.config denylist — deny all of .config except the opencode
-#          tree; closes credential stores that DO live under ~/.config (gh/hosts.yml,
-#          gcloud application_default_credentials.json, ...). Stores like
-#          ~/.aws/credentials and ~/.docker/config.json live OUTSIDE ~/.config and
-#          were never covered by the previous allow either.
-#          A deny-by-default "*" catch-all was evaluated and REJECTED: opencode 1.18.31
-#          evaluates relative read paths against these patterns, so a catch-all deny
-#          breaks normal project reads (verified empirically in PR #121).
-  read:
-    "/home/frede/.config/**": deny
-    "/home/frede/projects/**": allow
-    "/home/frede/.config/opencode/**": allow
-    "/home/frede/.config/opencode/.secrets-*.env": deny
-    "/home/frede/.config/**/*.env": deny
-    "/home/frede/.config/**/*.pem": deny
-    "/home/frede/.config/**/*.key": deny
-    "/home/frede/.config/**/*token*": deny
   edit: deny
   write: deny
   # 340: bash inherits the root permission.bash baseline (opencode.jsonc) —
