@@ -36,38 +36,13 @@ import sys
 import urllib.parse
 from pathlib import Path
 
+from jsonc_utils import strip_jsonc
+
 # Flags that take a value (the element immediately after them in the command
 # array). Presence without a value is a misconfiguration and fails the gate.
 VALUE_FLAGS = ("--allowed-origins", "--output-dir")
 
 OUTPUT_DIR_PREFIX = "/tmp/"
-
-
-def strip_jsonc(text: str) -> str:
-    """Strip // comments (mirrors the run-config-gate/ci.yml JSONC validator)."""
-    out: list[str] = []
-    i, in_str, esc = 0, False, False
-    while i < len(text):
-        c = text[i]
-        if in_str:
-            out.append(c)
-            if esc:
-                esc = False
-            elif c == "\\":
-                esc = True
-            elif c == '"':
-                in_str = False
-        elif c == '"':
-            in_str = True
-            out.append(c)
-        elif c == "/" and text[i + 1 : i + 2] == "/":
-            while i < len(text) and text[i] != "\n":
-                i += 1
-            continue
-        else:
-            out.append(c)
-        i += 1
-    return "".join(out)
 
 
 def browser_command(root: Path) -> tuple[list[str] | None, str | None]:
