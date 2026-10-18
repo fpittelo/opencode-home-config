@@ -7,7 +7,7 @@ permission:
   edit: deny
   write: deny
   bash: deny
-  github_*: deny
+  GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: deny
   # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
   # (explicit denies backstop the global default-deny baseline,
