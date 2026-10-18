@@ -103,7 +103,7 @@ python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_cons
 # 14/15 bash tier root-baseline integrity + clean agent inheritance (#340,
 # superseding the MADR-0004/#320 five-file drift guard): the root
 # opencode.jsonc permission.bash block is pinned to the MADR-0015 baseline
-# (allow head + ask tier + frozen deny tail, order-sensitive), the 17-case
+# (allow head + ask tier + frozen deny tail, order-sensitive), the 24-case
 # last-match-wins truth table holds on the root block, and each of the four
 # allow-default agent specs either omits bash: entirely (root inheritance,
 # verified on opencode 1.19.0: an agent without a bash key receives every
