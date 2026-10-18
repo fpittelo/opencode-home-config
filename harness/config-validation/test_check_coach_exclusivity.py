@@ -24,8 +24,12 @@ designated whitelist agents:
                     architect.md + scrum-master.md hold the governed partial
                     allow (projects_get, projects_list, projects_write — the
                     consolidated planning tool; #311, MADR-0014)
+  openrouter_*      key openrouter_*, allow only architect.md + coach.md
+                    (#365, MADR-0008 — audit finding D2)
+  GITHUB_CODE_REVIEWER_* key GITHUB_CODE_REVIEWER_*, allow only
+                    code-reviewer.md (#365, MADR-0008 — audit finding D2)
 
-Cases are parametrized over all five namespaces (subTest) against a combined
+Cases are parametrized over all seven namespaces (subTest) against a combined
 multi-namespace fixture, so a namespace must be enforced on its own merits —
 a checker that silently ignores a namespace fails the negative cases. The
 partial-allow posture gets dedicated negative cases: a missing tool-level
@@ -70,6 +74,14 @@ NAMESPACE_CASES = {
     "GITHUB_PROJECTS": (
         ("GITHUB_PROJECTS_*",),
         (),
+    ),
+    "openrouter": (
+        ("openrouter_*",),
+        ("architect.md", "coach.md"),
+    ),
+    "GITHUB_CODE_REVIEWER": (
+        ("GITHUB_CODE_REVIEWER_*",),
+        ("code-reviewer.md",),
     ),
 }
 

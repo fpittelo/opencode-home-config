@@ -285,6 +285,15 @@
     // the status::* labels + sprint markers); every other SCRUM agent
     // re-states the deny explicitly (defense in depth, #150 pattern).
     "GITHUB_PROJECTS_*": "deny",
+    // #365 (audit finding D2, MADR-0008): global default-deny baseline for
+    // the OpenRouter MCP and code-reviewer GitHub namespaces — built-in
+    // subagents (explore, general, task) and any unconfigured persona
+    // inherit zero access. @architect and @coach re-allow openrouter_* and
+    // @code-reviewer re-allows GITHUB_CODE_REVIEWER_* in their specs; every
+    // other SCRUM agent re-states the denies explicitly (defense in depth,
+    // #150 pattern).
+    "openrouter_*": "deny",
+    "GITHUB_CODE_REVIEWER_*": "deny",
     // #158 (MADR-0004): allow-by-default bash posture with catastrophic-deny
     // guardrails (PO directive 2026-10-03) — supersedes the #86-era ask-default +
     // short allowlist. Last matching rule wins: broad rules first, deny rules
