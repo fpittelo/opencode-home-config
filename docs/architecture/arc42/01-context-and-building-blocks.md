@@ -185,7 +185,7 @@ C4Container
 - `GITHUB_SECURITY_*`: `@cyber-security` only, with `--read-only` flag enforced at process startup and raw secret redaction rules; all other agents deny.
 - Global default-deny baseline (MADR-0014): `opencode.jsonc` denies `GITHUB_PROJECTS_*` at the root `permission` level.
 - `GITHUB_PROJECTS_*`: the wildcard stays denied for every agent; `@architect` and `@scrum-master` hold the governed partial allow (`projects_get`, `projects_list`, `projects_write` — the consolidated planning tool) for OPTIONAL roadmap writes; all other agents deny. Since #339 the execution SSOT is the `status::*` labels + sprint markers — Projects v2 is a roadmap view, never a blocking dependency.
-- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_ACTIONS_* / GITHUB_SECURITY_* MADR-0011; GITHUB_PROJECTS_* MADR-0014) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh` and a dedicated CI step in `ci.yml`).
+- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_ACTIONS_* / GITHUB_SECURITY_* MADR-0011; GITHUB_PROJECTS_* MADR-0014) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh`, invoked by `ci.yml` as the delegated config gate).
 
 **Mode gating invariants (enforced since #149):**
 - `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).

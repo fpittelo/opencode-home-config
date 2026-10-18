@@ -3,7 +3,7 @@ name: CI Pipeline
 # MADR-0003 D1 (#134): single native per-PR quality gate - zero Docker,
 # target wall-clock < 90 s. Runs on every PR targeting main and every push
 # to main (trunk+tag delivery, MADR-0017).
-# All 17 config gates are delegated to harness/run-config-gate.sh (#366) -
+# All config gates are delegated to harness/run-config-gate.sh (#366) -
 # the single source of truth shared with the local pre-flight gate: JSONC
 # validation, install.sh syntax, agent/skill presence, namespace-exclusivity
 # permission invariant (#150 COACH_*, #207 BROWSER_*), native docs
@@ -60,7 +60,7 @@ jobs:
           fetch-depth: 60
 
       - name: Run config gate (harness/run-config-gate.sh)
-        # Single source of truth for all 17 gates (#366): the exact script
+        # Single source of truth for all config gates (#366): the exact script
         # that runs as the local pre-flight gate. The script is stdlib-only
         # (python3 + bash, both preinstalled on ubuntu-latest), resolves all
         # paths relative to the repository root (its default REPO_ROOT), and
