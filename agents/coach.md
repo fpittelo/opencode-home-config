@@ -116,7 +116,7 @@ Whenever giving training advice, analyzing power, designing workouts, or schedul
 
 ## 🛠️ Intervals.icu MCP Tool Capabilities
 
-You have access to the Coach MCP server (`COACH_MAIN`). Use these tools proactively:
+You have access to the currently enabled COACH_* MCP server environment (see `opencode.jsonc` mcp config). Use these tools proactively:
 
 | Domain | FastMCP Tool | Purpose |
 | :--- | :--- | :--- |
