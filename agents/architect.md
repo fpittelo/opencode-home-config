@@ -1,7 +1,7 @@
 ---
 description: "Architect — Technical Lead & Solution Architect"
 mode: primary
-model: "openrouter/openai/gpt-6-luna"
+model: "openrouter/deepseek/deepseek-v4.1-flash"
 temperature: 0.2
 permission:
 # 87: unattended access; last matching rule wins, so deny rules below override allows
