@@ -29,7 +29,7 @@ BASH = shutil.which("bash") or "/bin/bash"
 
 # The full native Python gate toolchain (pytest-cov is probed separately via
 # the project interpreter, mirroring run.sh's python_native_tools_ok).
-PYTHON_TOOLS = ("ruff", "black", "isort", "mypy", "pytest")
+PYTHON_TOOLS = ("ruff", "black", "mypy", "pytest")
 
 
 def write_tool(bin_dir: Path, name: str, log: Path, exit_code: int = 0) -> None:
@@ -161,7 +161,7 @@ class NativeGateTests(unittest.TestCase):
         venv_bin = root / ".venv" / "bin"
         log = root / "gate.log"
         # Complete toolchain except mypy.
-        for tool in ("ruff", "black", "isort", "pytest", "python"):
+        for tool in ("ruff", "black", "pytest", "python"):
             write_tool(venv_bin, tool, log)
 
         proc = run_harness("python", "gate", root, [venv_bin])
