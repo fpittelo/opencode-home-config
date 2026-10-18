@@ -15,7 +15,8 @@ pass per namespace:
 
 Governed namespaces (#150 for COACH_*, #207/MADR-0009 for BROWSER_*, #252 /
 MADR-0011 for the extended GitHub MCP namespaces, #311/MADR-0014 for the
-Projects v2 planning namespace):
+Projects v2 planning namespace, #365/MADR-0008 for the OpenRouter MCP and
+code-reviewer GitHub namespaces — audit finding D2):
 
   ==================  ==========================  ============================
   Namespace           Canonical patterns          Sole allow whitelist
@@ -35,6 +36,8 @@ Projects v2 planning namespace):
                                                   (projects_get, projects_list,
                                                   projects_write — #311,
                                                   MADR-0014)
+  openrouter_*        openrouter_*                architect.md, coach.md
+  GITHUB_CODE_REVIEWER_*  GITHUB_CODE_REVIEWER_*  code-reviewer.md
   ==================  ==========================  ============================
 
 Partial-allow posture (#252, MADR-0011 C3): one designated agent may hold
@@ -62,7 +65,9 @@ FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 # Governed namespaces: canonical permission patterns plus the only agent
 # specs allowed to carry "allow" (#150 for COACH_*, #207/MADR-0009 for the
 # Playwright browser MCP namespace, #252/MADR-0011 for the extended GitHub
-# MCP namespaces, #311/MADR-0014 for the Projects v2 planning namespace).
+# MCP namespaces, #311/MADR-0014 for the Projects v2 planning namespace,
+# #365/MADR-0008 for the OpenRouter MCP and code-reviewer GitHub
+# namespaces — audit finding D2).
 NAMESPACE_POLICIES = {
     "COACH": {
         "keys": ("COACH_DEV_*", "COACH_QA_*", "COACH_MAIN_*"),
@@ -92,6 +97,20 @@ NAMESPACE_POLICIES = {
         # below); every other agent denies the namespace.
         "allow_agents": frozenset(),
         "provenance": "#311 (MADR-0014)",
+    },
+    # #365 (audit finding D2, MADR-0008): the OpenRouter MCP namespace is
+    # @architect/@coach-only (model selection/evals) and the code-reviewer
+    # GitHub namespace is @code-reviewer-only (SoD — approvals under the
+    # separate @devfpittelo identity); every other agent denies both.
+    "openrouter": {
+        "keys": ("openrouter_*",),
+        "allow_agents": frozenset({"architect.md", "coach.md"}),
+        "provenance": "#365 (MADR-0008)",
+    },
+    "GITHUB_CODE_REVIEWER": {
+        "keys": ("GITHUB_CODE_REVIEWER_*",),
+        "allow_agents": frozenset({"code-reviewer.md"}),
+        "provenance": "#365 (MADR-0008)",
     },
 }
 
@@ -293,7 +312,8 @@ def main(argv: list[str]) -> int:
         f"partial allow and GITHUB_SECURITY_* is @cyber-security-only "
         f"(#252, MADR-0011), GITHUB_PROJECTS_* wildcard stays denied with "
         f"the @architect/@scrum-master governed partial allow "
-        f"(#311, MADR-0014)"
+        f"(#311, MADR-0014), openrouter_* is @architect/@coach-only and "
+        f"GITHUB_CODE_REVIEWER_* is @code-reviewer-only (#365, MADR-0008)"
     )
     return 0
 
