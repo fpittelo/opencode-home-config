@@ -119,9 +119,7 @@ def agent_text(
         "---\n"
         f'description: "{name} test spec"\n'
         "mode: subagent\n"
-        "permission:\n"
-        + bash_block
-        + "  GITHUB_*: allow\n"
+        "permission:\n" + bash_block + "  GITHUB_*: allow\n"
         "---\n"
         "\n"
         f"{name} test body.\n"
@@ -251,6 +249,24 @@ class RootBaselineIntegrityTests(unittest.TestCase):
         proc = run_checker(build_repo(root_rules=drifted))
         self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
 
+    def test_root_gh_api_deny_removal_fails(self) -> None:
+        # MADR-0022 (#401, C5) negative case: a root config WITHOUT the
+        # `gh api *` deny fails the baseline pin — the gh guardrail is
+        # machine-enforced. `gh run delete*` alone would be bypassable via
+        # raw REST (`gh api -X DELETE ...`) while "*" is allow (MADR-0008
+        # review on PR #402: the gh api deny is decisive).
+        drifted = remove_rule(KNOWN_GOOD_RULES, "gh api *")
+        proc = run_checker(build_repo(root_rules=drifted))
+        self.assert_gate_fails(proc, "opencode.jsonc", "baseline")
+
+    def test_root_gh_workflow_carve_out_deny_removal_fails(self) -> None:
+        # MADR-0022 (#401, C6) negative case: removing the `gh workflow *`
+        # root deny removes the baseline for the @devops-only write carve-out
+        # (the retired actions_run_trigger equivalent) — baseline pin fails.
+        drifted = remove_rule(KNOWN_GOOD_RULES, "gh workflow *")
+        proc = run_checker(build_repo(root_rules=drifted))
+        self.assert_gate_fails(proc, "opencode.jsonc", "baseline")
+
     def test_deny_tail_reorder_fails(self) -> None:
         drifted = swap_rules(KNOWN_GOOD_RULES, "curl*", "wget*")
         proc = run_checker(build_repo(root_rules=drifted))
@@ -295,15 +311,11 @@ class AgentInheritanceTests(unittest.TestCase):
             self.assertIn(fragment, output)
 
     def test_agent_restating_one_root_pattern_fails(self) -> None:
-        proc = run_checker(
-            build_repo(agent_bash={"developer": (("rm *", "ask"),)})
-        )
+        proc = run_checker(build_repo(agent_bash={"developer": (("rm *", "ask"),)}))
         self.assert_gate_fails(proc, "agents/developer.md", "rm *")
 
     def test_agent_mirroring_whole_block_fails(self) -> None:
-        proc = run_checker(
-            build_repo(agent_bash={"architect": KNOWN_GOOD_RULES})
-        )
+        proc = run_checker(build_repo(agent_bash={"architect": KNOWN_GOOD_RULES}))
         self.assert_gate_fails(proc, "agents/architect.md")
 
     def test_undocumented_role_deviation_fails(self) -> None:
@@ -313,15 +325,11 @@ class AgentInheritanceTests(unittest.TestCase):
         self.assert_gate_fails(proc, "agents/devops.md", "terraform *")
 
     def test_non_allow_tier_deviation_fails(self) -> None:
-        proc = run_checker(
-            build_repo(agent_bash={"devops": (("docker *", "ask"),)})
-        )
+        proc = run_checker(build_repo(agent_bash={"devops": (("docker *", "ask"),)}))
         self.assert_gate_fails(proc, "agents/devops.md")
 
     def test_documented_devops_deviation_passes(self) -> None:
-        proc = run_checker(
-            build_repo(agent_bash={"devops": (("docker *", "allow"),)})
-        )
+        proc = run_checker(build_repo(agent_bash={"devops": (("docker *", "allow"),)}))
         self.assertEqual(
             proc.returncode,
             0,
@@ -331,9 +339,7 @@ class AgentInheritanceTests(unittest.TestCase):
     def test_documented_cyber_security_deviation_passes(self) -> None:
         allowed = sorted(CHECKER.AGENT_DEVIATIONS["cyber-security.md"])
         rules = tuple((pattern, "allow") for pattern in allowed)
-        proc = run_checker(
-            build_repo(agent_bash={"cyber-security": rules})
-        )
+        proc = run_checker(build_repo(agent_bash={"cyber-security": rules}))
         self.assertEqual(
             proc.returncode,
             0,
@@ -341,9 +347,118 @@ class AgentInheritanceTests(unittest.TestCase):
         )
 
     def test_docstring_reflects_root_inheritance_design(self) -> None:
-        text = Path(CHECKER.__file__).resolve().read_text(encoding="utf-8")
+        script_path = CHECKER.__file__
+        assert script_path is not None  # module always has a file (mypy strict)
+        text = Path(script_path).resolve().read_text(encoding="utf-8")
         self.assertIn("#340", text)
         self.assertIn("inherit", text.lower())
+
+
+class GhCiTriageCarveOutTests(unittest.TestCase):
+    """MADR-0022 (#401) C6/C7: gh CI-triage surface, merged resolution.
+
+    The GITHUB_ACTIONS MCP server is retired (MADR-0022); CI triage is
+    re-homed on the pinned gh CLI. The root deny tail denies every CI write
+    command (gh workflow *, gh run cancel*, gh run rerun* — the retired
+    actions_run_trigger equivalent — plus the C5 destructive/bypass set).
+    agents/devops.md carries the @devops-only write carve-out (agent rules
+    append AFTER the root deny tail, so its allows re-enable the commands
+    for @devops alone); agents/developer.md carries the read-only legibility
+    allows (gh run list/view/watch). Both are registered in AGENT_DEVIATIONS
+    and allow-tier (the checker rejects anything else).
+    """
+
+    def _agent_rules(self, name: str) -> tuple[tuple[str, str], ...]:
+        """The documented agent deviations as (pattern, "allow") pairs."""
+        return tuple(
+            (pattern, "allow")
+            for pattern in sorted(CHECKER.AGENT_DEVIATIONS[f"{name}.md"])
+        )
+
+    def test_devops_write_carve_out_resolves(self) -> None:
+        # C6: @devops regains the retired actions_run_trigger surface via
+        # the documented agent append (last-match-wins over the root tail).
+        merged = list(CHECKER.BASELINE_ROOT_RULES) + list(self._agent_rules("devops"))
+        self.assertEqual(CHECKER.resolve(merged, "gh workflow run ci.yml"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "gh workflow enable ci.yml"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "gh workflow disable ci.yml"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "gh run cancel 12345"), "allow")
+        self.assertEqual(
+            CHECKER.resolve(merged, "gh run rerun --failed 12345"), "allow"
+        )
+
+    def test_devops_carve_out_scoped_no_root_widening(self) -> None:
+        # The carve-out does NOT re-enable the C5 destructive/bypass set or
+        # the MADR-0020 no-delete parity — @devops's merged posture keeps
+        # them denied (scope review: root tail sits before the agent map).
+        merged = list(CHECKER.BASELINE_ROOT_RULES) + list(self._agent_rules("devops"))
+        self.assertEqual(CHECKER.resolve(merged, "gh run delete 12345"), "deny")
+        self.assertEqual(CHECKER.resolve(merged, "gh cache delete --all"), "deny")
+        self.assertEqual(CHECKER.resolve(merged, "gh auth token"), "deny")
+        self.assertEqual(
+            CHECKER.resolve(merged, "gh api -X DELETE repos/o/r/x"), "deny"
+        )
+        self.assertEqual(CHECKER.resolve(merged, "gh release delete v1.0.0"), "deny")
+
+    def test_developer_read_only_posture_resolves(self) -> None:
+        # C7: @developer's explicit posture — read-only CI triage only
+        # (gh run list/view/watch); every CI write command stays root-denied
+        # (the retired MCP partial-allow guarantee is preserved on gh).
+        merged = list(CHECKER.BASELINE_ROOT_RULES) + list(
+            self._agent_rules("developer")
+        )
+        self.assertEqual(CHECKER.resolve(merged, "gh run list"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "gh run view --log 12345"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "gh run watch 12345"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "gh workflow run ci.yml"), "deny")
+        self.assertEqual(CHECKER.resolve(merged, "gh run cancel 12345"), "deny")
+        self.assertEqual(CHECKER.resolve(merged, "gh run rerun 12345"), "deny")
+        self.assertEqual(CHECKER.resolve(merged, "gh run delete 12345"), "deny")
+
+    def test_root_baseline_denies_gh_writes_for_inheriting_agents(self) -> None:
+        # Agents with NO bash block (architect, cyber-security) inherit the
+        # root tail: zero CI-write capability (the retired MCP namespace
+        # wildcard deny is preserved as a root bash deny tail append).
+        for command in (
+            "gh workflow run ci.yml",
+            "gh run cancel 12345",
+            "gh run rerun 12345",
+            "gh run delete 12345",
+            "gh cache delete --all",
+            "gh auth token",
+            "gh api -X DELETE repos/o/r/x",
+        ):
+            self.assertEqual(
+                CHECKER.resolve(list(CHECKER.BASELINE_ROOT_RULES), command),
+                "deny",
+                f"{command!r} must stay root-denied for inheriting agents",
+            )
+        # The read surface is untouched: list/view/watch stay allowed by the
+        # root "*" head (C7 read-only posture; path-reviewed `gh run download`
+        # also stays allowed — read-only artifact fetch, MADR-0022 C7).
+        for command in ("gh run list", "gh run view --log 1", "gh run download 1"):
+            self.assertEqual(
+                CHECKER.resolve(list(CHECKER.BASELINE_ROOT_RULES), command),
+                "allow",
+                f"{command!r} must stay root-allowed",
+            )
+
+    def test_devops_developer_deviation_patterns_registered(self) -> None:
+        # The carve-out/legibility patterns are exactly the documented
+        # deviations — no other pattern may appear in the agent maps, and
+        # agents that inherit the root baseline carry none.
+        self.assertEqual(
+            CHECKER.AGENT_DEVIATIONS["devops.md"],
+            frozenset({"docker *", "gh workflow *", "gh run cancel*", "gh run rerun*"}),
+        )
+        self.assertEqual(
+            CHECKER.AGENT_DEVIATIONS["developer.md"],
+            frozenset({"gh run list*", "gh run view*", "gh run watch*"}),
+        )
+        self.assertEqual(CHECKER.AGENT_DEVIATIONS["architect.md"], frozenset())
+        # cyber-security.md keeps its MADR-0004 audit-tool deviations,
+        # untouched by the MADR-0022 gh CI-triage change (#401).
+        self.assertIn("gitleaks*", CHECKER.AGENT_DEVIATIONS["cyber-security.md"])
 
 
 class NonInheritanceAgentShapeTests(unittest.TestCase):
@@ -513,15 +628,34 @@ class RealRepositoryTests(unittest.TestCase):
         )
 
     def test_real_repo_agents_omit_bash_block(self) -> None:
-        for name in AGENT_NAMES:
-            front_matter = (REPO_ROOT / "agents" / f"{name}.md").read_text(
-                encoding="utf-8"
-            ).split("---", 2)[1]
+        # #340 + MADR-0022 (#401): architect and cyber-security still omit
+        # the bash block (pure root inheritance); devops and developer carry
+        # ONLY their registered gh CI-triage deviations (carve-out C6 /
+        # legibility allows C7) — the checker verifies they re-state no root
+        # pattern and are allow-tier only.
+        for name in ("architect", "cyber-security"):
+            front_matter = (
+                (REPO_ROOT / "agents" / f"{name}.md")
+                .read_text(encoding="utf-8")
+                .split("---", 2)[1]
+            )
             self.assertNotIn(
                 "  bash:",
                 front_matter,
                 f"agents/{name}.md still re-states bash rules — run the "
                 f"root-inheritance dedup (#340)",
+            )
+        for name in ("devops", "developer"):
+            front_matter = (
+                (REPO_ROOT / "agents" / f"{name}.md")
+                .read_text(encoding="utf-8")
+                .split("---", 2)[1]
+            )
+            self.assertIn(
+                "  bash:",
+                front_matter,
+                f"agents/{name}.md must carry the MADR-0022 gh "
+                f"CI-triage bash posture (C6/C7)",
             )
 
 

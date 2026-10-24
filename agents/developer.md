@@ -13,16 +13,15 @@ permission:
   # superseded by root inheritance per #340; enforced by Gate 16).
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
-  # 252 (MADR-0011): extended GitHub MCP namespaces (C3) — @developer gets
-  # read-only CI triage: the namespace wildcard is denied first (last matching
-  # rule wins), the monolithic actions_run_trigger (dispatch/cancel/log-delete
-  # in one tool) stays explicitly denied, and only the three read-only triage
-  # tools are re-allowed. GITHUB_SECURITY_* is @cyber-security-only (C2).
-  GITHUB_ACTIONS_*: deny
-  GITHUB_ACTIONS_actions_run_trigger: deny
-  GITHUB_ACTIONS_actions_get: allow
-  GITHUB_ACTIONS_actions_list: allow
-  GITHUB_ACTIONS_get_job_logs: allow
+  # MADR-0022 (#401): the GITHUB_ACTIONS MCP server is retired — CI triage is
+  # re-homed on the pinned gh CLI. @developer keeps a read-only posture
+  # (gh run list/view/watch): the explicit allows are a legibility signature
+  # (the root "*" head already allows them), registered in AGENT_DEVIATIONS
+  # so any extra gh allow for @developer fails the gate (C7).
+  bash:
+    "gh run list*": allow
+    "gh run view*": allow
+    "gh run watch*": allow
   GITHUB_SECURITY_*: deny
   # 311 (MADR-0014): Projects v2 planning namespace is @architect/
   # @scrum-master-only (optional roadmap view — execution SSOT is the

@@ -125,6 +125,23 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # append — the retired MADR-0016 server intentionally had no delete
     # capability; release deletion is machine-denied for every agent.
     "gh release delete*",
+    # MADR-0022 (#401, C4/C5): tail append — the GITHUB_ACTIONS MCP server is
+    # retired and CI triage moves to the pinned gh CLI; the destructive /
+    # bypass gh sub-commands are machine-denied at the root baseline.
+    # `gh api *` is DECISIVE (MADR-0008 review C5, PR #402): a `gh run
+    # delete` deny alone is bypassable via raw REST while `gh api -X DELETE`
+    # is allowed.
+    "gh run delete*",
+    "gh cache delete*",
+    "gh auth *",
+    "gh api *",
+    # MADR-0022 (#401, C6): the retired actions_run_trigger equivalent
+    # (workflow dispatch / enable / disable, run cancel / rerun) is
+    # @devops-only — root deny, with the agents/devops.md carve-out allow
+    # appended after this tail (last-match-wins: only @devops regains it).
+    "gh workflow *",
+    "gh run cancel*",
+    "gh run rerun*",
     # #362 (Sprint 23 spike, upstream anomalyco/opencode#56545): path-scoped
     # deny closing the recursive-read bypass against the secrets directory
     # (grep -r X ~/.config/opencode/ returned .secrets-home.env contents).
@@ -157,21 +174,46 @@ BASELINE_ASK_TIER: tuple[tuple[str, str], ...] = (
 # The full pinned root bash block: allow head + ask tier + deny tail. The
 # root block of opencode.jsonc must equal this list exactly (#340).
 BASELINE_ROOT_RULES: tuple[tuple[str, str], ...] = (
-    (("*", "allow"),) + BASELINE_ASK_TIER + tuple(
-        (pattern, "deny") for pattern in BASELINE_DENY_TAIL
-    )
+    (("*", "allow"),)
+    + BASELINE_ASK_TIER
+    + tuple((pattern, "deny") for pattern in BASELINE_DENY_TAIL)
 )
 
 # Documented role-deviation patterns each agent MAY carry instead of the
 # full inheritance (#340). Anything else — including any root tier pattern —
-# is a defect. These are all redundant under the root "*": allow legibility
-# signatures kept from MADR-0004; re-stating them as an agent bash map is
-# permitted for documentation but discouraged (they would sit after the
-# deny tail in the merged rule list).
+# is a defect. The MADR-0022 gh CI-triage surface (#401) is the exception to
+# the "redundant legibility signature" rule: the root deny tail now denies
+# the retired actions_run_trigger equivalent (`gh workflow *`, `gh run
+# cancel*`, `gh run rerun*`), so the @devops carve-out allow is NOT redundant
+# — it overrides the root deny for @devops only (last-match-wins: agent rules
+# append after the tail). The @developer read-only allows (`gh run
+# list/view/watch`) are redundant under the root "*" head but pinned as an
+# explicit legibility signature so any extra gh allow fails the gate (C7).
 AGENT_DEVIATIONS: dict[str, frozenset[str]] = {
     "architect.md": frozenset(),
-    "developer.md": frozenset(),
-    "devops.md": frozenset({"docker *"}),
+    # MADR-0022 (#401, C7): @developer read-only CI triage — explicit allow
+    # legibility signature (root "*" already allows these; the pin makes any
+    # additional gh allow for @developer a gate failure = drift).
+    "developer.md": frozenset(
+        {
+            "gh run list*",
+            "gh run view*",
+            "gh run watch*",
+        }
+    ),
+    # MADR-0022 (#401, C6): @devops-only write carve-out — the retired
+    # actions_run_trigger equivalent (workflow dispatch/enable/disable, run
+    # cancel/rerun). Root deny tail denies these for everyone; this allow
+    # re-enables them for @devops only. `docker *` stays the redundant
+    # MADR-0004 legibility signature.
+    "devops.md": frozenset(
+        {
+            "docker *",
+            "gh workflow *",
+            "gh run cancel*",
+            "gh run rerun*",
+        }
+    ),
     "cyber-security.md": frozenset(
         {
             "gitleaks*",
@@ -253,6 +295,30 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("gh release create v1.0.0", "allow"),
     ("gh release view v1.0.0", "allow"),
     ("gh release edit", "allow"),
+    # MADR-0022 (#401, C5 — minimum deny set): the retired GITHUB_ACTIONS
+    # MCP surface is re-homed on the pinned gh CLI; destructive / bypass
+    # sub-commands are machine-denied at the root deny tail. `gh api *` is
+    # decisive — without it the gh run delete deny is bypassable via raw
+    # REST (MADR-0008 review on PR #402). The write carve-out (gh workflow
+    # run/enable/disable, gh run cancel/rerun — C6) and the @developer
+    # read-only posture (gh run list/view/watch — C7) are enforced at the
+    # agent level (AGENT_DEVIATIONS) and verified by the merged-resolution
+    # tests in the test suite (GhCiTriageCarveOutTests).
+    ("gh run delete 12345", "deny"),
+    ("gh cache delete --all", "deny"),
+    ("gh auth status", "deny"),
+    ("gh api -X DELETE repos/fpittelo/opencode-home-config/issues/1", "deny"),
+    ("gh workflow run ci.yml", "deny"),
+    ("gh run cancel 12345", "deny"),
+    ("gh run rerun --failed 12345", "deny"),
+    # @developer read-only CI triage posture (C7): list/view/watch resolve
+    # allow via the root "*" head; the root deny tail above covers every
+    # write command, so the inherited posture is read-only without an
+    # agent-level map.
+    ("gh run list", "allow"),
+    ("gh run view --log 12345", "allow"),
+    ("gh run watch 12345", "allow"),
+    ("gh run download 12345", "allow"),
     # 362: path-scoped deny closes the recursive-read bypass against the
     # secrets directory (upstream anomalyco/opencode#56545).
     ("grep -r X ~/.config/opencode/", "deny"),
@@ -339,9 +405,12 @@ def agent_bash(
     )
     if start is None:
         return False, []  # inherited posture — no bash key at all
-    inline = BASH_HEADER_RE.match(lines[start]).group("inline").strip()
+    header = BASH_HEADER_RE.match(lines[start])
+    if header is None:  # narrowed by the `start` search above (mypy safety)
+        return False, []
+    inline = header.group("inline").strip()
     if inline:
-        return True, parse_inline_bash(inline, rel, failures)
+        return True, parse_inline_bash(inline, str(rel), failures)
     rules: list[tuple[str, str]] = []
     for line in lines[start + 1 :]:
         if NEXT_KEY_RE.match(line):
@@ -374,9 +443,7 @@ def check_root_baseline(
         # Prefix equality: the change sits at the end (removal/insertion).
         diverged_at = min(len(rules), len(baseline))
     region = "deny tail" if diverged_at >= ask_len else "ask tier"
-    expected = (
-        baseline[diverged_at] if diverged_at < len(baseline) else "end-of-list"
-    )
+    expected = baseline[diverged_at] if diverged_at < len(baseline) else "end-of-list"
     failures.append(
         f"{rel}: root bash block {region} diverges from the MADR-0015 "
         f"baseline at position {diverged_at}: expected {expected!r} — fix "
@@ -404,7 +471,18 @@ def check_agent_inheritance(root: Path, failures: list[str]) -> None:
             continue
         allowed = AGENT_DEVIATIONS[name]
         for pattern, tier in rules:
-            if pattern in root_patterns:
+            if pattern in allowed:
+                # Documented role deviation. MADR-0022 (#401, C6): the devops
+                # gh carve-out patterns are ALSO root deny-tail patterns —
+                # that overlap is intentional (the agent allow overrides the
+                # tail for this role only, last-match-wins), so the deviation
+                # check must precede the root re-statement check.
+                if tier != "allow":
+                    failures.append(
+                        f"{rel}: role deviation {pattern!r} must be allow-tier, "
+                        f"found {tier!r} (#340)"
+                    )
+            elif pattern in root_patterns:
                 failures.append(
                     f"{rel}: bash pattern {pattern!r} re-states the root "
                     f"baseline (opencode.jsonc) — duplication is the defect "
@@ -412,17 +490,12 @@ def check_agent_inheritance(root: Path, failures: list[str]) -> None:
                     f"deny tail and can widen the posture); drop it and "
                     f"inherit"
                 )
-            elif pattern not in allowed:
+            else:
                 failures.append(
                     f"{rel}: bash pattern {pattern!r} is not a documented "
                     f"role deviation for this agent (allowed: "
                     f"{sorted(allowed) if allowed else 'none'}) — route a "
                     f"new role signature through @architect first (#340)"
-                )
-            elif tier != "allow":
-                failures.append(
-                    f"{rel}: role deviation {pattern!r} must be allow-tier, "
-                    f"found {tier!r} (#340)"
                 )
 
 

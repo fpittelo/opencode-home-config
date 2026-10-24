@@ -16,12 +16,21 @@ permission:
   # superseded by root inheritance per #340; enforced by Gate 16).
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
-  # 252 (MADR-0011): extended GitHub MCP namespaces — @devops owns CI/CD
-  # operations end to end (full GITHUB_ACTIONS_* allow, backstopping the
-  # global default-deny baseline; workflow cancellation and log deletion are
-  # documented accepted residuals, MADR-0011) and has zero security-alert
-  # access (GITHUB_SECURITY_* is @cyber-security-only, C2).
-  GITHUB_ACTIONS_*: allow
+  # MADR-0022 (#401): the GITHUB_ACTIONS MCP server is retired — CI triage is
+  # re-homed on the pinned gh CLI. @devops holds the write carve-out (workflow
+  # dispatch/enable/disable, run cancel/rerun — the retired
+  # actions_run_trigger equivalent) as a bash-map allow appended after the
+  # root deny tail (last-match-wins); the C5 destructive/bypass set
+  # (gh run delete / gh cache delete / gh auth / gh api) stays denied.
+  # GITHUB_SECURITY_* is @cyber-security-only (C2).
+  bash:
+    # MADR-0022 (#401, C6): @devops-only write carve-out — agent rules append
+    # AFTER the root deny tail (last-match-wins), so these allows re-enable
+    # the CI-write commands for @devops only. Registered in AGENT_DEVIATIONS
+    # (Gate 16).
+    "gh workflow *": allow
+    "gh run cancel*": allow
+    "gh run rerun*": allow
   GITHUB_SECURITY_*: deny
   # 311 (MADR-0014): Projects v2 planning namespace is @architect/
   # @scrum-master-only (optional roadmap view — execution SSOT is the
