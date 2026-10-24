@@ -2,7 +2,7 @@
 
 - **Status:** proposed
 - **Date:** 2026-10-24
-- **Deciders:** @fpittelo (Product Owner), @architect; @cyber-security (security review pending, MADR-0008)
+- **Deciders:** @fpittelo (Product Owner), @architect; @cyber-security (MADR-0008 review — **APPROVE-WITH-CONDITIONS**, 2026-10-24; conditions C1–C8)
 
 ## Context
 
@@ -58,8 +58,8 @@ Prior decisions in force: MADR-0011 provisioned `GITHUB_ACTIONS`/`GITHUB_SECURIT
 
 Chosen option: **Option 3 — three servers**, because it removes every server that is not load-bearing while preserving both identity boundaries and the one remaining process-level control:
 
-1. **Retire `GITHUB_PROJECTS`.** Remove the server, the `GITHUB_PROJECTS_*` root baseline and per-agent rules, and revoke or downgrade the `project`-scope PAT (`GITHUB_TOKEN_PROJECTS`). Supersedes MADR-0014's server/credential decisions; the roadmap view retires entirely (its execution role was already removed by MADR-0018).
-2. **Retire `GITHUB_ACTIONS`.** Remove the server, the `GITHUB_ACTIONS_*` baseline and per-agent rules; serve CI triage via the pinned `gh` CLI (`gh run list`, `gh run view --log`, `gh workflow run`) under `@devops`'s scoped bash allowlist, with `@developer` retaining read-only triage. Supersedes MADR-0011's `GITHUB_ACTIONS` server decision.
+1. **Retire `GITHUB_PROJECTS`.** Remove the server, the `GITHUB_PROJECTS_*` root baseline and per-agent rules, and **revoke** the `project`-scope PAT (`GITHUB_TOKEN_PROJECTS`) — revocation, not downgrade, is the control (@cyber-security C1). Supersedes MADR-0014's server/credential decisions; the roadmap view retires entirely (its execution role was already removed by MADR-0018).
+2. **Retire `GITHUB_ACTIONS`.** Remove the server, the `GITHUB_ACTIONS_*` baseline and per-agent rules; serve CI triage via the pinned `gh` CLI (`gh run list`, `gh run view --log`, `gh workflow run`) under `@devops`'s scoped bash allowlist, with `@developer` retaining read-only triage. **The retirement is only safe once the bash deny guardrail exists** (`gh run delete`, `gh cache delete`, `gh auth`, and `gh api` arbitrary-write — @cyber-security C4–C6): the namespace control may be deleted only after its bash replacement is in place. Supersedes MADR-0011's `GITHUB_ACTIONS` server decision.
 3. **Retain `GITHUB_SECURITY`.** `--read-only` remains the only token-independent guard on the surface that reads raw secret material; MADR-0011's `GITHUB_SECURITY` decision stays in force.
 4. **Retain `GITHUB` and `GITHUB_CODE_REVIEWER`** unchanged — the base server and the separation-of-duties identity.
 5. **Same-change updates (implementation issues):** `opencode.jsonc` MCP block and baselines; `agents/*.md` per-agent rules; `harness/config-validation/check_coach_exclusivity.py` + tests (the machine control); `docs/architecture/arc42/01-context-and-building-blocks.md` §1.1 namespace enumeration and §5 building blocks; the `github-scrum-board` skill; and the `install.sh` secrets template (`GITHUB_TOKEN_PROJECTS` removal).
@@ -70,3 +70,12 @@ Chosen option: **Option 3 — three servers**, because it removes every server t
 - **Negative:** CI triage loses MCP structured schemas and moves to a `gh` bash surface, which is a broader command family than four typed tools; the optional roadmap view is gone entirely; per-agent context size is essentially unchanged (deny-filtering already removed the schemas), so this is a simplification, not a latency win.
 - **Mitigations:** `@cyber-security` reviews this design and the resulting specs under MADR-0008 before they finalize — specifically the PAT revocation path and the new `gh run`/`gh workflow` bash surface; the bash allowlist is deny-guarded in the MADR-0020 style (destructive sub-commands such as `gh run delete` machine-denied); `check_coach_exclusivity.py` and its test are updated in the same change so a regression fails CI.
 - **Residual risks (to be recorded at acceptance):** the retired `actions_run_trigger` mono-tool residual (MADR-0011) disappears with the server, but the replacement `gh` command surface must be scoped as tightly as the tools it replaces.
+
+## Security Review (MADR-0008)
+
+`@cyber-security` verdict **APPROVE-WITH-CONDITIONS** (2026-10-24). The two retentions (`GITHUB_CODE_REVIEWER` identity SoD, `GITHUB_SECURITY` `--read-only`) are confirmed sufficient; the shared `GITHUB` server's default toolsets exclude `actions`, `code_security`, `secret_protection`, and `dependabot`, so no MCP-level fail-open arises from removing either namespace. Eight conditions gate spec finalization:
+
+- **#400:** C1 revoke the `project` PAT outright (downgrade is insufficient); C2 same-change reference sweep across `opencode.jsonc`, `agents/*.md`, `check_coach_exclusivity.py` + tests, `install.sh`, arc42, and docs; C3 **host-side scrub** of the `export GITHUB_TOKEN_PROJECTS=` line from the existing `.secrets-home.env` (the `install.sh` template edit only helps fresh hosts) plus systemd unset/verify parity.
+- **#401:** C4 root-baseline deny guardrail added to `permission.bash` **and** `BASELINE_DENY_TAIL` in the same change (order-sensitive pin + truth-table row); C5 minimum deny set `gh run delete*`, `gh cache delete*`, `gh auth *`, `gh api *`; C6 `@devops`-only carve-out for `gh workflow run/enable/disable`, `gh run cancel`/`rerun` (the retired `actions_run_trigger` equivalent) via `AGENT_DEVIATIONS`; C7 explicit `@developer` read-only posture (`gh run list/view/watch` only); C8 record the structural weakening (bash string-glob ≠ schema-typed boundary; destructive `gh` sub-commands ship allowed by default until the tail is edited).
+
+Residual risks recorded for arc42 §3: `gh api` arbitrary-write / `gh auth token` disclosure on the unifying `@fpittelo` bash surface, workflow-log content as an indirect prompt-injection vector, and the un-migrated-host PAT export — full table in the review on PR #402.
