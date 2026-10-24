@@ -85,7 +85,9 @@ class AgentFrontmatterTests(unittest.TestCase):
 
     def test_unknown_keys_allowed(self) -> None:
         """Forward compatibility: unknown top-level keys must not fail (#338 AC2)."""
-        content = VALID_FRONTMATTER.replace("---\n", "---\nfuture_field: whatever\n", 1)
+        content = VALID_FRONTMATTER.replace(
+            "---\n", "---\nfuture_field: whatever\n", 1
+        )
         proc = run_checker(build_repo({"agents/test.md": content}))
         self.assertEqual(
             proc.returncode,
@@ -133,7 +135,9 @@ class AgentFrontmatterTests(unittest.TestCase):
                 ]
                 # For permission, also drop its nested block lines.
                 if field == "permission":
-                    lines = [line for line in lines if line.startswith("  ") is False]
+                    lines = [
+                        line for line in lines if line.startswith("  ") is False
+                    ]
                 proc = run_checker(build_repo({"agents/test.md": "".join(lines)}))
                 self.assert_gate_fails(proc, "agents/test.md", field)
 
@@ -184,14 +188,14 @@ class AgentFrontmatterTests(unittest.TestCase):
 
     def test_permission_not_a_mapping_fails(self) -> None:
         content = VALID_FRONTMATTER.replace(
-            'permission:\n  "bash":\n    "*": allow\n', "permission: allow-all\n"
+            "permission:\n  \"bash\":\n    \"*\": allow\n", "permission: allow-all\n"
         )
         proc = run_checker(build_repo({"agents/test.md": content}))
         self.assert_gate_fails(proc, "agents/test.md", "permission")
 
     def test_permission_empty_mapping_fails(self) -> None:
         content = VALID_FRONTMATTER.replace(
-            'permission:\n  "bash":\n    "*": allow\n', "permission: {}\n"
+            "permission:\n  \"bash\":\n    \"*\": allow\n", "permission: {}\n"
         )
         proc = run_checker(build_repo({"agents/test.md": content}))
         self.assert_gate_fails(proc, "agents/test.md", "permission")

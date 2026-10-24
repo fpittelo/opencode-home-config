@@ -9,7 +9,6 @@ stays — a bash heredoc cannot import Python.
 The stripper removes ``//`` line comments while preserving string literals
 (escape-aware), mirroring the JSONC dialect of ``opencode.jsonc``.
 """
-
 from __future__ import annotations
 
 
