@@ -25,13 +25,6 @@ code-reviewer GitHub namespaces — audit finding D2):
                       COACH_MAIN_*
   BROWSER_*           BROWSER_*                   developer.md, devops.md
   GITHUB_SECURITY_*   GITHUB_SECURITY_*           cyber-security.md
-  GITHUB_PROJECTS_*   GITHUB_PROJECTS_*           none (wildcard denied for
-                                                  every agent); architect.md +
-                                                  scrum-master.md hold the
-                                                  governed partial allow
-                                                  (projects_get, projects_list,
-                                                  projects_write — #311,
-                                                  MADR-0014)
   openrouter_*        openrouter_*                architect.md, coach.md
   GITHUB_CODE_REVIEWER_*  GITHUB_CODE_REVIEWER_*  code-reviewer.md
   ==================  ==========================  ============================
@@ -89,15 +82,6 @@ NAMESPACE_POLICIES = {
         "allow_agents": frozenset({"cyber-security.md"}),
         "provenance": "#252 (MADR-0011)",
     },
-    "GITHUB_PROJECTS": {
-        "keys": ("GITHUB_PROJECTS_*",),
-        # #311 (MADR-0014): the wildcard stays denied for every agent —
-        # @architect (read + Priority groom) and @scrum-master (Sprint
-        # assignment) hold tool-level allows only (partial-allow posture
-        # below); every other agent denies the namespace.
-        "allow_agents": frozenset(),
-        "provenance": "#311 (MADR-0014)",
-    },
     # #365 (audit finding D2, MADR-0008): the OpenRouter MCP namespace is
     # @architect/@coach-only (model selection/evals) and the code-reviewer
     # GitHub namespace is @code-reviewer-only (SoD — approvals under the
@@ -114,34 +98,15 @@ NAMESPACE_POLICIES = {
     },
 }
 
-# Governed partial-allow postures (#252, MADR-0011 C3; #311, MADR-0014):
+# Governed partial-allow postures (#252, MADR-0011 C3):
 # namespace -> agent file -> tool-level permission keys required verbatim
-# inside an otherwise denied namespace. For GITHUB_PROJECTS (#311, MADR-0014),
-# @architect (read + field groom: Priority set at grooming) and @scrum-master
-# (full steady-state planning write: Sprint assignment at dispatch) hold the
-# three governed projects_* tools; projects_write is a consolidated tool
-# (method enum selects the operation), so pattern-based scoping cannot
-# restrict individual methods — the residual method-level breadth is accepted
-# for these two roles and mitigated by the write-ownership convention plus
-# verify-or-escalate.
-# The GITHUB_ACTIONS partial allow retired with the server (MADR-0022, #401):
-# @developer's read-only CI triage moved to the pinned gh CLI under the bash
-# tiers gate (check_bash_permission_tiers.py — root deny tail + the @devops
-# write carve-out and the @developer read-only legibility allows).
-PARTIAL_ALLOW_POLICIES: dict[str, dict[str, dict[str, str]]] = {
-    "GITHUB_PROJECTS": {
-        "architect.md": {
-            "GITHUB_PROJECTS_projects_get": "allow",
-            "GITHUB_PROJECTS_projects_list": "allow",
-            "GITHUB_PROJECTS_projects_write": "allow",
-        },
-        "scrum-master.md": {
-            "GITHUB_PROJECTS_projects_get": "allow",
-            "GITHUB_PROJECTS_projects_list": "allow",
-            "GITHUB_PROJECTS_projects_write": "allow",
-        },
-    },
-}
+# inside an otherwise denied namespace. Both partial-allow postures retired
+# with their servers (MADR-0022): the GITHUB_ACTIONS @developer read-only
+# triage (#401) moved to the pinned gh CLI under the bash tiers gate
+# (check_bash_permission_tiers.py — root deny tail + the @devops write
+# carve-out), and the GITHUB_PROJECTS governed writes (#400) retired because
+# the Projects v2 namespace is no longer served by any MCP server.
+PARTIAL_ALLOW_POLICIES: dict[str, dict[str, dict[str, str]]] = {}
 
 
 def namespace_key_re(prefix: str) -> re.Pattern[str]:
@@ -274,12 +239,10 @@ def main(argv: list[str]) -> int:
         f"{agent_count} agent spec(s) verified — COACH_* is @coach-only "
         f"(#150), BROWSER_* is @developer/@devops-only (#207), "
         f"GITHUB_SECURITY_* is @cyber-security-only (#252, MADR-0011), "
-        f"GITHUB_PROJECTS_* wildcard stays denied with the "
-        f"@architect/@scrum-master governed partial allow (#311, MADR-0014), "
         f"openrouter_* is @architect/@coach-only and GITHUB_CODE_REVIEWER_* "
-        f"is @code-reviewer-only (#365, MADR-0008); the GITHUB_ACTIONS "
-        f"namespace retired with its server (MADR-0022, #401 — CI triage "
-        f"re-homed on the gh CLI, Gate 16)"
+        f"is @code-reviewer-only (#365, MADR-0008); the GITHUB_ACTIONS and "
+        f"GITHUB_PROJECTS namespaces retired with their servers "
+        f"(MADR-0022, #401 / #400)"
     )
     return 0
 

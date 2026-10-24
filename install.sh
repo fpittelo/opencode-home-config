@@ -214,19 +214,34 @@ migrate_shared_secrets
 
 # 7b. Fresh home secrets template (created only if the migration above did
 #     not already produce one). Note: a pre-existing .secrets-home.env is
-#     never overwritten — populate the variable by hand on established hosts
-#     (same manual-step policy as GITHUB_TOKEN_PROJECTS).
+#     never overwritten — populate the variable by hand on established hosts.
+#     MADR-0022 (#400): the GITHUB_TOKEN_PROJECTS secret retired with the
+#     GITHUB_PROJECTS MCP server (Projects v2 roadmap view removed; the
+#     `project`-scope PAT must be revoked at the GitHub account — PO action).
 if [ ! -f "$SECRETS_FILE" ]; then
     cat << 'EOF' > "$SECRETS_FILE"
 export OPENROUTER_HOME_API_KEY=""
 export GITHUB_PERSONAL_ACCESS_TOKEN=""
 export GITHUB_TOKEN_CODE_REVIEWER=""  # token for @devfpittelo machine account — @code-reviewer identity
-export GITHUB_TOKEN_PROJECTS=""       # token for the GITHUB_PROJECTS MCP server (MADR-0014) — value required before the server is usable
 export INTERVALS_API_KEY=""
 export INTERVALS_ATHLETE_ID=""
 EOF
     chmod 600 "$SECRETS_FILE"
     echo "⚠️  Created $SECRETS_FILE. Please populate your secrets."
+fi
+
+# 7c. Host-side scrub of the retired GITHUB_TOKEN_PROJECTS secret (MADR-0022,
+#     #400, C3): the template edit above only helps fresh hosts, so an
+#     existing .secrets-home.env is cleaned line-wise — idempotent, and the
+#     stale `project`-scope PAT would otherwise stay `set -a`-exported into
+#     every pane and readable via /proc/<pid>/environ.
+if [ -f "$SECRETS_FILE" ] && grep -qE '^export GITHUB_TOKEN_PROJECTS=' "$SECRETS_FILE"; then
+    tmp_secrets="$(mktemp)"
+    chmod 600 "$tmp_secrets"
+    grep -vE '^export GITHUB_TOKEN_PROJECTS=' "$SECRETS_FILE" > "$tmp_secrets" \
+        && cat "$tmp_secrets" > "$SECRETS_FILE" && rm -f "$tmp_secrets"
+    chmod 600 "$SECRETS_FILE"
+    echo "🧹 Scrubbed the retired GITHUB_TOKEN_PROJECTS export from $SECRETS_FILE (MADR-0022, #400)."
 fi
 
 umask 022
@@ -276,8 +291,8 @@ done
 #    variables are unset instead, then verified absent (post-migration
 #    verification).
 if command -v systemctl >/dev/null 2>&1 && systemctl --user is-system-running >/dev/null 2>&1; then
-    systemctl --user unset-environment OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN GITHUB_TOKEN_CODE_REVIEWER INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
-    if systemctl --user show-environment 2>/dev/null | grep -qE '^(OPENROUTER_HOME_API_KEY|GITHUB_PERSONAL_ACCESS_TOKEN|GITHUB_TOKEN_CODE_REVIEWER|INTERVALS_API_KEY|INTERVALS_ATHLETE_ID)='; then
+    systemctl --user unset-environment OPENROUTER_HOME_API_KEY GITHUB_PERSONAL_ACCESS_TOKEN GITHUB_TOKEN_CODE_REVIEWER GITHUB_TOKEN_PROJECTS INTERVALS_API_KEY INTERVALS_ATHLETE_ID || true
+    if systemctl --user show-environment 2>/dev/null | grep -qE '^(OPENROUTER_HOME_API_KEY|GITHUB_PERSONAL_ACCESS_TOKEN|GITHUB_TOKEN_CODE_REVIEWER|GITHUB_TOKEN_PROJECTS|INTERVALS_API_KEY|INTERVALS_ATHLETE_ID)='; then
         echo "❌ FATAL: the systemd user environment still carries secret variables." >&2
         echo "   Remediate with: systemctl --user unset-environment <VARIABLE>" >&2
         exit 1

@@ -25,10 +25,6 @@ permission:
   # exclusively (C2; the server itself runs --read-only and raw secret
   # payloads must be redacted before recording in issue/PR threads).
   GITHUB_SECURITY_*: allow
-  # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
-  # deny backstops the global default-deny baseline, opencode.jsonc
-  # permission GITHUB_PROJECTS_*: deny).
-  GITHUB_PROJECTS_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

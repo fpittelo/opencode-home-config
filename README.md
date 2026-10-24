@@ -153,20 +153,12 @@ See the [Migration Plan v3.1 (historical)](docs/history/opencode-config-migratio
 - **Directory hardening:** `~/.config/opencode` is mode 700; `install.sh` fails
   closed if any secrets file is group/world-readable.
 - **Gitleaks scanning:** CI pipeline scans every push and PR.
-- **`GITHUB_PROJECTS` server (MADR-0014):** fifth namespaced MCP instance
-  (`--toolsets=projects`) for the agent-managed Projects v2 planning model
-  (`HOME Squad Planning`); global default-deny `GITHUB_PROJECTS_*` baseline with
-  the governed partial allow reserved to @architect/@scrum-master.
-- **Projects credential:** classic PAT with the `project` scope ONLY
-  (`GITHUB_TOKEN_PROJECTS`), PO-owned, mode 600 in the profile-scoped secrets
-  file, never committed — the shared `GITHUB` server keeps its fine-grained
-  token (zero scope widening).
 
 ## Governance
 
 This repository follows the HOME SCRUM trunk+tag lifecycle (MADR-0017): `main` is the single persistent trunk; feature branches squash-merge into `main` only; releases are semantic tags `vX.Y.Z` + GitHub Releases cut from `main` under one explicit PO approval. All merges require 100% clean CI.
 
-The GitHub Projects board **`HOME Squad Planning`** (MADR-0014) is an **optional portfolio roadmap view** (demoted by #339): the **execution SSOT is the `status::*` issue labels + sprint-marker sub-issues** — every board transition runs on labels alone, and Projects field writes are optional roadmap visibility that never blocks the loop. Milestones are retired (MADR-0013); agents manage the full lifecycle with zero PO clicks.
+The GitHub Projects board **`HOME Squad Planning`** is **RETIRED** (MADR-0022, #400): the execution SSOT is and remains the `status::*` issue labels + sprint-marker sub-issues — every board transition runs on labels alone. No Projects v2 field writes are possible or expected. Milestones are retired (MADR-0013); agents manage the full lifecycle with zero PO clicks.
 
 ---
 
