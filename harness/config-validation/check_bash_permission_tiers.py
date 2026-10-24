@@ -157,9 +157,9 @@ BASELINE_ASK_TIER: tuple[tuple[str, str], ...] = (
 # The full pinned root bash block: allow head + ask tier + deny tail. The
 # root block of opencode.jsonc must equal this list exactly (#340).
 BASELINE_ROOT_RULES: tuple[tuple[str, str], ...] = (
-    (("*", "allow"),) + BASELINE_ASK_TIER + tuple(
-        (pattern, "deny") for pattern in BASELINE_DENY_TAIL
-    )
+    (("*", "allow"),)
+    + BASELINE_ASK_TIER
+    + tuple((pattern, "deny") for pattern in BASELINE_DENY_TAIL)
 )
 
 # Documented role-deviation patterns each agent MAY carry instead of the
@@ -339,9 +339,12 @@ def agent_bash(
     )
     if start is None:
         return False, []  # inherited posture — no bash key at all
-    inline = BASH_HEADER_RE.match(lines[start]).group("inline").strip()
+    header = BASH_HEADER_RE.match(lines[start])
+    if header is None:  # narrowed by the `start` search above (mypy safety)
+        return False, []
+    inline = header.group("inline").strip()
     if inline:
-        return True, parse_inline_bash(inline, rel, failures)
+        return True, parse_inline_bash(inline, str(rel), failures)
     rules: list[tuple[str, str]] = []
     for line in lines[start + 1 :]:
         if NEXT_KEY_RE.match(line):
@@ -374,9 +377,7 @@ def check_root_baseline(
         # Prefix equality: the change sits at the end (removal/insertion).
         diverged_at = min(len(rules), len(baseline))
     region = "deny tail" if diverged_at >= ask_len else "ask tier"
-    expected = (
-        baseline[diverged_at] if diverged_at < len(baseline) else "end-of-list"
-    )
+    expected = baseline[diverged_at] if diverged_at < len(baseline) else "end-of-list"
     failures.append(
         f"{rel}: root bash block {region} diverges from the MADR-0015 "
         f"baseline at position {diverged_at}: expected {expected!r} — fix "

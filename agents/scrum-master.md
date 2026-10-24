@@ -29,19 +29,6 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
-  # 311 (MADR-0014): Projects v2 planning namespace — @scrum-master holds
-  # optional roadmap writes (projects_get/projects_list/projects_write).
-  # Demoted to OPTIONAL roadmap view (#339): the execution SSOT is the
-  # status::* labels + sprint markers; no mandatory Sprint assignment at
-  # dispatch. The wildcard stays denied (last matching rule wins) and only
-  # the three governed tools are re-allowed, backstopping the global
-  # default-deny baseline (opencode.jsonc permission GITHUB_PROJECTS_*: deny).
-  # projects_write is a consolidated tool (method enum) — every write
-  # follows verify-or-escalate.
-  GITHUB_PROJECTS_*: deny
-  GITHUB_PROJECTS_projects_get: allow
-  GITHUB_PROJECTS_projects_list: allow
-  GITHUB_PROJECTS_projects_write: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.
@@ -75,7 +62,6 @@ Send **only the fields required for the specific operation** — never pre-fill 
 
 - **`GITHUB_issue_write` (`method: "update"`):** send ONLY `method`, `owner`, `repo`, `issue_number`, plus the field(s) actually being changed. **NEVER include `parent_issue_number`** — it is valid on `create` only; sending it on update is a rejected call.
 - **`GITHUB_add_issue_comment`:** send ONLY `owner`, `repo`, `issue_number`, `body`. **NEVER include `comment_id`** (see #251 parameter guidance below).
-- **`GITHUB_PROJECTS_projects_write` (MADR-0014, demoted #339):** the Projects v2 board is an OPTIONAL portfolio roadmap view — the execution SSOT is the `status::*` issue labels + sprint-marker sub-issues. Sprint/Priority field writes are permitted but NEVER mandatory and NEVER block the loop: no dual-write at dispatch, no verify-or-escalate dependency on Projects state for any board transition. When a roadmap write is made, confirm it with a fresh read before reporting success.
 - **On a schema/validation-type failure:** do not change strategy — retry **once** with the minimal payload for that operation. If the retry also fails, follow the verify-or-escalate rule (`github-scrum-board` §5): fresh-read to establish true state, then escalate with the exact tool name, JSON arguments, and error output.
 
 ---

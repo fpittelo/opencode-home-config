@@ -18,20 +18,6 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
-  # 311 (MADR-0014): Projects v2 planning namespace — @architect holds read +
-  # optional roadmap writes (projects_get/projects_list/projects_write).
-  # Demoted to OPTIONAL roadmap view (#339): the execution SSOT is the
-  # status::* labels + sprint markers; Projects field writes are never
-  # mandatory and never block the loop. The wildcard stays denied (last
-  # matching rule wins) and only the three governed tools are re-allowed,
-  # backstopping the global default-deny baseline (opencode.jsonc permission
-  # GITHUB_PROJECTS_*: deny). projects_write is a consolidated tool (method
-  # enum) — method-level restriction is impossible by pattern; every write
-  # follows verify-or-escalate.
-  GITHUB_PROJECTS_*: deny
-  GITHUB_PROJECTS_projects_get: allow
-  GITHUB_PROJECTS_projects_list: allow
-  GITHUB_PROJECTS_projects_write: allow
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # @architect keeps openrouter_* (model selection/evals)

@@ -23,12 +23,6 @@ permission:
   # access (GITHUB_SECURITY_* is @cyber-security-only, C2).
   GITHUB_ACTIONS_*: allow
   GITHUB_SECURITY_*: deny
-  # 311 (MADR-0014): Projects v2 planning namespace is @architect/
-  # @scrum-master-only (optional roadmap view — execution SSOT is the
-  # status::* labels + sprint markers, #339) — this explicit deny backstops
-  # the global default-deny baseline (opencode.jsonc permission
-  # GITHUB_PROJECTS_*: deny).
-  GITHUB_PROJECTS_*: deny
   # 108/#150: Coach MCP is @coach-only (SoD) — these explicit denies backstop the
   # global default-deny baseline (opencode.jsonc permission COACH_*_*: deny);
   # openrouter MCP is @architect/@coach-only.

@@ -20,10 +20,6 @@ designated whitelist agents:
                     (#252, MADR-0011 C3)
   GITHUB_SECURITY_* key GITHUB_SECURITY_*, allow only cyber-security.md
                     (#252, MADR-0011 C2)
-  GITHUB_PROJECTS_* key GITHUB_PROJECTS_*, wildcard denied for every agent;
-                    architect.md + scrum-master.md hold the governed partial
-                    allow (projects_get, projects_list, projects_write — the
-                    consolidated planning tool; #311, MADR-0014)
   openrouter_*      key openrouter_*, allow only architect.md + coach.md
                     (#365, MADR-0008 — audit finding D2)
   GITHUB_CODE_REVIEWER_* key GITHUB_CODE_REVIEWER_*, allow only
@@ -38,6 +34,10 @@ whitelist (drift, also for the partial-allow agent itself), a tool-level key
 declared by a non-partial agent, and a wildcard flip to allow for the
 partial-allow agent. A positive control pins the real repository state (the
 subject of the run-config-gate.sh exclusivity gate and its ci.yml twin).
+
+The GITHUB_PROJECTS namespace retired with MADR-0022 (#400): the Projects v2
+MCP server, its root baseline and the governed partial allow are removed —
+no replacement surface exists (doc-only retirement).
 
 Run:
     python3 harness/config-validation/test_check_coach_exclusivity.py
@@ -71,10 +71,6 @@ NAMESPACE_CASES = {
         ("GITHUB_SECURITY_*",),
         ("cyber-security.md",),
     ),
-    "GITHUB_PROJECTS": (
-        ("GITHUB_PROJECTS_*",),
-        (),
-    ),
     "openrouter": (
         ("openrouter_*",),
         ("architect.md", "coach.md"),
@@ -97,18 +93,6 @@ PARTIAL_ALLOW_CASES = {
             "GITHUB_ACTIONS_actions_list": "allow",
             "GITHUB_ACTIONS_get_job_logs": "allow",
             "GITHUB_ACTIONS_actions_run_trigger": "deny",
-        },
-    },
-    "GITHUB_PROJECTS": {
-        "architect.md": {
-            "GITHUB_PROJECTS_projects_get": "allow",
-            "GITHUB_PROJECTS_projects_list": "allow",
-            "GITHUB_PROJECTS_projects_write": "allow",
-        },
-        "scrum-master.md": {
-            "GITHUB_PROJECTS_projects_get": "allow",
-            "GITHUB_PROJECTS_projects_list": "allow",
-            "GITHUB_PROJECTS_projects_write": "allow",
         },
     },
 }
@@ -267,11 +251,6 @@ class NamespaceExclusivityTests(unittest.TestCase):
 
     def test_deny_in_whitelist_agent_fails(self) -> None:
         for namespace, (keys, allow_agents) in NAMESPACE_CASES.items():
-            if not allow_agents:
-                # GITHUB_PROJECTS (#311, MADR-0014): no wildcard whitelist —
-                # every agent denies the wildcard; covered by the partial-allow
-                # and allow-outside-whitelist cases instead.
-                continue
             with self.subTest(namespace=namespace):
                 insider = sorted(allow_agents)[0].removesuffix(".md")
                 rules = valid_agent_rules(insider)
@@ -331,22 +310,6 @@ class NamespaceExclusivityTests(unittest.TestCase):
         rules["GITHUB_ACTIONS_actions_get"] = "deny"
         proc = run_checker(build_repo(valid_permission(), {"architect": rules}))
         self.assert_gate_fails(proc, "architect.md", "GITHUB_ACTIONS_actions_get")
-
-    def test_projects_partial_allow_extra_tool_key_fails(self) -> None:
-        """A GITHUB_PROJECTS tool-level key outside the governed three is drift."""
-        rules = valid_agent_rules("scrum-master")
-        rules["GITHUB_PROJECTS_projects_view_write"] = "allow"
-        proc = run_checker(build_repo(valid_permission(), {"scrum-master": rules}))
-        self.assert_gate_fails(
-            proc, "scrum-master.md", "GITHUB_PROJECTS_projects_view_write"
-        )
-
-    def test_projects_tool_key_by_non_partial_agent_fails(self) -> None:
-        """GITHUB_PROJECTS tool-level keys are reserved to architect/scrum-master."""
-        rules = valid_agent_rules("devops")
-        rules["GITHUB_PROJECTS_projects_get"] = "deny"
-        proc = run_checker(build_repo(valid_permission(), {"devops": rules}))
-        self.assert_gate_fails(proc, "devops.md", "GITHUB_PROJECTS_projects_get")
 
     def test_partial_allow_wildcard_flip_fails(self) -> None:
         """The partial-allow agent must keep the namespace wildcard denied."""

@@ -14,10 +14,6 @@ permission:
   # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
   GITHUB_ACTIONS_*: deny
   GITHUB_SECURITY_*: deny
-  # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
-  # deny backstops the global default-deny baseline, opencode.jsonc
-  # permission GITHUB_PROJECTS_*: deny).
-  GITHUB_PROJECTS_*: deny
   # 108: keys renamed with the servers (COACH DEV -> COACH_DEV); wildcard patterns
   # match the namespaced tool names (e.g. COACH_DEV_intervals_*). Full Coach access.
   # 150: @coach is the ONLY agent with COACH_* allows — the global default-deny
