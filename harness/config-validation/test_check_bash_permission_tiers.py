@@ -119,7 +119,9 @@ def agent_text(
         "---\n"
         f'description: "{name} test spec"\n'
         "mode: subagent\n"
-        "permission:\n" + bash_block + "  GITHUB_*: allow\n"
+        "permission:\n"
+        + bash_block
+        + "  GITHUB_*: allow\n"
         "---\n"
         "\n"
         f"{name} test body.\n"
@@ -293,11 +295,15 @@ class AgentInheritanceTests(unittest.TestCase):
             self.assertIn(fragment, output)
 
     def test_agent_restating_one_root_pattern_fails(self) -> None:
-        proc = run_checker(build_repo(agent_bash={"developer": (("rm *", "ask"),)}))
+        proc = run_checker(
+            build_repo(agent_bash={"developer": (("rm *", "ask"),)})
+        )
         self.assert_gate_fails(proc, "agents/developer.md", "rm *")
 
     def test_agent_mirroring_whole_block_fails(self) -> None:
-        proc = run_checker(build_repo(agent_bash={"architect": KNOWN_GOOD_RULES}))
+        proc = run_checker(
+            build_repo(agent_bash={"architect": KNOWN_GOOD_RULES})
+        )
         self.assert_gate_fails(proc, "agents/architect.md")
 
     def test_undocumented_role_deviation_fails(self) -> None:
@@ -307,11 +313,15 @@ class AgentInheritanceTests(unittest.TestCase):
         self.assert_gate_fails(proc, "agents/devops.md", "terraform *")
 
     def test_non_allow_tier_deviation_fails(self) -> None:
-        proc = run_checker(build_repo(agent_bash={"devops": (("docker *", "ask"),)}))
+        proc = run_checker(
+            build_repo(agent_bash={"devops": (("docker *", "ask"),)})
+        )
         self.assert_gate_fails(proc, "agents/devops.md")
 
     def test_documented_devops_deviation_passes(self) -> None:
-        proc = run_checker(build_repo(agent_bash={"devops": (("docker *", "allow"),)}))
+        proc = run_checker(
+            build_repo(agent_bash={"devops": (("docker *", "allow"),)})
+        )
         self.assertEqual(
             proc.returncode,
             0,
@@ -321,7 +331,9 @@ class AgentInheritanceTests(unittest.TestCase):
     def test_documented_cyber_security_deviation_passes(self) -> None:
         allowed = sorted(CHECKER.AGENT_DEVIATIONS["cyber-security.md"])
         rules = tuple((pattern, "allow") for pattern in allowed)
-        proc = run_checker(build_repo(agent_bash={"cyber-security": rules}))
+        proc = run_checker(
+            build_repo(agent_bash={"cyber-security": rules})
+        )
         self.assertEqual(
             proc.returncode,
             0,
@@ -329,9 +341,7 @@ class AgentInheritanceTests(unittest.TestCase):
         )
 
     def test_docstring_reflects_root_inheritance_design(self) -> None:
-        script_path = CHECKER.__file__
-        assert script_path is not None  # module always has a file (mypy strict)
-        text = Path(script_path).resolve().read_text(encoding="utf-8")
+        text = Path(CHECKER.__file__).resolve().read_text(encoding="utf-8")
         self.assertIn("#340", text)
         self.assertIn("inherit", text.lower())
 
@@ -504,11 +514,9 @@ class RealRepositoryTests(unittest.TestCase):
 
     def test_real_repo_agents_omit_bash_block(self) -> None:
         for name in AGENT_NAMES:
-            front_matter = (
-                (REPO_ROOT / "agents" / f"{name}.md")
-                .read_text(encoding="utf-8")
-                .split("---", 2)[1]
-            )
+            front_matter = (REPO_ROOT / "agents" / f"{name}.md").read_text(
+                encoding="utf-8"
+            ).split("---", 2)[1]
             self.assertNotIn(
                 "  bash:",
                 front_matter,
