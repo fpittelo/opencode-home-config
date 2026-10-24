@@ -30,3 +30,7 @@ __pycache__/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+
+# Local OpenCode session artifacts (contain transient session state — never commit)
+cli.json
+service.json

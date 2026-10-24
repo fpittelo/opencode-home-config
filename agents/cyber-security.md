@@ -20,12 +20,10 @@ permission:
   # superseded by root inheritance per #340; enforced by Gate 16).
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
-  # 252 (MADR-0011): extended GitHub MCP namespaces — @cyber-security holds
-  # GITHUB_SECURITY_* exclusively (C2; the server itself runs --read-only and
-  # raw secret payloads must be redacted before recording in issue/PR threads)
-  # and has zero Actions access (C3; this deny backstops the global
-  # default-deny baseline).
-  GITHUB_ACTIONS_*: deny
+  # MADR-0022 (#401): the GITHUB_ACTIONS MCP namespace is retired (CI triage
+  # re-homed on the pinned gh CLI). @cyber-security holds GITHUB_SECURITY_*
+  # exclusively (C2; the server itself runs --read-only and raw secret
+  # payloads must be redacted before recording in issue/PR threads).
   GITHUB_SECURITY_*: allow
   # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
   # deny backstops the global default-deny baseline, opencode.jsonc

@@ -76,28 +76,6 @@
       },
       "enabled": true
     },
-    // #252 (MADR-0011): dedicated namespaced servers for the extended GitHub
-    // toolsets (C1) — the shared GITHUB server keeps its default toolsets, so
-    // per-agent permission scoping stays possible and schemas stay lean for
-    // agents that do not need extended capabilities. Tool names verified
-    // against the pinned v2.0.2 binary: --toolsets=actions exposes exactly
-    // actions_get, actions_list, actions_run_trigger, get_job_logs (namespaced
-    // GITHUB_ACTIONS_*). Write-capable server: @devops holds the full
-    // namespace; @developer is pinned to the read-only triage tools with the
-    // monolithic actions_run_trigger (dispatch/cancel/log-delete in one tool)
-    // explicitly denied (C3); every other agent denies the namespace.
-    "GITHUB_ACTIONS": {
-      "type": "local",
-      "command": [
-        "{env:HOME}/.local/bin/github-mcp-server",
-        "stdio",
-        "--toolsets=actions"
-      ],
-      "environment": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_PERSONAL_ACCESS_TOKEN}"
-      },
-      "enabled": true
-    },
     // #252 (MADR-0011): security-alert triage server (C2) — code scanning,
     // secret scanning, and dependabot alerts, launched with --read-only so
     // write operations are impossible at the process level. @cyber-security
@@ -268,14 +246,14 @@
     // re-allow in their specs and every other SCRUM agent re-states the deny
     // explicitly (defense in depth, #150 pattern).
     "BROWSER_*": "deny",
-    // #252 (MADR-0011): global default-deny baseline for the extended GitHub
-    // MCP namespaces — built-in subagents (explore, general, task) and any
-    // unconfigured persona inherit zero access. @devops re-allows
-    // GITHUB_ACTIONS_* and @cyber-security re-allows GITHUB_SECURITY_* in
-    // their specs; @developer holds the governed partial allow (read-only
-    // triage tools, actions_run_trigger denied); every other SCRUM agent
-    // re-states the denies explicitly (defense in depth, #150 pattern).
-    "GITHUB_ACTIONS_*": "deny",
+    // #252 (MADR-0011): global default-deny baseline for the security-alert
+    // GitHub MCP namespace — built-in subagents (explore, general, task) and
+    // any unconfigured persona inherit zero access. @cyber-security
+    // re-allows GITHUB_SECURITY_* in its spec; every other SCRUM agent
+    // re-states the deny explicitly (defense in depth, #150 pattern).
+    // (The GITHUB_ACTIONS namespace retired with its server — MADR-0022,
+    // #401: CI triage is re-homed on the pinned gh CLI under the bash
+    // permission.bash deny tail below, Gate 16.)
     "GITHUB_SECURITY_*": "deny",
     // #311 (MADR-0014): global default-deny baseline for the Projects v2
     // planning namespace — built-in subagents (explore, general, task) and
@@ -418,6 +396,25 @@
       // #352 (MADR-0020 no-delete parity, PO decision (a) 2026-10-17): tail
       // append — release deletion is machine-denied for every agent.
       "gh release delete*": "deny",
+      // MADR-0022 (#401, C4/C5): the GITHUB_ACTIONS MCP server is retired;
+      // CI triage moves to the pinned gh CLI under this root deny tail.
+      // Destructive / bypass gh sub-commands are machine-denied for every
+      // agent: `gh api *` is decisive (MADR-0008 review C5, PR #402) — a
+      // `gh run delete` deny alone is bypassable via raw REST while
+      // `gh api -X DELETE` is allowed.
+      "gh run delete*": "deny",
+      "gh cache delete*": "deny",
+      "gh auth *": "deny",
+      "gh api *": "deny",
+      // MADR-0022 (#401, C6): the retired actions_run_trigger equivalent
+      // (workflow dispatch / enable / disable, run cancel / rerun) is
+      // @devops-only — root deny for every agent, with the @devops carve-out
+      // allow appended in agents/devops.md (last-match-wins: agent rules
+      // sit after this tail, so only @devops regains the surface) and
+      // registered in AGENT_DEVIATIONS (check_bash_permission_tiers.py).
+      "gh workflow *": "deny",
+      "gh run cancel*": "deny",
+      "gh run rerun*": "deny",
       // #362 (Sprint 23 spike, upstream anomalyco/opencode#56545): recursive
       // file-reading commands (grep -r/rg/ls -R) bypass filename-pattern
       // denies because the command string names only the directory. Path-

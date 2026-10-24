@@ -32,10 +32,10 @@ permission:
     "*/.config/opencode*": deny
   GITHUB_*: deny
   GITHUB_CODE_REVIEWER_*: allow
-  # 252 (MADR-0011): extended GitHub MCP namespaces — zero access to both
-  # (explicit denies backstop the global default-deny baseline,
-  # opencode.jsonc permission GITHUB_ACTIONS_*/GITHUB_SECURITY_*: deny).
-  GITHUB_ACTIONS_*: deny
+  # MADR-0022 (#401): the GITHUB_ACTIONS MCP namespace is retired (CI triage
+  # re-homed on the pinned gh CLI). Zero access to the security-alert
+  # namespace (explicit deny backstops the global default-deny baseline,
+  # opencode.jsonc permission GITHUB_SECURITY_*: deny).
   GITHUB_SECURITY_*: deny
   # 311 (MADR-0014): Projects v2 planning namespace — zero access (explicit
   # deny backstops the global default-deny baseline, opencode.jsonc

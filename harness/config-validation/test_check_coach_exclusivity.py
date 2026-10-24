@@ -14,10 +14,6 @@ designated whitelist agents:
                     coach.md (#150 AC1-AC3)
   BROWSER_*         key BROWSER_*, allow only developer.md + devops.md
                     (#207 AC3, MADR-0009)
-  GITHUB_ACTIONS_*  key GITHUB_ACTIONS_*, allow only devops.md, with a
-                    governed partial allow for developer.md (read-only triage
-                    tools; the monolithic actions_run_trigger stays denied)
-                    (#252, MADR-0011 C3)
   GITHUB_SECURITY_* key GITHUB_SECURITY_*, allow only cyber-security.md
                     (#252, MADR-0011 C2)
   GITHUB_PROJECTS_* key GITHUB_PROJECTS_*, wildcard denied for every agent;
@@ -29,15 +25,19 @@ designated whitelist agents:
   GITHUB_CODE_REVIEWER_* key GITHUB_CODE_REVIEWER_*, allow only
                     code-reviewer.md (#365, MADR-0008 — audit finding D2)
 
-Cases are parametrized over all seven namespaces (subTest) against a combined
+Cases are parametrized over all six namespaces (subTest) against a combined
 multi-namespace fixture, so a namespace must be enforced on its own merits —
 a checker that silently ignores a namespace fails the negative cases. The
-partial-allow posture gets dedicated negative cases: a missing tool-level
-key, a wrong tool-level value, an extra tool-level key outside the governed
-whitelist (drift, also for the partial-allow agent itself), a tool-level key
-declared by a non-partial agent, and a wildcard flip to allow for the
-partial-allow agent. A positive control pins the real repository state (the
-subject of the run-config-gate.sh exclusivity gate and its ci.yml twin).
+GITHUB_ACTIONS namespace retired with MADR-0022 (#401): its CI-triage posture
+is re-homed on the pinned gh CLI and enforced by the bash tiers gate
+(harness/config-validation/check_bash_permission_tiers.py, Gate 16), so its
+cases were removed with the namespace. The partial-allow posture gets
+dedicated negative cases: a missing tool-level key, a wrong tool-level value,
+an extra tool-level key outside the governed whitelist (drift, also for the
+partial-allow agent itself), a tool-level key declared by a non-partial agent,
+and a wildcard flip to allow for the partial-allow agent. A positive control
+pins the real repository state (the subject of the run-config-gate.sh
+exclusivity gate and its ci.yml twin).
 
 Run:
     python3 harness/config-validation/test_check_coach_exclusivity.py
@@ -63,10 +63,6 @@ NAMESPACE_CASES = {
         ("BROWSER_*",),
         ("developer.md", "devops.md"),
     ),
-    "GITHUB_ACTIONS": (
-        ("GITHUB_ACTIONS_*",),
-        ("devops.md",),
-    ),
     "GITHUB_SECURITY": (
         ("GITHUB_SECURITY_*",),
         ("cyber-security.md",),
@@ -86,19 +82,11 @@ NAMESPACE_CASES = {
 }
 
 # Namespace -> agent file -> required tool-level permission keys beyond the
-# namespace wildcard (governed partial-allow posture, #252/MADR-0011 C3):
-# @developer holds the three read-only Actions triage tools with the
-# monolithic actions_run_trigger explicitly denied; every other tool of the
-# namespace stays covered by the wildcard deny.
+# namespace wildcard (governed partial-allow posture, #252/MADR-0011 C3,
+# #311/MADR-0014). The GITHUB_ACTIONS partial allow retired with the server
+# (MADR-0022, #401) — @developer's read-only CI-triage posture moved to the
+# pinned gh CLI under the bash tiers gate (Gate 16).
 PARTIAL_ALLOW_CASES = {
-    "GITHUB_ACTIONS": {
-        "developer.md": {
-            "GITHUB_ACTIONS_actions_get": "allow",
-            "GITHUB_ACTIONS_actions_list": "allow",
-            "GITHUB_ACTIONS_get_job_logs": "allow",
-            "GITHUB_ACTIONS_actions_run_trigger": "deny",
-        },
-    },
     "GITHUB_PROJECTS": {
         "architect.md": {
             "GITHUB_PROJECTS_projects_get": "allow",
@@ -315,22 +303,6 @@ class NamespaceExclusivityTests(unittest.TestCase):
                         )
                     )
                     self.assert_gate_fails(proc, agent_file, key)
-
-    def test_partial_allow_extra_tool_key_fails(self) -> None:
-        """A tool-level key outside the governed partial allow is drift."""
-        rules = valid_agent_rules("developer")
-        rules["GITHUB_ACTIONS_actions_run_cancel"] = "allow"
-        proc = run_checker(build_repo(valid_permission(), {"developer": rules}))
-        self.assert_gate_fails(
-            proc, "developer.md", "GITHUB_ACTIONS_actions_run_cancel"
-        )
-
-    def test_tool_level_key_outside_partial_allow_fails(self) -> None:
-        """Tool-level keys are reserved to the governed partial-allow posture."""
-        rules = valid_agent_rules("architect")
-        rules["GITHUB_ACTIONS_actions_get"] = "deny"
-        proc = run_checker(build_repo(valid_permission(), {"architect": rules}))
-        self.assert_gate_fails(proc, "architect.md", "GITHUB_ACTIONS_actions_get")
 
     def test_projects_partial_allow_extra_tool_key_fails(self) -> None:
         """A GITHUB_PROJECTS tool-level key outside the governed three is drift."""
