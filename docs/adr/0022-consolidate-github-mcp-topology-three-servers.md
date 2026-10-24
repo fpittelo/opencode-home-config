@@ -1,6 +1,6 @@
 # MADR-0022: Consolidate GitHub MCP topology to three servers
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-24
 - **Deciders:** @fpittelo (Product Owner), @architect; @cyber-security (MADR-0008 review — **APPROVE-WITH-CONDITIONS**, 2026-10-24; conditions C1–C8)
 
