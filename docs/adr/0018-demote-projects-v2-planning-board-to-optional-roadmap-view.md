@@ -1,6 +1,6 @@
 # MADR-0018: Demote Projects v2 planning board to optional roadmap view
 
-- **Status:** accepted (optional-roadmap-view posture superseded by MADR-0022 — the Projects v2 board retires entirely)
+- **Status:** accepted
 - **Date:** 2026-10-17
 - **Deciders:** @fpittelo (PO directive "go" on the #339 audit recommendations, 2026-10-17), @architect (author)
 

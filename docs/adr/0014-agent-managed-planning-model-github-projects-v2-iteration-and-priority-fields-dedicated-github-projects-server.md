@@ -1,6 +1,6 @@
 # MADR-0014: Agent-managed planning model — GitHub Projects v2 iteration and priority fields, dedicated GITHUB_PROJECTS server
 
-- **Status:** accepted (server/credential decisions superseded by MADR-0022 — the `GITHUB_PROJECTS` server and its `project`-scope PAT retire; the planning-SSOT claim was already superseded by MADR-0018)
+- **Status:** accepted
 - **Date:** 2026-10-17
 - **Deciders:** @fpittelo (PO decisions recorded on issue #308, 2026-10-17 — Projects v2 model choice, minimal no-status-mirror scope, dedicated classic `project`-scope PAT), @architect (author)
 
