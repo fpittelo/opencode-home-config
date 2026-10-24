@@ -77,7 +77,7 @@ C4Context
 
 | Channel | Protocol | Notes |
 | :--- | :--- | :--- |
-| GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`, `GITHUB_SECURITY`) | stdio → native binary (pinned v2.0.2, SHA256-verified by `install.sh`) | Personal-access-token authenticated; SoD split per #68; extended toolsets per MADR-0011. The Projects v2 planning board retired (MADR-0022, #400). |
+| GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`, `GITHUB_SECURITY`) | stdio → native binary (pinned v2.0.2, SHA256-verified by `install.sh`) | Personal-access-token authenticated; SoD split per #68; security-alert triage per MADR-0011. CI triage re-homed on the pinned `gh` CLI; Projects v2 board retired — MADR-0022 (#400/#401). |
 | Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → Docker container | Environment-scoped (dev/qa/main) Intervals.icu access. |
 | Playwright browser MCP (`BROWSER`, MADR-0009 #207) | stdio → npx `@playwright/mcp` (pinned 0.0.83; pin-time registry audit by `install.sh` — npx re-resolves per session) | Ephemeral-profile browser automation for user-journey verification against coach-web dev/qa lanes; loopback-origin allowlist; @developer/@devops only. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
@@ -129,7 +129,6 @@ C4Container
     Container_Boundary(mcp_servers, "MCP Servers (native binary / Docker / remote)") {
         Container(mcp_github, "GITHUB MCP", "Native binary process", "Board & repo operations as @fpittelo")
         Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Native binary process", "Formal PR reviews as @devfpittelo (SoD)")
-        Container(mcp_actions, "GITHUB_ACTIONS MCP", "Native binary process", "CI/CD & Actions workflows (MADR-0011)")
         Container(mcp_security, "GITHUB_SECURITY MCP", "Native binary process", "Code/secret/dependency alerts, read-only (MADR-0011)")
         Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Docker containers", "Intervals.icu coaching, env-scoped")
         Container(mcp_browser, "BROWSER MCP", "npx @playwright/mcp (pinned, stdio)", "Ephemeral-profile browser automation, loopback-origin allowlist (MADR-0009)")
@@ -141,7 +140,6 @@ C4Container
     Rel(fpittelo, agents, "Owns & approves")
     Rel(agents, mcp_github, "Board ops via", "GITHUB_* tools")
     Rel(agents, mcp_reviewer, "Reviews via (code-reviewer only)", "GITHUB_CODE_REVIEWER_*")
-    Rel(agents, mcp_actions, "CI/CD triage via (devops full, developer read-only)", "GITHUB_ACTIONS_*")
     Rel(agents, mcp_security, "Alert triage via (cyber-security read-only)", "GITHUB_SECURITY_*")
     Rel(agents, mcp_coach, "Coaching via (coach only)", "COACH_* tools")
     Rel(agents, mcp_browser, "Journey verification via (developer/devops only)", "BROWSER_* tools")
@@ -178,11 +176,10 @@ C4Container
 - `@architect` and `@coach` only: `openrouter_*: allow`; all other agents `openrouter_*: deny` (supersedes #67's "all agents" rule).
 - Global default-deny baseline (#207, MADR-0009): `opencode.jsonc` denies `BROWSER_*` at the root `permission` level — built-in subagents (`explore`, `general`, `task`) and any unconfigured persona inherit zero browser access.
 - `@developer` and `@devops` only: `BROWSER_*: allow` — Playwright browser MCP (ephemeral profile, loopback-origin allowlist) for coach-web dev/qa user-journey verification; all other agents `BROWSER_*: deny` (explicit per-agent backstop).
-- Global default-deny baseline (MADR-0011): `opencode.jsonc` denies `GITHUB_ACTIONS_*` and `GITHUB_SECURITY_*` at the root `permission` level.
-- `GITHUB_ACTIONS_*`: `@devops` only for write operations (`actions_run_trigger`); `@developer` receives read-only triage tools (`actions_get`, `actions_list`, `get_job_logs`) with explicit deny on `actions_run_trigger`; all other agents deny.
+- Global default-deny baseline (MADR-0011): `opencode.jsonc` denies `GITHUB_SECURITY_*` at the root `permission` level. The `GITHUB_ACTIONS` MCP namespace retired with its server (MADR-0022, #401) — CI triage is re-homed on the pinned `gh` CLI under the bash `permission.bash` deny tail (destructive/bypass set + retired write equivalent root-denied; @devops-only write carve-out; @developer read-only list/view/watch).
 - `GITHUB_SECURITY_*`: `@cyber-security` only, with `--read-only` flag enforced at process startup and raw secret redaction rules; all other agents deny.
-- **`GITHUB_PROJECTS_*` retired (MADR-0022, #400):** the Projects v2 planning namespace, its server, and its `project`-scope PAT are removed. The execution SSOT remains the `status::*` labels + sprint markers (MADR-0013) — no Projects v2 surface exists in the config.
-- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_ACTIONS_* / GITHUB_SECURITY_* MADR-0011) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh`, invoked by `ci.yml` as the delegated config gate).
+- **`GITHUB_ACTIONS_*` and `GITHUB_PROJECTS_*` retired (MADR-0022, #400/#401):** both MCP servers are removed. CI triage is re-homed on the pinned `gh` CLI under the bash tiers gate (Gate 16); the Projects v2 planning namespace, its server, and its `project`-scope PAT are removed. The execution SSOT remains the `status::*` labels + sprint markers (MADR-0013) — no Projects v2 surface exists in the config.
+- The namespace-exclusivity invariant (COACH_* @coach-only #150; BROWSER_* @developer/@devops-only #207; GITHUB_SECURITY_* MADR-0011) is machine-enforced by `harness/config-validation/check_coach_exclusivity.py` (gate 9 of `harness/run-config-gate.sh`, invoked by `ci.yml` as the delegated config gate).
 
 **Mode gating invariants (enforced since #149):**
 - `opencode.jsonc` sets `"default_agent": "architect"` — every OpenCode session launches into the governed Solution Architect persona (`agents/architect.md` declares `mode: primary`).

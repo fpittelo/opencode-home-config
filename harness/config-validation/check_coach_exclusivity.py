@@ -24,14 +24,17 @@ code-reviewer GitHub namespaces — audit finding D2):
   COACH_*             COACH_DEV_*, COACH_QA_*,    coach.md
                       COACH_MAIN_*
   BROWSER_*           BROWSER_*                   developer.md, devops.md
-  GITHUB_ACTIONS_*    GITHUB_ACTIONS_*            devops.md; developer.md holds
-                                                  the governed partial allow
-                                                  (read-only triage tools,
-                                                  actions_run_trigger denied)
   GITHUB_SECURITY_*   GITHUB_SECURITY_*           cyber-security.md
   openrouter_*        openrouter_*                architect.md, coach.md
   GITHUB_CODE_REVIEWER_*  GITHUB_CODE_REVIEWER_*  code-reviewer.md
   ==================  ==========================  ============================
+
+GITHUB_ACTIONS (#252, MADR-0011) is retired by MADR-0022 (#401): the
+`GITHUB_ACTIONS` server block, the `GITHUB_ACTIONS_*` root baseline and all
+per-agent rules are removed, and the CI triage surface is re-homed on the
+pinned `gh` CLI under the bash tiers gate (`check_bash_permission_tiers.py`,
+Gate 16 — root deny tail + @devops write carve-out + @developer read-only
+posture). This module enforces the remaining MCP namespaces only.
 
 Partial-allow posture (#252, MADR-0011 C3): one designated agent may hold
 specific tool-level permission keys inside an otherwise denied namespace
@@ -74,11 +77,6 @@ NAMESPACE_POLICIES = {
         "allow_agents": frozenset({"developer.md", "devops.md"}),
         "provenance": "#207 (MADR-0009)",
     },
-    "GITHUB_ACTIONS": {
-        "keys": ("GITHUB_ACTIONS_*",),
-        "allow_agents": frozenset({"devops.md"}),
-        "provenance": "#252 (MADR-0011)",
-    },
     "GITHUB_SECURITY": {
         "keys": ("GITHUB_SECURITY_*",),
         "allow_agents": frozenset({"cyber-security.md"}),
@@ -102,23 +100,13 @@ NAMESPACE_POLICIES = {
 
 # Governed partial-allow postures (#252, MADR-0011 C3):
 # namespace -> agent file -> tool-level permission keys required verbatim
-# inside an otherwise denied namespace. @developer keeps read-only CI triage
-# (actions_get, actions_list, get_job_logs — the exact tool set exposed by the
-# pinned binary's actions toolset) while the monolithic actions_run_trigger
-# (dispatch/cancel/log-delete in one tool) stays explicitly denied; every
-# other tool of the namespace remains covered by the GITHUB_ACTIONS_* deny.
-# (The GITHUB_PROJECTS partial allow retired with its server — MADR-0022,
-# #400: the Projects v2 namespace is no longer served by any MCP server.)
-PARTIAL_ALLOW_POLICIES: dict[str, dict[str, dict[str, str]]] = {
-    "GITHUB_ACTIONS": {
-        "developer.md": {
-            "GITHUB_ACTIONS_actions_get": "allow",
-            "GITHUB_ACTIONS_actions_list": "allow",
-            "GITHUB_ACTIONS_get_job_logs": "allow",
-            "GITHUB_ACTIONS_actions_run_trigger": "deny",
-        },
-    },
-}
+# inside an otherwise denied namespace. Both partial-allow postures retired
+# with their servers (MADR-0022): the GITHUB_ACTIONS @developer read-only
+# triage (#401) moved to the pinned gh CLI under the bash tiers gate
+# (check_bash_permission_tiers.py — root deny tail + the @devops write
+# carve-out), and the GITHUB_PROJECTS governed writes (#400) retired because
+# the Projects v2 namespace is no longer served by any MCP server.
+PARTIAL_ALLOW_POLICIES: dict[str, dict[str, dict[str, str]]] = {}
 
 
 def namespace_key_re(prefix: str) -> re.Pattern[str]:
@@ -250,12 +238,11 @@ def main(argv: list[str]) -> int:
         f"PASS check_coach_exclusivity: global default-deny baselines + "
         f"{agent_count} agent spec(s) verified — COACH_* is @coach-only "
         f"(#150), BROWSER_* is @developer/@devops-only (#207), "
-        f"GITHUB_ACTIONS_* is @devops-only with the @developer read-only "
-        f"partial allow and GITHUB_SECURITY_* is @cyber-security-only "
-        f"(#252, MADR-0011), openrouter_* is @architect/@coach-only and "
-        f"GITHUB_CODE_REVIEWER_* is @code-reviewer-only (#365, MADR-0008); "
-        f"the GITHUB_PROJECTS namespace retired with its server "
-        f"(MADR-0022, #400)"
+        f"GITHUB_SECURITY_* is @cyber-security-only (#252, MADR-0011), "
+        f"openrouter_* is @architect/@coach-only and GITHUB_CODE_REVIEWER_* "
+        f"is @code-reviewer-only (#365, MADR-0008); the GITHUB_ACTIONS and "
+        f"GITHUB_PROJECTS namespaces retired with their servers "
+        f"(MADR-0022, #401 / #400)"
     )
     return 0
 
