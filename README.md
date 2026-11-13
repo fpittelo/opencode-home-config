@@ -57,6 +57,8 @@ opencode-home-config/
 
 ## Installation
 
+**Prerequisite — container runtime (WSL2 side):** the `COACH_*` MCP servers run on **rootless Podman** (daemonless; [MADR-0024](docs/adr/0024-adopt-podman-as-the-local-container-runtime-for-mcp-servers.md)). `install.sh` verifies it fail-closed and never installs it (installation needs root): install Podman manually inside WSL2 (`sudo apt-get install -y podman`) and make sure your user has `/etc/subuid` + `/etc/subgid` ranges, otherwise rootless startup fails and the installer aborts with the remediation command.
+
 ```bash
 git clone git@github.com:fpittelo/opencode-home-config.git ~/projects/opencode-home-config
 cd ~/projects/opencode-home-config

@@ -16,9 +16,13 @@
 #     assertion on .secrets-*.env files.
 #   - MC10: .gitignore covers .secrets-home.env.
 #
+# AC2/C7 (#416, MADR-0024 D4): the container-runtime guard names podman
+#   specifically, sits BEFORE the pre-pull, and aborts fail-closed with the
+#   remediation command; the pre-pull uses that same runtime token.
+#
 # LIVE-HOST SAFETY: every behavioral test runs install.sh against a
 # SANDBOXED fake $HOME with stubbed systemctl (no systemd user session),
-# docker, curl, openssl, and pinned-binary version spies — never the real
+# podman, curl, openssl, and pinned-binary version spies — never the real
 # home directory, never the real systemd user environment, never the
 # network. No real secrets are used anywhere in this suite.
 
@@ -37,6 +41,23 @@ GITIGNORE_PATH = REPO_ROOT / ".gitignore"
 
 HOME_REPO_DIRNAME = "opencode-home-config"
 HOME_SECRETS_NAME = ".secrets-home.env"
+# Argument log of the stubbed container runtime (#416): the guard test asserts
+# the exact pre-pull invocation, so the runtime token cannot drift from it.
+PODMAN_LOG_NAME = "podman-calls.log"
+# Tools install.sh needs on PATH before it reaches the runtime guard (#416):
+# the masked run must not inherit the developer's real PATH — a podman
+# installed on the host would otherwise satisfy the guard.
+GUARD_PATH_TOOLS = (
+    "bash",
+    "cat",
+    "dirname",
+    "grep",
+    "ln",
+    "mkdir",
+    "mktemp",
+    "rm",
+    "sed",
+)
 
 # Pinned-artifact values from install.sh the stubs must satisfy so the
 # sandboxed runs take the "already installed / verified" skip paths instead
@@ -123,12 +144,14 @@ def _make_fake_home(tmp_path: Path) -> Path:
     return fake_home
 
 
-def _install_stubs(fake_home: Path) -> Path:
+def _install_stubs(fake_home: Path, *, mask_podman: bool = False) -> Path:
     """Install stub executables so install.sh never touches the network,
-    the real systemd user session, or the real docker daemon.
+    the real systemd user session, or the real container runtime.
 
     - systemctl: exits 1 → install.sh takes its guarded no-systemd path.
-    - docker: exits 0 → the coach image pre-pull is a no-op.
+    - podman: exits 0 and logs its arguments → the coach image pre-pull is a
+      no-op, and the guard test can assert the exact pull invocation. Omitted
+      entirely when `mask_podman` is set (fail-closed guard test, #416 AC2).
     - curl: creates the requested output file (empty) instead of downloading.
     - openssl: prints the pinned @playwright/mcp digest (base64 subcommand
       passes stdin through, mirroring the dgst | base64 pipe).
@@ -144,7 +167,11 @@ def _install_stubs(fake_home: Path) -> Path:
         os.chmod(path, 0o755)
 
     stub("systemctl", "#!/bin/sh\nexit 1\n")
-    stub("docker", "#!/bin/sh\nexit 0\n")
+    if not mask_podman:
+        stub(
+            "podman",
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{fake_home / PODMAN_LOG_NAME}"\nexit 0\n',
+        )
     stub(
         "curl",
         '#!/bin/sh\nout=""\nwhile [ $# -gt 0 ]; do\n'
@@ -172,12 +199,39 @@ def _install_stubs(fake_home: Path) -> Path:
     return stub_bin
 
 
-def run_install(fake_home: Path) -> subprocess.CompletedProcess[str]:
+def _guard_path(fake_home: Path, stub_bin: Path) -> Path:
+    """Minimal PATH for the masked-podman guard run (#416 AC2/C7).
+
+    The developer's real PATH is deliberately NOT inherited: a podman
+    installed on the host would otherwise satisfy the guard and the test
+    would prove nothing. The directory holds symlinks to the few host tools
+    install.sh needs to reach the guard, plus every stub.
+    """
+    import shutil
+
+    masked_bin = fake_home / ".masked-bin"
+    masked_bin.mkdir(exist_ok=True)
+    for tool in GUARD_PATH_TOOLS:
+        resolved = shutil.which(tool)
+        if resolved is not None:
+            os.symlink(resolved, masked_bin / tool)
+    for entry in stub_bin.iterdir():
+        os.symlink(entry, masked_bin / entry.name)
+    return masked_bin
+
+
+def run_install(
+    fake_home: Path, *, mask_podman: bool = False
+) -> subprocess.CompletedProcess[str]:
     """Run install.sh against a sandboxed fake $HOME (never the real one)."""
-    stub_bin = _install_stubs(fake_home)
+    stub_bin = _install_stubs(fake_home, mask_podman=mask_podman)
     env = os.environ.copy()
     env["HOME"] = str(fake_home)
-    env["PATH"] = f"{stub_bin}{os.pathsep}{env.get('PATH', '')}"
+    env["PATH"] = (
+        str(_guard_path(fake_home, stub_bin))
+        if mask_podman
+        else f"{stub_bin}{os.pathsep}{env.get('PATH', '')}"
+    )
     return subprocess.run(
         [str(INSTALL_SH)],
         env=env,
@@ -798,6 +852,92 @@ class TestGitignoreCoverage(unittest.TestCase):
             covered,
             ".gitignore must cover .secrets-home.env via an explicit or glob pattern (MC10)",
         )
+
+
+# ---------------------------------------------------------------------------
+# AC2 / C7 — fail-closed container-runtime guard (MADR-0024 D4, #416)
+# ---------------------------------------------------------------------------
+
+
+class TestContainerRuntimeGuard(unittest.TestCase):
+    def test_guard_resolves_podman_specifically_before_the_pre_pull(self) -> None:
+        """C7: the guard names podman — never "any container runtime" — and precedes the pull.
+
+        A generic presence check would let a stray docker satisfy the guard on
+        another host while the migrated MCP config demands podman, and it would
+        diverge from the pre-pull. Both use the same runtime token.
+        """
+        text = install_text()
+        self.assertIn(
+            'CONTAINER_RUNTIME="podman"',
+            text,
+            "install.sh must resolve the runtime to podman specifically (C7)",
+        )
+        guard_pos = text.find('command -v "$CONTAINER_RUNTIME"')
+        pull_pos = text.find('"$CONTAINER_RUNTIME" pull')
+        self.assertNotEqual(guard_pos, -1, "install.sh must guard the runtime (C7)")
+        self.assertNotEqual(
+            pull_pos, -1, "install.sh must pre-pull via the runtime token (AC3)"
+        )
+        self.assertLess(
+            guard_pos,
+            pull_pos,
+            "the runtime guard must sit before the pre-pull (C7)",
+        )
+        self.assertNotIn(
+            "docker pull", text, "the pre-pull must no longer call docker (AC3)"
+        )
+        self.assertIn(
+            "--policy=missing",
+            text,
+            "the pre-pull must keep the idempotent missing-policy (AC3)",
+        )
+
+    def test_guard_aborts_before_any_pull_when_podman_is_absent(self) -> None:
+        """AC2: a runtime-less host aborts on the guard, before any pull attempt."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = _make_fake_home(Path(tmp))
+            result = run_install(fake_home, mask_podman=True)
+
+            self.assertNotEqual(
+                result.returncode, 0, "the guard must exit non-zero (AC2 fail-closed)"
+            )
+            self.assertIn(
+                "podman not found", result.stderr, "the abort must name podman (C7)"
+            )
+            self.assertIn(
+                "sudo apt-get install -y podman",
+                result.stderr,
+                "the abort must print the remediation command (AC2)",
+            )
+            self.assertNotIn(
+                "Pre-pulling",
+                result.stdout,
+                "the guard must abort BEFORE any pull is attempted (C7)",
+            )
+            self.assertFalse(
+                (fake_home / PODMAN_LOG_NAME).exists(),
+                "no pull may be attempted when the runtime is absent (C7)",
+            )
+
+    def test_pre_pull_uses_the_guarded_runtime_token(self) -> None:
+        """AC3: a runtime-present host pre-pulls through the same token, idempotently."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = _make_fake_home(Path(tmp))
+            result = run_install(fake_home)
+            self.assertEqual(result.returncode, 0, f"install.sh failed: {result.stderr}")
+
+            calls = (fake_home / PODMAN_LOG_NAME).read_text(encoding="utf-8")
+            self.assertIn(
+                "pull --policy=missing ghcr.io/fpittelo/coach:dev",
+                calls,
+                "the pre-pull must use the guarded runtime token and the "
+                "missing-policy (AC3)",
+            )
 
 
 if __name__ == "__main__":
