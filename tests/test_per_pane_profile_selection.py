@@ -917,9 +917,14 @@ class TestContainerRuntimeGuard(unittest.TestCase):
                 result.stdout,
                 "the guard must abort BEFORE any pull is attempted (C7)",
             )
-            self.assertFalse(
-                (fake_home / PODMAN_LOG_NAME).exists(),
-                "no pull may be attempted when the runtime is absent (C7)",
+            # The abort must be the guard's own message, not a `podman: command
+            # not found` raised by an attempted pull: a reordered or absent guard
+            # fails here. (This replaces a log-existence check that could never
+            # fail — with podman masked, no stub exists to write that log.)
+            self.assertNotIn(
+                "command not found",
+                result.stderr,
+                "the abort must come from the guard, not from a failed pull (C7)",
             )
 
     def test_pre_pull_uses_the_guarded_runtime_token(self) -> None:

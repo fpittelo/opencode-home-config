@@ -55,7 +55,7 @@ This section is for the person who sets up and maintains the OpenCode environmen
 |:---|:---|
 | **OS** | Linux (tested on Ubuntu/Debian) |
 | **Shell** | `bash` (for `~/.bashrc` + `~/.profile` sourcing) |
-| **Podman** | Rootless, on the **WSL2 side** (for MCP containers) — daemonless, no root-equivalent socket ([MADR-0024](adr/0024-adopt-podman-as-the-local-container-runtime-for-mcp-servers.md)). `install.sh` verifies it fail-closed and never installs it. Requires `/etc/subuid` + `/etc/subgid` ranges for your user (`usermod --add-subuids 100000-165535 --add-subgids 100000-165535 <user>`) — without them rootless startup fails |
+| **Podman** | Rootless, on the **WSL2 side** — the runtime `install.sh` verifies fail-closed (**presence only**: a `command -v podman` check; it does not assert rootless mode or the subuid ranges) and never provisions ([MADR-0024](adr/0024-adopt-podman-as-the-local-container-runtime-for-mcp-servers.md) D4). The `COACH_*` MCP containers move onto it in #417 — today the config still spawns `docker`. Requires `/etc/subuid` + `/etc/subgid` ranges for your user (`usermod --add-subuids 100000-165535 --add-subgids 100000-165535 <user>`) — without them rootless startup fails |
 | **OpenCode CLI** | Installed at `~/.opencode/bin/opencode` (v1.18.29+) |
 | **Git** | Installed and configured with SSH keys for GitHub |
 | **openssl** | Installed (required by `install.sh` to verify the pinned `@playwright/mcp` tarball integrity, #207) |
@@ -137,7 +137,7 @@ SSOT: the `home-governance` skill §5 ([SKILL.md](../skills/home-governance/SKIL
 
 SSOT: arc42 [Context & Building Blocks §5](architecture/arc42/01-context-and-building-blocks.md) — C4 container view, building-block table, and the namespace-exclusivity invariants; runtime registry: [opencode.jsonc](../opencode.jsonc).
 
-**Container runtime (MADR-0024):** the three `COACH_*` servers are the only container-bearing MCP servers and run on **rootless Podman** (daemonless — no root-equivalent socket). `install.sh` verifies the runtime fail-closed before pre-pulling `ghcr.io/fpittelo/coach:dev`; it never installs it. The `ghcr.io/fpittelo/coach` package is **public**: the pre-pull is anonymous, `podman login` is not required, and no registry credential file exists on the host (verified in #416). The `GITHUB*` servers stay on the pinned native binary and `BROWSER` on pinned `npx` — no container.
+**Container runtime (MADR-0024):** the three `COACH_*` servers are the only container-bearing MCP servers and **move to** rootless Podman in #417 (daemonless — no root-equivalent socket); today the config still spawns `docker` (`opencode.jsonc`), so on this Docker-less host Coach cannot spawn yet. `install.sh` verifies that `podman` is on `PATH` (fail-closed, **presence only**) and pre-pulls `ghcr.io/fpittelo/coach:dev` through it; it never installs it. The `ghcr.io/fpittelo/coach` package is **public**: the pre-pull is anonymous, `podman login` is not required, and no registry credential file exists on the host (verified in #416). The `GITHUB*` servers stay on the pinned native binary and `BROWSER` on pinned `npx` — no container.
 
 ### 2.7 Herdr Agent Runtime
 
@@ -215,7 +215,9 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 | Symptom | Likely Cause | Fix |
 |:---|:---|:---|
 | `opencode` fails to start | `OPENROUTER_HOME_API_KEY` empty | Populate `~/.config/opencode/.secrets-home.env`, then launch via `oc-home` |
-| MCP tools not available | Podman absent or not rootless on the WSL2 side (Coach servers), or binary missing (GitHub servers) | `podman info` (expect `rootless: true`); re-run `install.sh` to (re)install `~/.local/bin/github-mcp-server` |
+| MCP tools not available — Coach servers | **Today (until #417):** the MCP config still spawns `docker`, which is absent on VIDAR, so Coach cannot start even though Podman is installed and the image is pre-pulled | Nothing to fix locally — `opencode.jsonc` is migrated in #417; confirm the runtime is ready with `podman info` (`rootless: true`) |
+| MCP tools not available — Coach servers, **after #417** | Podman absent, or present but not rootless / missing the `/etc/subuid` + `/etc/subgid` ranges (the `install.sh` guard checks **presence only**) | `podman info` (expect `rootless: true`); re-run `install.sh`; check the ranges if the guard passed but rootless startup still fails |
+| MCP tools not available — GitHub servers | Pinned `github-mcp-server` binary missing | Re-run `install.sh` to (re)install `~/.local/bin/github-mcp-server` |
 | `install.sh` aborts with `podman not found` | No container runtime on the WSL2 side — the runtime is a **verified prerequisite, never provisioned** (MADR-0024 D4) | Install it manually inside WSL2 (`sudo apt-get install -y podman`), ensure the `/etc/subuid` + `/etc/subgid` ranges, then re-run `install.sh` |
 | MCP Coach image pull fails | Network or registry outage — the package is **public**, so no GHCR credential is involved | `podman pull ghcr.io/fpittelo/coach:dev` to test; a 401/403 means the package visibility regressed, not an auth gap |
 | Agents not loading | Broken symlink in `~/.config/opencode/agents` | Re-run `install.sh` |

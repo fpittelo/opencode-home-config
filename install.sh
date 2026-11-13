@@ -129,8 +129,11 @@ if [ "$PLAYWRIGHT_MCP_ACTUAL_INTEGRITY" != "$PLAYWRIGHT_MCP_INTEGRITY" ]; then
 fi
 echo "✅  @playwright/mcp ${PLAYWRIGHT_MCP_VERSION} verified (registry tarball SHA512 matches pin)."
 
-# 5. Owned container runtime and pre-pull (MADR-0024 D1/D2/D4, C7, #416). The
-#    Coach MCP servers and the harness/run.sh fallback run on rootless Podman.
+# 5. Owned container runtime and pre-pull (MADR-0024 D1/D2/D4, C7, #416). This
+#    script owns and verifies the runtime that the Coach MCP servers and the
+#    harness/run.sh fallback are migrated onto (opencode.jsonc #417,
+#    harness/run.sh #418) — as of #416 both still spawn docker, so the guard and
+#    pre-pull below are the runtime's owner, not yet its only consumer.
 #    The fail-closed guard below comes FIRST — before the pre-pull — and names
 #    podman specifically, never "any container runtime": a generic presence
 #    check would let a stray docker satisfy it on another host while the
@@ -147,7 +150,7 @@ echo "✅  @playwright/mcp ${PLAYWRIGHT_MCP_VERSION} verified (registry tarball 
 #    policy `--policy=missing` (podman 5.7.0 rejects `--pull`).
 CONTAINER_RUNTIME="podman"
 if ! command -v "$CONTAINER_RUNTIME" >/dev/null 2>&1; then
-    echo "❌  $CONTAINER_RUNTIME not found — the Coach MCP servers and the harness fallback require rootless Podman (MADR-0024)." >&2
+    echo "❌  $CONTAINER_RUNTIME not found — required by install.sh to verify and pre-pull the Coach MCP image (MADR-0024)." >&2
     echo "   Remediate (WSL2 side on VIDAR): sudo apt-get install -y podman" >&2
     exit 1
 fi
