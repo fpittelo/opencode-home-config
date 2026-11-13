@@ -19,9 +19,9 @@ can override the root deny tail. The checker therefore enforces:
      root block is the single source of truth.
   2. CLEAN AGENT INHERITANCE — each of the four allow-default agent specs
      either omits ``bash:`` entirely or carries ONLY its documented
-     role-deviation patterns (devops: ``docker *`` allow; cyber-security:
-     audit-tool allows). Re-stating any root tier pattern in an agent is now
-     the defect, not the requirement.
+     role-deviation patterns (cyber-security: audit-tool allows; devops:
+     the MADR-0022 gh CI-triage carve-out). Re-stating any root tier pattern
+     in an agent is now the defect, not the requirement.
   3. TRUTH TABLE — the static last-match-wins resolver over the root block
      must reproduce every expected verdict of the MADR-0015 delta.
 
@@ -46,6 +46,21 @@ scrum-master pin requires the three trailing secret-file denies
 agent rules append after the root deny tail (last-match-wins) — without
 them an allow like ``gh pr *`` re-enables credential-file commands such
 as ``gh pr edit 1 --body-file foo.env`` (the #350 append-override).
+
+#419 extension (MADR-0024 C1-C4/C8, Podman runtime reconciliation): the
+container-runtime deviation is reconciled with the migrated runtime. C1/C2 add
+root deny-tail entries `podman system service*` (Docker-API-compatible socket —
+the long-lived daemon pattern the migration exists to remove) and
+`podman machine*` (VM spawn / guest root), each with a truth-table row and a
+per-segment compound-command bypass proof (one denied segment blocks the whole
+line). C3 records that a scoped *allow* set is NOT the tightening mechanism (the
+root `"*": allow` head already permits every sub-command and an agent bash map
+appends AFTER the deny tail, so such allows would be a no-op that trips the #340
+duplicate-root defect) — the lever is a root deny plus scoped carve-outs. C4
+deletes the dead MADR-0004 `docker *` registry row: posture-neutral, not a
+tightening. C8 pins the `--env-file` deny parity as form-dependent (the filename
+appears in the command text) and keeps the Podman-only secret-injection evasions
+as an explicitly recorded residual rather than a silent widening.
 
 Run:
     python3 harness/config-validation/test_check_bash_permission_tiers.py
@@ -273,7 +288,10 @@ class RootBaselineIntegrityTests(unittest.TestCase):
         self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
 
     def test_allow_interleaved_inside_deny_tail_fails(self) -> None:
-        drifted = insert_after(KNOWN_GOOD_RULES, "sudo*", ("docker *", "allow"))
+        # AC1/C3 (MADR-0024 #419): a blanket `podman *` allow may not be
+        # introduced, and no allow may sit inside the deny tail — the pin
+        # rejects both (deny rules go LAST, MADR-0004).
+        drifted = insert_after(KNOWN_GOOD_RULES, "sudo*", ("podman *", "allow"))
         proc = run_checker(build_repo(root_rules=drifted))
         self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
 
@@ -325,11 +343,15 @@ class AgentInheritanceTests(unittest.TestCase):
         self.assert_gate_fails(proc, "agents/devops.md", "terraform *")
 
     def test_non_allow_tier_deviation_fails(self) -> None:
-        proc = run_checker(build_repo(agent_bash={"devops": (("docker *", "ask"),)}))
-        self.assert_gate_fails(proc, "agents/devops.md")
+        proc = run_checker(
+            build_repo(agent_bash={"devops": (("gh workflow *", "ask"),)})
+        )
+        self.assert_gate_fails(proc, "agents/devops.md", "must be allow-tier")
 
     def test_documented_devops_deviation_passes(self) -> None:
-        proc = run_checker(build_repo(agent_bash={"devops": (("docker *", "allow"),)}))
+        proc = run_checker(
+            build_repo(agent_bash={"devops": (("gh run rerun*", "allow"),)})
+        )
         self.assertEqual(
             proc.returncode,
             0,
@@ -446,10 +468,12 @@ class GhCiTriageCarveOutTests(unittest.TestCase):
     def test_devops_developer_deviation_patterns_registered(self) -> None:
         # The carve-out/legibility patterns are exactly the documented
         # deviations — no other pattern may appear in the agent maps, and
-        # agents that inherit the root baseline carry none.
+        # agents that inherit the root baseline carry none. MADR-0024 (#419,
+        # C4): the dead MADR-0004 `docker *` row is gone; C3: no podman
+        # pattern is registered in either direction.
         self.assertEqual(
             CHECKER.AGENT_DEVIATIONS["devops.md"],
-            frozenset({"docker *", "gh workflow *", "gh run cancel*", "gh run rerun*"}),
+            frozenset({"gh workflow *", "gh run cancel*", "gh run rerun*"}),
         )
         self.assertEqual(
             CHECKER.AGENT_DEVIATIONS["developer.md"],
@@ -459,6 +483,188 @@ class GhCiTriageCarveOutTests(unittest.TestCase):
         # cyber-security.md keeps its MADR-0004 audit-tool deviations,
         # untouched by the MADR-0022 gh CI-triage change (#401).
         self.assertIn("gitleaks*", CHECKER.AGENT_DEVIATIONS["cyber-security.md"])
+
+
+class PodmanRuntimeReconciliationTests(unittest.TestCase):
+    """MADR-0024 (#419) C1-C4/C8: the Podman permission reconciliation.
+
+    C1/C2 — `podman system service*` (Docker-API-compatible socket: the
+    long-lived daemon pattern the migration exists to remove) and
+    `podman machine*` (VM spawn / guest root) are root deny-tail entries
+    with truth-table rows; neither is escalation above uid 1000 under
+    rootless mode. C3 — no podman pattern is registered in
+    AGENT_DEVIATIONS: a scoped *allow* set tightens nothing (the root
+    `"*": allow` head already permits every sub-command and an agent bash
+    map appends AFTER the deny tail) and would trip the #340
+    duplicate-root defect. C4 — the MADR-0004 `docker *` row was a DEAD
+    REGISTRY ROW (no such rule in agents/devops.md); deleting it is
+    posture-neutral. C8 — the `--env-file` deny parity is form-dependent
+    (the filename appears in the command text), and the Podman-only
+    secret-injection evasions stay a recorded residual.
+    """
+
+    PODMAN_DENIES = ("podman system service*", "podman machine*")
+
+    def assert_gate_fails(
+        self, proc: subprocess.CompletedProcess[str], *fragments: str
+    ) -> None:
+        output = proc.stdout + proc.stderr
+        self.assertEqual(
+            proc.returncode,
+            1,
+            f"expected exit 1, got {proc.returncode}:\n{output}",
+        )
+        for fragment in fragments:
+            self.assertIn(fragment, output)
+
+    def test_deny_tail_entries_are_appended_last(self) -> None:
+        # Order is semantic (deny rules LAST, MADR-0004): the two new entries
+        # are the final rules of the pinned root block.
+        self.assertEqual(CHECKER.BASELINE_DENY_TAIL[-2:], self.PODMAN_DENIES)
+        self.assertEqual(
+            [pattern for pattern, _ in CHECKER.BASELINE_ROOT_RULES][-2:],
+            list(self.PODMAN_DENIES),
+        )
+
+    def test_system_service_and_machine_are_denied(self) -> None:
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in (
+            "podman system service",
+            "podman system service --time=0 unix:///run/user/1000/podman.sock",
+            "podman machine init",
+            "podman machine ssh",
+            "podman machine ls",
+        ):
+            self.assertEqual(
+                CHECKER.resolve(merged, command),
+                "deny",
+                f"{command!r} must be root-denied (MADR-0024 C1/C2)",
+            )
+
+    def test_deny_is_subcommand_scoped_not_a_blanket(self) -> None:
+        # Only the API-socket escape was taken; the deny is not a
+        # `podman system *` blanket (the remainder is the recorded residual).
+        self.assertEqual(
+            CHECKER.resolve(list(CHECKER.BASELINE_ROOT_RULES), "podman system df"),
+            "allow",
+        )
+
+    def test_ordinary_podman_surface_stays_allowed(self) -> None:
+        # The migration is not broken: the run/pull/inspect surface the
+        # COACH_* workflow uses keeps its unprompted posture.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in (
+            "podman pull ghcr.io/fpittelo/coach:dev",
+            "podman run -i --rm -e VAR=1 ghcr.io/fpittelo/coach:dev",
+            "podman ps -a",
+            "podman logs coach-dev",
+        ):
+            self.assertEqual(
+                CHECKER.resolve(merged, command),
+                "allow",
+                f"{command!r} must stay allowed (the migration depends on it)",
+            )
+
+    def test_env_file_deny_parity_is_filename_scoped(self) -> None:
+        # C8 negative test: `podman run --env-file x.env` IS denied — because
+        # the filename sits in the command text (the #167 filename glob), not
+        # because the mechanism is constrained. The docker form keeps the
+        # same verdict, so the documented Docker case has parity.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        self.assertEqual(
+            CHECKER.resolve(
+                merged, "podman run -i --rm --env-file x.env ghcr.io/f/p/coach:dev"
+            ),
+            "deny",
+        )
+        self.assertEqual(
+            CHECKER.resolve(merged, "docker run --env-file x.env image"), "deny"
+        )
+
+    def test_podman_only_evasions_are_a_recorded_residual(self) -> None:
+        # C8 residual, pinned explicitly (same class as the accepted
+        # recursive-read bypass, #362): a secret injected without naming a
+        # credential FILENAME is not matched by the command-string deny, and
+        # closing that class is an upstream limitation
+        # (anomalyco/opencode#56545) — so it is recorded, never silent.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in (
+            "podman run --secret=coach_token,type=env -i --rm x",
+            "podman create -e VAR=1 ghcr.io/fpittelo/coach:dev",
+            "podman start 7f3a1c9d",
+        ):
+            self.assertEqual(
+                CHECKER.resolve(merged, command),
+                "allow",
+                f"{command!r} is an accepted residual (MADR-0024 D3/C8) — "
+                f"if this changes, update the MADR and arc42 §3 too",
+            )
+
+    def test_unshare_is_recorded_as_residual_not_a_deviation(self) -> None:
+        # AC3: `podman unshare` (chown to arbitrary UIDs) does not silently
+        # widen posture — it is an explicit residual, not a registry entry:
+        # the mapping is bounded to the invoking uid + subuid range (no
+        # escalation above uid 1000), and it is the documented remediation
+        # for subuid-owned bind-mount artifacts (#418, C6).
+        self.assertEqual(
+            CHECKER.resolve(
+                list(CHECKER.BASELINE_ROOT_RULES),
+                "podman unshare chown -R 1000:1000 /workspace",
+            ),
+            "allow",
+        )
+        self.assertNotIn("podman unshare*", CHECKER.BASELINE_DENY_TAIL)
+
+    def test_compound_command_one_denied_segment_blocks(self) -> None:
+        # #419 bypass proof: the documented evaluation splits `&&` / `;` / `|`
+        # and judges every segment, so appending an allowed segment cannot
+        # launder a denied one.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        self.assertTrue(CHECKER.COMPOUND_TRUTH_TABLE)
+        for command, expected in CHECKER.COMPOUND_TRUTH_TABLE:
+            self.assertEqual(
+                CHECKER.resolve_command(merged, command),
+                expected,
+                f"compound {command!r} must resolve to {expected!r}",
+            )
+        # Whole-line (non-segment) resolution is what the splitter corrects:
+        # a single glob cannot see the denied tail of the line.
+        self.assertEqual(
+            CHECKER.resolve(merged, "podman pull x && podman machine init"),
+            "allow",
+        )
+        self.assertEqual(
+            CHECKER.resolve_command(merged, "podman pull x && podman machine init"),
+            "deny",
+        )
+
+    def test_root_baseline_pin_fails_without_the_podman_denies(self) -> None:
+        for pattern in self.PODMAN_DENIES:
+            with self.subTest(pattern=pattern):
+                drifted = remove_rule(KNOWN_GOOD_RULES, pattern)
+                proc = run_checker(build_repo(root_rules=drifted))
+                self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
+
+    def test_no_podman_pattern_registered_in_any_agent_deviation(self) -> None:
+        # C3: the scoped-allow lever is explicitly NOT used — neither an
+        # allow nor a deny for the runtime family may be registered as an
+        # agent deviation.
+        for name, patterns in CHECKER.AGENT_DEVIATIONS.items():
+            with self.subTest(agent=name):
+                self.assertFalse(
+                    [pattern for pattern in patterns if "podman" in pattern],
+                    f"{name} must register no podman pattern (#419, C3)",
+                )
+
+    def test_devops_agent_spec_carries_no_container_runtime_rule(self) -> None:
+        # C4 posture-neutral proof: agents/devops.md carries no runtime rule
+        # before or after the reconciliation (the registry row was dead).
+        agent = REPO_ROOT / "agents" / "devops.md"
+        present, rules = CHECKER.agent_bash(REPO_ROOT, agent, [])
+        self.assertTrue(present, "agents/devops.md carries the gh carve-out map")
+        for pattern, _ in rules:
+            self.assertNotIn("docker", pattern)
+            self.assertNotIn("podman", pattern)
 
 
 class NonInheritanceAgentShapeTests(unittest.TestCase):

@@ -392,7 +392,22 @@
       // .secrets-home.env contents). Matches with or without trailing slash;
       // also covers ~/.config/opencode.jsonc. Repo/worktree paths unaffected
       // (no ".config/opencode" substring).
-      "*/.config/opencode*": "deny"
+      "*/.config/opencode*": "deny",
+      // MADR-0024 (#419, C1/C2): the local container runtime migrated to
+      // rootless Podman (#417), so the runtime's own daemon-style escapes are
+      // denied at the root tail for every agent. `podman system service`
+      // re-creates a Docker-API-compatible socket — the long-lived daemon
+      // pattern this migration exists to remove; `podman machine` spawns a VM
+      // whose `ssh` can yield guest root with a shared host home (irrelevant
+      // on WSL2, so the deny costs nothing). Under rootless mode neither
+      // escalates above uid 1000: these are persistence / API-surface
+      // controls, not privilege boundaries. The rest of the family
+      // (`unshare`, `kube play`, `--connection`, `generate`) stays allowed as
+      // a recorded accepted residual (MADR-0024 D3, arc42 §3); any future
+      // narrowing must be a root deny + scoped carve-outs, never a scoped
+      // allow set, which tightens nothing under the "*": allow head (C3).
+      "podman system service*": "deny",
+      "podman machine*": "deny"
     }
   },
   "compaction": {

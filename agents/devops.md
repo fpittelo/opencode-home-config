@@ -8,12 +8,19 @@ permission:
   # verified on opencode 1.19.0 via `opencode debug agent`: an agent WITHOUT a
   # `bash:` key receives every config-level bash rule, while a partial agent
   # bash map is appended AFTER the root deny tail (allow rules there could
-  # widen the posture). The MADR-0004 `docker *` role allow is redundant under
-  # the root "*": allow and is deliberately NOT re-stated as a partial map
-  # (e.g. `docker run --env-file x.env` overlaps the root `*.env*` deny and a
-  # last-position agent allow would widen it). Root block = single source of
-  # truth; re-statement is now the defect (MADR-0004 five-file mirroring
-  # superseded by root inheritance per #340; enforced by Gate 16).
+  # widen the posture). Root block = single source of truth; re-statement is
+  # now the defect (MADR-0004 five-file mirroring superseded by root
+  # inheritance per #340; enforced by Gate 16).
+  # MADR-0024 (#419): the container runtime migrated to rootless Podman
+  # (#417), so the runtime family is governed by the root deny tail, not by a
+  # rule here. The MADR-0004 `docker *` role allow was a DEAD REGISTRY ROW
+  # (no such rule ever existed in this file) and was deleted from
+  # AGENT_DEVIATIONS — posture-neutral, not a tightening (C4). A scoped
+  # *allow* set (`podman run*`, `pull*`, …) is deliberately NOT written here:
+  # under the root "*": allow head it tightens nothing and, appended after
+  # the deny tail, it would trip the #340 duplicate-root defect (C3). The
+  # tightening taken instead is the root tail's `podman system service*` /
+  # `podman machine*` deny (C1/C2).
   GITHUB_*: allow
   GITHUB_CODE_REVIEWER_*: deny
   # MADR-0022 (#401): the GITHUB_ACTIONS MCP server is retired — CI triage is
