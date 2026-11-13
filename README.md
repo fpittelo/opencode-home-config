@@ -57,6 +57,8 @@ opencode-home-config/
 
 ## Installation
 
+**Prerequisite — container runtime (WSL2 side):** install rootless Podman manually inside WSL2 (`sudo apt-get install -y podman`), give your user `/etc/subuid` + `/etc/subgid` ranges, and confirm it with `podman info` (`rootless: true`) — without the ranges rootless startup fails. `install.sh` verifies that `podman` is on `PATH` (fail-closed, **presence only** — it does not assert rootless mode or the subuid ranges) and never installs it (installation needs root; [MADR-0024](docs/adr/0024-adopt-podman-as-the-local-container-runtime-for-mcp-servers.md)). The `COACH_*` MCP servers and the `harness/run.sh` fallback move onto it in #417/#418 — today the MCP config still spawns `docker`, which is absent here, so Coach cannot start yet.
+
 ```bash
 git clone git@github.com:fpittelo/opencode-home-config.git ~/projects/opencode-home-config
 cd ~/projects/opencode-home-config

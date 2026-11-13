@@ -129,13 +129,34 @@ if [ "$PLAYWRIGHT_MCP_ACTUAL_INTEGRITY" != "$PLAYWRIGHT_MCP_INTEGRITY" ]; then
 fi
 echo "✅  @playwright/mcp ${PLAYWRIGHT_MCP_VERSION} verified (registry tarball SHA512 matches pin)."
 
-# 5. Pre-pull the pinned coach image (idempotent: docker pull is a no-op when the
-#    image is already present locally, so session start never waits on a registry
-#    fetch — MADR-0002 decision point 3, #107). Coach stays containerized (#109):
-#    the github-mcp-server Docker image is no longer used (native binary above).
+# 5. Owned container runtime and pre-pull (MADR-0024 D1/D2/D4, C7, #416). This
+#    script owns and verifies the runtime that the Coach MCP servers and the
+#    harness/run.sh fallback are migrated onto (opencode.jsonc #417,
+#    harness/run.sh #418) — as of #416 both still spawn docker, so the guard and
+#    pre-pull below are the runtime's owner, not yet its only consumer.
+#    The fail-closed guard below comes FIRST — before the pre-pull — and names
+#    podman specifically, never "any container runtime": a generic presence
+#    check would let a stray docker satisfy it on another host while the
+#    migrated MCP config demands podman, and it would diverge from the pre-pull.
+#    The runtime is verified, never provisioned: installing it needs root and
+#    the profile's bash posture denies sudo (MADR-0024 D4).
+#    The pre-pull stays idempotent — --policy=missing skips the registry
+#    round-trip when the image is already present locally, so session start
+#    never waits on a registry fetch (MADR-0002 decision point 3, #107). Coach
+#    stays containerized (#109): the github-mcp-server Docker image is no longer
+#    used (native binary above). The runtime token is the one the guard
+#    verified. MADR-0024 D2's `--pull=missing` is the run-time spelling of this
+#    policy (opencode.jsonc MCP commands, #417); `podman pull` spells the same
+#    policy `--policy=missing` (podman 5.7.0 rejects `--pull`).
+CONTAINER_RUNTIME="podman"
+if ! command -v "$CONTAINER_RUNTIME" >/dev/null 2>&1; then
+    echo "❌  $CONTAINER_RUNTIME not found — required by install.sh to verify and pre-pull the Coach MCP image (MADR-0024)." >&2
+    echo "   Remediate (WSL2 side on VIDAR): sudo apt-get install -y podman" >&2
+    exit 1
+fi
 COACH_DEV_IMAGE="ghcr.io/fpittelo/coach:dev"
 echo "⏳  Pre-pulling pinned coach image..."
-docker pull "$COACH_DEV_IMAGE"
+"$CONTAINER_RUNTIME" pull --policy=missing "$COACH_DEV_IMAGE"
 echo "✅  Coach image pre-pulled (coach:dev)."
 
 # 6. Per-pane profile selection snippet (issue #244, MC1/F1).
