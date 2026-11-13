@@ -78,7 +78,7 @@ C4Context
 | Channel | Protocol | Notes |
 | :--- | :--- | :--- |
 | GitHub MCP servers (`GITHUB`, `GITHUB_CODE_REVIEWER`, `GITHUB_SECURITY`) | stdio → native binary (pinned v2.0.2, SHA256-verified by `install.sh`) | Personal-access-token authenticated; SoD split per #68; security-alert triage per MADR-0011. CI triage re-homed on the pinned `gh` CLI; Projects v2 board retired — MADR-0022 (#400/#401). |
-| Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → container (rootless Podman — **target state per MADR-0024 (proposed)**, lands with #416–#419; the MCP commands still spawn `docker` until #417) | Environment-scoped (dev/qa/main) Intervals.icu access. |
+| Coach MCP servers (`COACH_DEV/QA/MAIN`) | stdio → container (rootless Podman — MADR-0024 D1; `podman run -i --rm --pull=missing`, #417) | Environment-scoped (dev/qa/main) Intervals.icu access. |
 | Playwright browser MCP (`BROWSER`, MADR-0009 #207) | stdio → npx `@playwright/mcp` (pinned 0.0.83; pin-time registry audit by `install.sh` — npx re-resolves per session) | Ephemeral-profile browser automation for user-journey verification against coach-web dev/qa lanes; loopback-origin allowlist; @developer/@devops only. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
 | LLM inference | HTTPS (OpenRouter API) | Model per agent via `openrouter/<model>` assignments. |
@@ -164,7 +164,7 @@ C4Container
 | `skills/*/SKILL.md` (15) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode`; provisions `profiles.sh` with the `oc-home()` wrapper and migrates secrets to profile-scoped files (MADR-0010); installs the pinned `github-mcp-server` and Herdr binaries (SHA256-verified, idempotent) | Bash (per-pane wrapper subshells `oc-home` / `oc-work`, MADR-0010) |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled `deep-validation.yml` (MADR-0003) | GitHub Actions |
-| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker / npx) / streamable-HTTP (remote) |
+| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / rootless Podman / npx) / streamable-HTTP (remote) |
 | Herdr runtime (MADR-0005) | Hosts OpenCode TUI panes as real PTYs; reports agent lifecycle (working/blocked/idle); sessions survive detach (`ctrl+b q` → `herdr`) and server restarts | `herdr` CLI (client/server), Unix socket `~/.config/herdr/herdr.sock`, integration plugins in `~/.config/opencode/` (untracked, Herdr-owned) |
 
 **Permission model invariants (enforced since #68, extended by #108, #150):**

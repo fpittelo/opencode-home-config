@@ -110,10 +110,14 @@
     // and any unconfigured persona; every SCRUM agent re-states the denies
     // explicitly in agents/*.md, and agents/coach.md holds the sole allow
     // whitelist. Every agent except @architect/@coach denies openrouter_* tools.
+    // MADR-0024 D1/D2 (#417): the three COACH_* servers spawn rootless Podman
+    // (daemonless — no root-equivalent socket). --pull=missing is Podman's
+    // default for `run`; it is stated explicitly for legibility so nobody later
+    // assumes an implicit refresh (image freshness is owned by #412/#413).
     "COACH_DEV": {
       "type": "local",
       "command": [
-        "docker", "run", "-i", "--rm",
+        "podman", "run", "-i", "--rm", "--pull=missing",
         "-e", "INTERVALS_API_KEY",
         "-e", "INTERVALS_ATHLETE_ID",
         "-e", "MCP_TRANSPORT",
@@ -129,7 +133,7 @@
     "COACH_QA": {
       "type": "local",
       "command": [
-        "docker", "run", "-i", "--rm",
+        "podman", "run", "-i", "--rm", "--pull=missing",
         "-e", "INTERVALS_API_KEY",
         "-e", "INTERVALS_ATHLETE_ID",
         "-e", "MCP_TRANSPORT",
@@ -145,7 +149,7 @@
     "COACH_MAIN": {
       "type": "local",
       "command": [
-        "docker", "run", "-i", "--rm",
+        "podman", "run", "-i", "--rm", "--pull=missing",
         "-e", "INTERVALS_API_KEY",
         "-e", "INTERVALS_ATHLETE_ID",
         "-e", "MCP_TRANSPORT",
