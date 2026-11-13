@@ -54,7 +54,7 @@ sequenceDiagram
 | Node | Hosts | Infrastructure |
 | :--- | :--- | :--- |
 | Local workstation (VIDAR, Linux) | OpenCode runtime, agent/skill profile (`~/.config/opencode/`), profile-scoped secrets files (`.secrets-home.env` / `.secrets-work.env`, mode 600, MADR-0010), `github-mcp-server` native binary (`~/.local/bin/`, pinned v2.0.2, checksum-verified by `install.sh`) | Bare metal |
-| Docker runtime (local) | MCP server container: `COACH_DEV/QA/MAIN` (toggle pattern — one enabled at a time) | Docker Engine; tokens injected via environment |
+| Podman runtime (local, rootless) — **target state per MADR-0024 (proposed); lands with #416–#419** | MCP server containers: `COACH_DEV/QA/MAIN` (toggle pattern — one enabled at a time); harness container fallback (`harness/run.sh`) | Rootless Podman (daemonless, no root-equivalent socket); runtime presence **verified** by `install.sh` (fail-closed), not provisioned; tokens injected via environment, images pre-pulled at install time (`--pull=missing`, MADR-0024 D2). Today: Docker is assumed but unverified — VIDAR has no runtime installed, so the bootstrap aborts and Coach cannot spawn (#415). CI workflows and `harness/docker/**` images stay Docker-based |
 | GitHub Actions runners (ubuntu-latest) | CI pipeline jobs (JSONC validation, Gitleaks via Docker) | GitHub-hosted |
 | OpenRouter SaaS | LLM inference + `openrouter` remote MCP endpoint | Public HTTPS, OAuth |
 | Intervals.icu SaaS | Training analytics backend for Coach MCP | HTTPS API |
