@@ -164,7 +164,7 @@ C4Container
 | `skills/*/SKILL.md` (15) | Versioned domain knowledge activated on demand | Skill frontmatter (`name`, `description`) |
 | `install.sh` | Path-independent installation (symlinks from `SCRIPT_DIR`) into `~/.config/opencode`; provisions `profiles.sh` with the `oc-home()` wrapper and migrates secrets to profile-scoped files (MADR-0010); installs the pinned `github-mcp-server` and Herdr binaries (SHA256-verified, idempotent) | Bash (per-pane wrapper subshells `oc-home` / `oc-work`, MADR-0010) |
 | `.github/workflows/ci.yml` | Zero-warning gate: JSONC validation, agent/skill presence inventory, diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled `deep-validation.yml` (MADR-0003) | GitHub Actions |
-| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / Docker / npx) / streamable-HTTP (remote) |
+| MCP servers | Platform integration with credential isolation; SoD via separate server + machine account | MCP stdio (native binary / rootless Podman / npx) / streamable-HTTP (remote) |
 | Herdr runtime (MADR-0005) | Hosts OpenCode TUI panes as real PTYs; reports agent lifecycle (working/blocked/idle); sessions survive detach (`ctrl+b q` → `herdr`) and server restarts | `herdr` CLI (client/server), Unix socket `~/.config/herdr/herdr.sock`, integration plugins in `~/.config/opencode/` (untracked, Herdr-owned) |
 
 **Permission model invariants (enforced since #68, extended by #108, #150):**
