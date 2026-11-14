@@ -1,6 +1,6 @@
 # MADR-0024: Adopt Podman as the local container runtime for MCP servers
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-13
 - **Deciders:** @fpittelo (Product Owner), @architect; @cyber-security (MADR-0008 review — **APPROVE-WITH-CONDITIONS**, 2026-11-13; conditions C1–C8)
 
@@ -99,6 +99,8 @@ The `--env-file` parity claim is **form-dependent, not mechanism-dependent** (C8
 - **#419 (permission reconciliation):** **C1** deny `podman system service*` in the root deny tail **and** `BASELINE_DENY_TAIL` now (a flag is not a control; the deferral's stated fallback is acceptance); **C2** deny `podman machine*` likewise; **C3** rewrite D3 so tightening is expressed as a root deny + scoped carve-out, never as a scoped allow set; **C4** record the `docker *` reconciliation as **posture-neutral** — `AGENT_DEVIATIONS["devops.md"]` lists `docker *` while `agents/devops.md` carries none, so deleting it changes nothing and must not be reported as a tightening; **C8** correct the parity claim (form-dependent) and the bash/MCP surface conflation, and record the `--secret`/non-`.env` gap as a residual.
 
 Residual risks recorded for `arc42/03-cross-cutting-and-security.md` §3: the Podman-only run-time secret-injection bypass of the command-string secret denies; unenforced rootless resource bounds; the GHCR credential file if a private image forces `podman login`; subuid-owned bind-mount writes in the harness fallback; and the silently inherited `podman` sub-command family (`system service`, `unshare`, `machine`, `kube play`, `--connection`, `generate`). Full rows appended to §3 with #417/#418/#419 as tracking issues.
+
+**Condition status at acceptance (2026-11-14):** all eight conditions executed. **C1/C2/C3/C4/C8** — implemented and merged in #428 (root deny tail closes with the two podman denies; `BASELINE_DENY_TAIL` + truth-table + compound rows in the checker; dead `docker *` deviation removed posture-neutral; parity negative test falsifiable; residuals recorded). **C5** — resolved without exposure: `ghcr.io/fpittelo/coach` is public, pulled anonymously; no credential file exists (#416 evidence, consumed by #417). **C6** — probed on VIDAR with corrected findings: `--memory`/`--cpus` **are enforced** (cgroup v2 + systemd delegation), and the `--user 1000:1000` bind-mount failure is **harder than predicted** (`Permission denied`, not merely subuid ownership) — #418's AC2 restated accordingly. **C7** — implemented in #416 (fail-closed guard naming `podman` specifically, before the pre-pull).
 
 ### Condition → issue map
 
