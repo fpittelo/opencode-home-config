@@ -22,15 +22,26 @@ Consequences enforced below:
   2. CLEAN AGENT INHERITANCE — each of the four allow-default agent specs
      (agents/architect.md, agents/developer.md, agents/devops.md,
      agents/cyber-security.md) either omits ``bash:`` entirely or carries
-     ONLY its documented role-deviation patterns (devops: ``docker *``
-     allow; cyber-security: audit-tool allows). Re-stating any root tier
-     pattern in an agent is now the DEFECT (it appends after the root deny
-     tail and can widen the posture), not the requirement.
+     ONLY its documented role-deviation patterns (devops: the MADR-0022 gh
+     CI-triage carve-out; cyber-security: audit-tool allows). Re-stating any
+     root tier pattern in an agent is now the DEFECT (it appends after the
+     root deny tail and can widen the posture), not the requirement. The
+     MADR-0004 ``docker *`` row was a DEAD REGISTRY ROW — no such rule ever
+     existed in agents/devops.md — and was deleted by MADR-0024 (#419, C4);
+     that reconciliation is POSTURE-NEUTRAL, not a tightening (the root
+     ``"*"`` allow head covers both runtimes).
   3. LAST-MATCH-WINS TRUTH TABLE — a static resolver evaluates command
      strings against the ordered root rule list (fnmatch-style glob,
      last match wins, opencode semantics) and every expected verdict of
      the MADR-0015 delta must hold. A failing verdict against the real
      config is a REAL ordering defect: fix the config, not the table.
+     COMPOUND COMMANDS (#419) — the documented evaluation (MADR-0004
+     §"ordering is normative", arc42 §1.1) splits a command line on
+     ``&&``/``;``/``|`` and judges every segment, so ONE denied segment
+     blocks the whole line; COMPOUND_TRUTH_TABLE pins that for the
+     MADR-0024 podman denies, whose whole-line globs would otherwise be
+     bypassable by appending an allowed segment
+     (``podman pull x && podman machine init``).
   4. NON-INHERITANCE AGENT SHAPES (#350) — scrum-master, code-reviewer
      and coach declare an explicit bash posture instead of inheriting;
      each shape is pinned order-sensitively (NON_INHERITANCE_AGENTS).
@@ -146,6 +157,19 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # deny closing the recursive-read bypass against the secrets directory
     # (grep -r X ~/.config/opencode/ returned .secrets-home.env contents).
     "*/.config/opencode*",
+    # MADR-0024 (#419, C1/C2): the local container runtime migrated to
+    # rootless Podman (#417), so the runtime's own daemon-style escapes are
+    # tail-appended here for every agent. `podman system service` re-creates
+    # a Docker-API-compatible socket — the long-lived daemon pattern this
+    # migration exists to remove; `podman machine` spawns a VM whose `ssh`
+    # can yield guest root with a shared host home (irrelevant on WSL2, so
+    # the deny costs nothing). Neither is escalation above uid 1000 under
+    # rootless mode: both are persistence / API-surface controls. The
+    # remainder of the family (`unshare`, `kube play`, `--connection`,
+    # `generate`) stays allowed as a recorded accepted residual (MADR-0024
+    # D3, arc42 §3).
+    "podman system service*",
+    "podman machine*",
 )
 
 # Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
@@ -189,6 +213,14 @@ BASELINE_ROOT_RULES: tuple[tuple[str, str], ...] = (
 # append after the tail). The @developer read-only allows (`gh run
 # list/view/watch`) are redundant under the root "*" head but pinned as an
 # explicit legibility signature so any extra gh allow fails the gate (C7).
+# MADR-0024 (#419, C3): NO podman pattern is registered here, in either
+# direction. A scoped *allow* set (`podman run*`, `pull*`, `ps*`, …) would
+# tighten nothing — the root `"*": allow` head already permits every
+# sub-command and a partial agent bash map appends AFTER the root deny tail —
+# while tripping the #340 duplicate-root defect above. The tightening that WAS
+# taken lives in the root tail instead (`podman system service*` /
+# `podman machine*`, C1/C2); the rest of the family is an accepted residual
+# (MADR-0024 D3, arc42 §3). No blanket `podman *` allow is introduced.
 AGENT_DEVIATIONS: dict[str, frozenset[str]] = {
     "architect.md": frozenset(),
     # MADR-0022 (#401, C7): @developer read-only CI triage — explicit allow
@@ -204,11 +236,13 @@ AGENT_DEVIATIONS: dict[str, frozenset[str]] = {
     # MADR-0022 (#401, C6): @devops-only write carve-out — the retired
     # actions_run_trigger equivalent (workflow dispatch/enable/disable, run
     # cancel/rerun). Root deny tail denies these for everyone; this allow
-    # re-enables them for @devops only. `docker *` stays the redundant
-    # MADR-0004 legibility signature.
+    # re-enables them for @devops only. The MADR-0004 `docker *` row was
+    # deleted by MADR-0024 (#419, C4): agents/devops.md never carried the
+    # rule, so it was a DEAD ROW in a permitted-but-not-required allowlist and
+    # its removal is posture-neutral (the root "*" allow head covers both
+    # runtimes) — not a tightening.
     "devops.md": frozenset(
         {
-            "docker *",
             "gh workflow *",
             "gh run cancel*",
             "gh run rerun*",
@@ -324,6 +358,65 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("grep -r X ~/.config/opencode/", "deny"),
     ("grep -r X ~/.config/opencode/sub/", "deny"),
     ("grep -r X secrets/", "allow"),
+    # MADR-0024 (#419, C1/C2): the local container runtime migrated to
+    # rootless Podman (#417). `podman system service` re-creates a
+    # Docker-API-compatible socket (the long-lived daemon pattern the
+    # migration exists to remove) and `podman machine` spawns a VM whose
+    # `ssh` can yield guest root with a shared host home — both are
+    # agent-issuable unprompted under the root head and are now denied for
+    # every agent. Under rootless mode neither escalates above uid 1000:
+    # these are persistence / API-surface controls, not privilege
+    # boundaries.
+    ("podman system service", "deny"),
+    ("podman system service --time=0 unix:///run/user/1000/podman.sock", "deny"),
+    ("podman machine init", "deny"),
+    ("podman machine ssh", "deny"),
+    ("podman machine ls", "deny"),
+    # Scoping proof: the deny is sub-command-scoped, not a `podman system *`
+    # blanket — only the API-socket escape was taken (C1); the remainder of
+    # the family is the recorded residual (MADR-0024 D3, arc42 §3).
+    ("podman system df", "allow"),
+    # The migration must keep working (no over-tightening): the ordinary
+    # run / pull / inspect surface stays allowed.
+    ("podman pull ghcr.io/fpittelo/coach:dev", "allow"),
+    ("podman run -i --rm -e VAR=1 ghcr.io/fpittelo/coach:dev", "allow"),
+    ("podman ps -a", "allow"),
+    ("podman logs coach-dev", "allow"),
+    # C8 parity — FORM-dependent, not mechanism-dependent: the `--env-file`
+    # form is denied because the `.env` FILENAME appears in the command text
+    # (the #167 filename glob), not because the mechanism is constrained.
+    ("podman run -i --rm --env-file x.env ghcr.io/fpittelo/coach:dev", "deny"),
+    # Recorded accepted residual (MADR-0024 D3/C8, arc42 §3): Podman's
+    # run-time secret injection and the non-filename create/start path name
+    # no credential FILENAME, so a command-string deny cannot match them —
+    # the same class as the accepted recursive-read bypass (#362), tracked
+    # upstream (anomalyco/opencode#56545). Pinned as an explicit allow so the
+    # residual is legible rather than silently widening; `podman unshare`
+    # (arbitrary-UID chown) is likewise pinned as residual — bounded to the
+    # invoking uid + subuid range and it is the documented remediation for
+    # subuid-owned bind-mount artifacts (#418, C6).
+    ("podman run --secret=coach_token,type=env -i --rm x", "allow"),
+    ("podman create -e VAR=1 ghcr.io/fpittelo/coach:dev", "allow"),
+    ("podman start 7f3a1c9d", "allow"),
+    ("podman unshare chown -R 1000:1000 /workspace", "allow"),
+)
+
+# Per-segment evaluation of compound command lines (#419): the documented
+# opencode semantics (MADR-0004 §"ordering is normative", arc42 §1.1) split a
+# command line on ``&&`` / ``;`` / ``|`` and judge EVERY segment, so one
+# denied segment blocks the whole line. Without that, the MADR-0024 whole-line
+# glob denies would be bypassable by appending an allowed segment.
+COMPOUND_TRUTH_TABLE: tuple[tuple[str, str], ...] = (
+    # C1/C2 bypass proofs: the deny survives the compound form.
+    ("podman pull ghcr.io/fpittelo/coach:dev && podman machine init", "deny"),
+    ("podman ps; podman system service --time=0 unix:///run/u/podman.sock", "deny"),
+    ("podman ps | podman machine ssh", "deny"),
+    # The pre-existing filename deny composes the same way.
+    ("podman logs coach-dev; cat .secrets-home.env", "deny"),
+    # Non-deny tiers still propagate per segment, and an all-allowed compound
+    # stays allowed (the migration is not broken by the compound rule).
+    ("rm x; podman ps", "ask"),
+    ("podman ps && podman run -i --rm ghcr.io/fpittelo/coach:dev", "allow"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
@@ -533,12 +626,38 @@ def check_non_inheritance_agents(root: Path, failures: list[str]) -> None:
 
 
 def resolve(rules: list[tuple[str, str]], command: str) -> str:
-    """opencode last-match-wins resolution over the ordered rule list."""
+    """opencode last-match-wins resolution over the ordered rule list.
+
+    Single command SEGMENT only; use ``resolve_command`` for a whole
+    command line (compound commands are judged per segment, #419).
+    """
     verdict = "allow"  # opencode's default posture when no rule matches
     for pattern, tier in rules:
         if fnmatch.fnmatchcase(command, pattern):
             verdict = tier
     return verdict
+
+
+# Compound-command splitter (#419). Deliberately naive — it models the
+# documented segment-per-segment evaluation (MADR-0004 §"ordering is
+# normative", arc42 §1.1) for the patterns pinned here; it is NOT a shell
+# parser (no quoting awareness: a `|` inside a quoted argument would also
+# split). Segments are evaluated independently and the worst tier wins, so a
+# single denied segment blocks the whole command line.
+SEGMENT_SPLIT_RE = re.compile(r"\s*(?:&&|;|\|)\s*")
+
+
+def resolve_command(rules: list[tuple[str, str]], command: str) -> str:
+    """Verdict for a whole command line: per-segment, worst tier wins."""
+    verdicts = [
+        resolve(rules, segment)
+        for segment in SEGMENT_SPLIT_RE.split(command)
+        if segment
+    ]
+    for tier in ("deny", "ask"):
+        if tier in verdicts:
+            return tier
+    return "allow"
 
 
 def check_truth_table(
@@ -552,6 +671,20 @@ def check_truth_table(
                 f"{rel}: command {command!r} resolves to {actual!r}, "
                 f"expected {expected!r} (last-match-wins ordering defect, "
                 f"fix the config ordering)"
+            )
+
+
+def check_compound_truth_table(
+    rules: list[tuple[str, str]], rel: str, failures: list[str]
+) -> None:
+    """A denied segment must block the whole compound command line (#419)."""
+    for command, expected in COMPOUND_TRUTH_TABLE:
+        actual = resolve_command(rules, command)
+        if actual != expected:
+            failures.append(
+                f"{rel}: compound command {command!r} resolves to {actual!r}, "
+                f"expected {expected!r} (a denied segment must block the whole "
+                f"line — per-segment evaluation, MADR-0004)"
             )
 
 
@@ -569,6 +702,7 @@ def main(argv: list[str]) -> int:
     if root_rule_list is not None:
         check_root_baseline(root_rule_list, "opencode.jsonc", failures)
         check_truth_table(root_rule_list, "opencode.jsonc", failures)
+        check_compound_truth_table(root_rule_list, "opencode.jsonc", failures)
     check_agent_inheritance(root, failures)
     check_non_inheritance_agents(root, failures)
     if failures:
@@ -581,6 +715,7 @@ def main(argv: list[str]) -> int:
         f"MADR-0015 baseline (allow head + {len(BASELINE_ASK_TIER)} ask + "
         f"{len(BASELINE_DENY_TAIL)} deny rules, order-sensitive), "
         f"{len(TRUTH_TABLE)}-case last-match-wins truth table green, "
+        f"{len(COMPOUND_TRUTH_TABLE)}-case per-segment compound table green, "
         f"{len(AGENT_FILES)} allow-default agents inherit the root baseline "
         f"with zero root re-statements, and {len(NON_INHERITANCE_AGENTS)} "
         f"non-inheritance agents match their pinned order-sensitive bash "
