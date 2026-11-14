@@ -115,6 +115,23 @@ fi
 #    version at session start. Fail hard on any mismatch.
 PLAYWRIGHT_MCP_VERSION="0.0.83"
 PLAYWRIGHT_MCP_INTEGRITY="sha512-oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg==" # dist.integrity of playwright-mcp-0.0.83.tgz, per registry.npmjs.org metadata for @playwright/mcp@0.0.83
+# BROWSER MCP runtime guard (issue #435): the BROWSER MCP server is spawned
+# via `npx @playwright/mcp@<pinned>` (opencode.jsonc, MADR-0009) — without
+# node AND npx it cannot start, and the MCP fleet reports the silent
+# per-session absence that prompted #435. Presence check only: installing
+# Node needs root and this script's bash posture denies sudo, so the tool
+# is verified, never provisioned (the #416 podman-guard pattern). No
+# version pin: node is distro-managed OS toolchain — the pin philosophy
+# applies to our artifacts (MADR-0002), not the OS toolchain.
+# System-wide, NOT nvm: the `opencode serve --service` daemon spawns MCP
+# servers from its boot-environment PATH — an nvm-managed node lives off
+# that PATH (the #423 boot-chain failure mode), so an nvm install passes
+# this guard in a login shell yet still fails the daemon spawn.
+if ! command -v node >/dev/null 2>&1 || ! command -v npx >/dev/null 2>&1; then
+    echo "❌  node or npx not found — required to run the BROWSER MCP via npx @playwright/mcp ${PLAYWRIGHT_MCP_VERSION} (opencode.jsonc, MADR-0009)." >&2
+    echo "   Remediate (WSL2 side on VIDAR): sudo apt-get install -y nodejs npm — system-wide, NOT nvm (nvm-managed node is off the service daemon's boot PATH, #423)." >&2
+    exit 1
+fi
 if ! command -v openssl >/dev/null 2>&1; then
     echo "❌  openssl not found — required to verify @playwright/mcp ${PLAYWRIGHT_MCP_VERSION}." >&2
     exit 1
