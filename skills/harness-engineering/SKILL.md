@@ -69,7 +69,8 @@ The `gate` phase runs the language-specific pre-flight commands inside the harde
 container (or natively against the project `.venv` when available) — Python: `ruff`, `black`, `isort`, `mypy --strict`, `pytest -W error
 --cov-fail-under=80`; Rust: `cargo fmt --check`, `cargo clippy -- -D warnings`,
 `cargo test`. Security context (why the gate is trustworthy): read-only root
-filesystem, non-root UID 1000, all capabilities dropped, no-new-privileges,
+filesystem, non-root — container uid = invoking host uid (`--userns=keep-id`),
+all capabilities dropped, no-new-privileges,
 `--network=none` during the gate phase, bounded CPU/memory, no secrets mounted
 (see [harness/README.md](../../harness/README.md)).
 
