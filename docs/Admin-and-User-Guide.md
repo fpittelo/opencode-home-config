@@ -59,6 +59,7 @@ This section is for the person who sets up and maintains the OpenCode environmen
 | **OpenCode CLI** | Installed at `~/.opencode/bin/opencode` (v1.18.29+) |
 | **Git** | Installed and configured with SSH keys for GitHub |
 | **openssl** | Installed (required by `install.sh` to verify the pinned `@playwright/mcp` tarball integrity, #207) |
+| **Node.js + npx** | On the **WSL2 side**, **system-wide** (`sudo apt-get install -y nodejs npm`) — **not** nvm: the `opencode serve --service` daemon spawns MCP servers from its boot-environment PATH, and an nvm-managed node lives off that PATH (the #423 boot-chain failure mode). Required by the `BROWSER` MCP server, which runs via `npx @playwright/mcp@<pinned>` (MADR-0009); `install.sh` fail-closes on a missing `node`/`npx` (#435). No version pin — distro-managed OS toolchain (the pin philosophy applies to our artifacts, not the OS toolchain) |
 | **GitHub account** | With access to `fpittelo/opencode-home-config` |
 
 ### 2.2 Installation
@@ -218,6 +219,7 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 | MCP tools not available — Coach servers | Podman absent, or present but not rootless / missing the `/etc/subuid` + `/etc/subgid` ranges (the `install.sh` guard checks **presence only**); a stray `docker` on `PATH` no longer helps — the MCP config spawns `podman` (#417, MADR-0024 D1) | `podman info` (expect `rootless: true`); re-run `install.sh`; check the ranges if the guard passed but rootless startup still fails |
 | MCP tools not available — GitHub servers | Pinned `github-mcp-server` binary missing | Re-run `install.sh` to (re)install `~/.local/bin/github-mcp-server` |
 | `install.sh` aborts with `podman not found` | No container runtime on the WSL2 side — the runtime is a **verified prerequisite, never provisioned** (MADR-0024 D4) | Install it manually inside WSL2 (`sudo apt-get install -y podman`), ensure the `/etc/subuid` + `/etc/subgid` ranges, then re-run `install.sh` |
+| `install.sh` aborts with `node or npx not found`, or BROWSER MCP tools unavailable (`opencode mcp list` shows `BROWSER failed: NotFound: ChildProcess.spawn (npx …)`) | Node.js/npx missing — the `BROWSER` MCP spawns via `npx @playwright/mcp@<pinned>` (MADR-0009); nvm-managed node is off the `opencode serve --service` daemon's boot PATH (#423). If node was installed while the daemon was already running, the stale boot chain keeps the spawn failing until restart | Install Node **system-wide** (`sudo apt-get install -y nodejs npm` — NOT nvm), **restart the `opencode serve --service` daemon** so MCP servers re-spawn from the fresh boot environment, then re-run `install.sh` (its guard fail-closes on missing `node`/`npx`, #435) |
 | MCP Coach image pull fails | Network or registry outage — the package is **public**, so no GHCR credential is involved | `podman pull ghcr.io/fpittelo/coach:dev` to test; a 401/403 means the package visibility regressed, not an auth gap |
 | Agents not loading | Broken symlink in `~/.config/opencode/agents` | Re-run `install.sh` |
 | Skills not activating | Broken symlink in `~/.config/opencode/skills` | Re-run `install.sh` |
