@@ -9,8 +9,10 @@ command chain are covered end to end.
 The native Python gate must resolve every tool from the project ``.venv``
 (``${REPO_ROOT}/.venv/bin``) and never silently fall back to lookalike
 host-PATH tools (#256 AC2/AC3); the deps phase must retain dev extras
-(``uv sync --all-extras``, #256 AC1); the container fallback must stay
-unchanged when the host has neither ``uv`` nor a project ``.venv`` (#256 AC4).
+(``uv sync --all-extras``, #256 AC1); the container fallback must keep its
+isolation guarantees on the single resolved runtime token (#256 AC4, #418 AC1/AC2:
+default ``podman``, ``CONTAINER_RUNTIME``-overridable, rootless-correct
+``--userns=keep-id`` non-root bound).
 
 Run:
     python3 harness/config-validation/test_harness_run.py
@@ -59,10 +61,18 @@ def write_arg_logger(bin_dir: Path, name: str, log: Path, exit_code: int = 0) ->
 
 
 def run_harness(
-    stack: str, phase: str, root: Path, path_dirs: list[Path]
+    stack: str,
+    phase: str,
+    root: Path,
+    path_dirs: list[Path],
+    extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run run.sh with a controlled PATH (only the given directories)."""
-    env = {**os.environ, "PATH": os.pathsep.join(str(path) for path in path_dirs)}
+    env = {
+        **os.environ,
+        "PATH": os.pathsep.join(str(path) for path in path_dirs),
+        **(extra_env or {}),
+    }
     return subprocess.run(
         [BASH, str(RUN_SH), stack, phase, str(root)],
         capture_output=True,
@@ -172,7 +182,9 @@ class NativeGateTests(unittest.TestCase):
 
 
 class ContainerFallbackTests(unittest.TestCase):
-    """AC4: the container fallback is unchanged when no uv and no .venv."""
+    """#256 AC4 / #418 AC1-AC2: the container fallback is reached only when the
+    host has neither uv nor a project .venv, and it keeps its isolation
+    guarantees on the single resolved runtime token."""
 
     def test_gate_falls_back_to_container_with_security_flags(self) -> None:
         root = Path(tempfile.mkdtemp())
@@ -180,8 +192,12 @@ class ContainerFallbackTests(unittest.TestCase):
             "[project]\nname = 'fixture'\n", encoding="utf-8"
         )
         bin_dir = root / "mockbin"
-        log = root / "docker.log"
-        write_arg_logger(bin_dir, "docker", log)
+        log = root / "podman.log"
+        docker_log = root / "docker.log"
+        write_arg_logger(bin_dir, "podman", log)
+        # A docker stub on PATH must stay untouched: the fallback resolves its
+        # runtime from the single token, never a hardcoded name (#418 AC1).
+        write_arg_logger(bin_dir, "docker", docker_log)
 
         proc = run_harness("python", "gate", root, [bin_dir])
 
@@ -192,11 +208,39 @@ class ContainerFallbackTests(unittest.TestCase):
         self.assertIn("--cap-drop=ALL", args)
         self.assertIn("--security-opt", args)
         self.assertIn("no-new-privileges", args)
-        self.assertIn("1000:1000", args)
+        # Rootless-correct non-root bound (#418 AC2): keep-id, not --user.
+        self.assertIn("--userns=keep-id", args)
+        self.assertNotIn("1000:1000", args)
         self.assertTrue(
             any("--cov-fail-under=80" in arg for arg in args),
             f"coverage threshold missing from container gate: {args}",
         )
+        self.assertEqual(
+            read_log(docker_log), [], "hardcoded docker invocation in run.sh"
+        )
+
+    def test_runtime_token_is_env_overridable(self) -> None:
+        """#418 AC1: hosts/CI that keep Docker override the single token."""
+        root = Path(tempfile.mkdtemp())
+        (root / "pyproject.toml").write_text(
+            "[project]\nname = 'fixture'\n", encoding="utf-8"
+        )
+        bin_dir = root / "mockbin"
+        docker_log = root / "docker.log"
+        write_arg_logger(bin_dir, "docker", docker_log)
+
+        proc = run_harness(
+            "python",
+            "gate",
+            root,
+            [bin_dir],
+            extra_env={"CONTAINER_RUNTIME": "docker"},
+        )
+
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        args = read_log(docker_log)
+        self.assertIn("--network=none", args)
+        self.assertIn("--userns=keep-id", args)
 
 
 if __name__ == "__main__":

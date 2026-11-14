@@ -9,20 +9,23 @@
 # Native fast path (MADR-0003, #131; project-pinned toolchain #256): when the
 # host can provision the project toolchain (uv present) or the project venv
 # already exists, the gates run natively against the PROJECT .venv toolchain
-# (no docker cold start, no image pull, no volume warm-up). A missing venv or
+# (no container cold start, no image pull, no volume warm-up). A missing venv or
 # tool is a hard failure (exit 3) - the native path never silently falls back
 # to lookalike host-PATH tools (#256 AC2/AC3). Only when the host has neither
-# uv nor a project .venv does the run fall back to the container path below
-# unchanged (same security flags, same two-phase deps/gate design, same
-# coverage threshold). Each phase prints which path it took and why. The
-# network-off guarantee of the gate phase is container-only; native runs
-# execute on the host under the operator's own controls.
+# uv nor a project .venv does the run fall back to the container path below,
+# with the same isolation guarantees (same security flags, expressed
+# rootless-correctly: --userns=keep-id replaces --user 1000:1000, #418 /
+# MADR-0024 C6; same two-phase deps/gate design, same coverage threshold). Each
+# phase prints which path it took and why. The network-off guarantee of the
+# gate phase is container-only; native runs execute on the host under the
+# operator's own controls.
 #
 # Coverage threshold: pytest --cov-fail-under=80 (80% minimum line coverage).
 # The gate phase exits non-zero on ANY lint/format/type failure or coverage
 # below threshold (AC6 of #61). Containers run with the harness security flags
-# (non-root UID 1000, read-only root, dropped capabilities, no-new-privileges,
-# bounded CPU/memory); the gate phase additionally runs with --network=none.
+# (non-root via --userns=keep-id, read-only root, dropped capabilities,
+# no-new-privileges, bounded CPU/memory); the gate phase additionally runs with
+# --network=none.
 set -euo pipefail
 
 STACK="${1:?usage: run.sh <python|rust> [deps|gate|all] [repo_root]}"
@@ -40,9 +43,25 @@ VENV_BIN="${REPO_ROOT}/.venv/bin"
 PYTHON_IMAGE="ghcr.io/fpittelo/harness-runner-python:latest"
 RUST_IMAGE="ghcr.io/fpittelo/harness-runner-rust:latest"
 
+# Container runtime (MADR-0024 D1): the local container surfaces run on
+# rootless Podman. This is the SINGLE runtime token for the fallback path below
+# - every call site uses it and nothing else in this file hardcodes a runtime
+# name. Docker-based hosts and CI override it (CONTAINER_RUNTIME=docker). Note
+# the flag set below is the rootless-Podman spelling (--userns=keep-id), so a
+# Docker override must adapt that one flag - identical flags are not identical
+# guarantees (MADR-0024).
+CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-podman}"
+
 # Harness security flags (harness/README.md §5); network policy is per-phase.
+# --userns=keep-id is the rootless-correct non-root bound (#418, MADR-0024 C6):
+# under rootless Podman --user 1000:1000 maps container uid 1000 to a host
+# SUBUID, so the /workspace bind mount is unwritable ("Permission denied" -
+# measured). keep-id maps container uid = host uid, so the mount is writable
+# AND files land host-owned 1000:1000. --memory/--cpus are retained: measured
+# enforced on VIDAR (cgroup v2 + systemd delegation); on a host without
+# delegated controllers they are a documented residual, not an enforced bound.
 SECURITY_FLAGS=(
-  --read-only --user 1000:1000 --cap-drop=ALL
+  --read-only --userns=keep-id --cap-drop=ALL
   --security-opt no-new-privileges
   --memory=4g --memory-swap=4g --cpus=2.0
   --tmpfs /tmp:noexec,nosuid,size=1g
@@ -55,7 +74,7 @@ python_deps() {
     echo "SKIP deps: no pyproject.toml in ${REPO_ROOT}"
     return 0
   fi
-  docker run --rm "${SECURITY_FLAGS[@]}" \
+  "${CONTAINER_RUNTIME}" run --rm "${SECURITY_FLAGS[@]}" \
     -v harness-uv-cache:/home/harness/.cache/uv \
     -v harness-pip-cache:/home/harness/.cache/pip \
     "${PYTHON_IMAGE}" uv sync --all-extras
@@ -63,7 +82,7 @@ python_deps() {
 
 python_gate() {
   echo "==> [gate] python quality gates (network OFF, fail-fast, coverage >= 80%)"
-  docker run --rm --network=none "${SECURITY_FLAGS[@]}" \
+  "${CONTAINER_RUNTIME}" run --rm --network=none "${SECURITY_FLAGS[@]}" \
     -v harness-uv-cache:/home/harness/.cache/uv \
     -v harness-pip-cache:/home/harness/.cache/pip \
     "${PYTHON_IMAGE}" bash -c '
@@ -81,7 +100,7 @@ rust_deps() {
     echo "SKIP deps: no Cargo.toml in ${REPO_ROOT}"
     return 0
   fi
-  docker run --rm "${SECURITY_FLAGS[@]}" \
+  "${CONTAINER_RUNTIME}" run --rm "${SECURITY_FLAGS[@]}" \
     -v harness-cargo-registry:/home/harness/.cargo/registry \
     -v harness-cargo-git:/home/harness/.cargo/git \
     "${RUST_IMAGE}" cargo fetch
@@ -89,7 +108,7 @@ rust_deps() {
 
 rust_gate() {
   echo "==> [gate] rust quality gates (network OFF, fail-fast)"
-  docker run --rm --network=none "${SECURITY_FLAGS[@]}" \
+  "${CONTAINER_RUNTIME}" run --rm --network=none "${SECURITY_FLAGS[@]}" \
     -v harness-cargo-registry:/home/harness/.cargo/registry \
     -v harness-cargo-git:/home/harness/.cargo/git \
     -v harness-cargo-target:/workspace/target \
