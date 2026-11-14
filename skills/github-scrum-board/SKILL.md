@@ -30,6 +30,7 @@ Every repository maintains this standardized label schema:
 | | `type::task` | `#1D76DB` | Technical task or implementation sub-task |
 | | `type::bug` | `#D93F0B` | Defect or regression requiring a fix |
 | | `type::spike` | `#5319E7` | Architectural research or feasibility study |
+| | `type::epic` | `#8B5CF2` | Epic tracking issue aggregating child stories/tasks for one delivery theme (sprint markers, capability epics) |
 | **Status** | `status::backlog` | `#CCCCCC` | Raw, ungroomed item — not yet specified |
 | | `status::ready` | `#0E8A16` | Groomed: ACs written, dependencies closed, pickable |
 | | `status::in-progress`| `#FBCA04` | Actively being developed on a feature branch |
@@ -42,12 +43,17 @@ Every repository maintains this standardized label schema:
 | | `agent::devops` | `#D4C5F9` | CI/CD workflows, Docker, release tagging & publishing |
 | | `agent::cyber-security`| `#FFC0CB`| Threat modeling, vulnerability scanning |
 | **Blockers**| `blocker::active` | `#B60205` | Blocked item (e.g. 3-attempt circuit breaker triggered) |
+| **Priority**| `priority::p1` | `#EDEDED` | Delivery priority — high (portfolio-critical or PO-flagged) |
+| | `priority::p2` | `#EDEDED` | Delivery priority — medium (normal sprint work) |
+| | `priority::p3` | `#EDEDED` | Delivery priority — low (hygiene, cleanup, opportunistic) |
 | **Severity**| `severity::critical` | `#B60205` | CVSS 9.0-10.0 blocker |
 | | `severity::high` | `#D93F0B` | CVSS 7.0-8.9 |
 | | `severity::medium` | `#FBCA04` | CVSS 4.0-6.9 |
 | | `severity::low` | `#0E8A16` | CVSS 0.1-3.9 |
 
 **Workflow state SSOT (MADR-0013):** the five `status::*` labels above are the authoritative board state, applied in order `status::backlog` → `status::ready` → `status::in-progress` → `status::review` → `status::done`. `status::todo` is **retired** — do not apply it to new or existing issues; sweep any reappearance during board hygiene.
+
+**Ratified repo-local extensions (2026-11-14):** `type::epic` and the `priority::p1`–`p3` scale were ratified into this taxonomy by the architect↔scrum-master consensus during the coach-web pre-Sprint-32 deep board hygiene (fpittelo/coach-web #313 hygiene report) — they were already in consistent portfolio-wide use; colors match the live labels.
 
 ---
 
