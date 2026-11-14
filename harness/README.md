@@ -33,9 +33,9 @@ A future thin orchestrator image may detect `pyproject.toml` vs `Cargo.toml` and
 
 ```bash
 # Python project
-docker run --rm \
+podman run --rm \
   --read-only \
-  --user 1000:1000 \
+  --userns=keep-id \
   --memory=4g --memory-swap=4g \
   --cpus=2.0 \
   --network=none \
@@ -50,9 +50,9 @@ docker run --rm \
 
 ```bash
 # Rust project
-docker run --rm \
+podman run --rm \
   --read-only \
-  --user 1000:1000 \
+  --userns=keep-id \
   --memory=4g --memory-swap=4g \
   --cpus=2.0 \
   --network=none \
@@ -65,6 +65,8 @@ docker run --rm \
   ghcr.io/fpittelo/harness-runner-rust:latest \
   bash -c "cargo fmt --check && cargo clippy -- -D warnings && cargo test"
 ```
+
+These examples use the **local runtime** — rootless Podman ([MADR-0024](../docs/adr/0024-adopt-podman-as-the-local-container-runtime-for-mcp-servers.md)) — with the rootless-correct non-root bound `--userns=keep-id` (§5). `harness/run.sh` resolves the same runtime from a single `CONTAINER_RUNTIME` token (default `podman`, env-overridable on Docker-based hosts and CI). The **CI-side runner images and the workflow that publishes them stay Docker-based** (§4) — only the local surfaces moved to Podman.
 
 ### Trade-off Analysis
 
@@ -106,13 +108,13 @@ This keeps CI build times low and avoids re-downloading the same crates/packages
 
 ### Why Not Only Named Volumes?
 
-Named volumes are ideal for **runtime** harness execution because they persist across `docker run` invocations. BuildKit cache mounts are ideal for **image build time** because they are scoped to the build and do not bloat the final image. We use both at the appropriate layer.
+Named volumes are ideal for **runtime** harness execution because they persist across container `run` invocations. BuildKit cache mounts are ideal for **image build time** because they are scoped to the build and do not bloat the final image. We use both at the appropriate layer.
 
 ---
 
 ## 4. CI Integration
 
-The workflow `.github/workflows/harness-image-build.yml` builds and publishes both images on every push to `main` (the trunk — MADR-0017) and on PRs affecting the harness Dockerfiles.
+The workflow `.github/workflows/harness-image-build.yml` builds and publishes both images on every push to `main` (the trunk — MADR-0017) and on PRs affecting the harness Dockerfiles. This workflow and these images **stay Docker-based** by design (MADR-0024 D1): GitHub-hosted runners are Docker-native and the pipeline depends on `docker/setup-buildx-action`, `docker/login-action`, `docker/metadata-action` and `docker/build-push-action`. Only the local surfaces (MCP servers, the `run.sh` fallback) moved to Podman.
 
 ### Tagging Strategy
 
@@ -133,7 +135,7 @@ The workflow `.github/workflows/harness-image-build.yml` builds and publishes bo
 
 ## 5. Resource Limits
 
-The recommended `docker run` flags enforce deterministic, bounded resource usage:
+The recommended container `run` flags (local runtime: rootless Podman, MADR-0024 D1) enforce deterministic, bounded resource usage:
 
 | Resource | Flag | Value | Rationale |
 | :--- | :--- | :--- | :--- |
@@ -143,8 +145,10 @@ The recommended `docker run` flags enforce deterministic, bounded resource usage
 | Network | `--network=none` | No network | Prevents tests from calling external services |
 | Filesystem | `--read-only` | Read-only root | Forces explicit writable volumes |
 | Temp storage | `--tmpfs /tmp:noexec,nosuid,size=1g` | 1 GB tmpfs | Writable scratch space without persisting host `/tmp` |
-| User | `--user 1000:1000` | Non-root | Matches the `harness` user inside the image |
+| User | `--userns=keep-id` | Container uid = host uid | Rootless-correct non-root bound: keeps the bind mount writable **and** host-owned (`--user 1000:1000` maps container uid 1000 to a host *subuid*, so `-v "$PWD:/workspace:rw"` fails with `Permission denied` — measured, #418 / MADR-0024 C6) |
 | Timeout | harness orchestrator | 10 min lint / 30 min test | Hard cap on agent self-correction loop |
+
+**Resource-limit enforcement is measured, not assumed (#418, MADR-0024 C6).** On VIDAR (rootless Podman 5.7.0, cgroup v2, systemd delegation) `--memory=32m` yields `memory.max` = `33554432` and `--cpus=2.0` yields `cpu.max` = `200000 100000` inside the container, so the DoS bound above is **real** on that host. On a host without delegated cgroup controllers the limits are accepted but silently ignored — that is a **recorded residual** (MADR-0024 C6), not an enforced bound, which is why `run.sh` keeps the flags and documents the dependency.
 
 ### Network Policy
 
@@ -169,20 +173,22 @@ This split prevents flaky tests caused by external network availability and clos
 ## 7. Local Validation Commands
 
 ```bash
-# Build locally
-docker build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:latest harness/docker
-docker build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:latest harness/docker
+# Build locally (local runtime: Podman, MADR-0024 D1)
+podman build -f harness/docker/Dockerfile.python -t ghcr.io/fpittelo/harness-runner-python:latest harness/docker
+podman build -f harness/docker/Dockerfile.rust -t ghcr.io/fpittelo/harness-runner-rust:latest harness/docker
 
 # Smoke test
-docker run --rm ghcr.io/fpittelo/harness-runner-python:latest python --version
-docker run --rm ghcr.io/fpittelo/harness-runner-rust:latest rustc --version
+podman run --rm ghcr.io/fpittelo/harness-runner-python:latest python --version
+podman run --rm ghcr.io/fpittelo/harness-runner-rust:latest rustc --version
 ```
+
+These are the local commands (§2); `harness/run.sh` resolves the same runtime from its `CONTAINER_RUNTIME` token (default `podman`). The CI-side runner images stay **Docker-based** (§4).
 
 ---
 
 ## 8. Native Fast Path & Config-Repo Gate (MADR-0003, #131)
 
-`run.sh` is **native-first**: when the host can provision the project toolchain (`uv` present) or the project `.venv` already exists, the gates run directly on the host against the **project-pinned** `.venv` toolchain (no Docker cold start, no image pull, no volume warm-up). The native gate resolves every tool from `${REPO_ROOT}/.venv/bin` and **never** silently falls back to lookalike host-PATH tools: a missing `.venv` or a missing required tool is a hard failure (exit 3) with an actionable message (#256 AC2/AC3). Only when the host has neither `uv` nor a project `.venv` does the run fall back to the container path above, unchanged (same security flags, same two-phase deps/gate design, same coverage threshold). Every phase prints which path it took and why.
+`run.sh` is **native-first**: when the host can provision the project toolchain (`uv` present) or the project `.venv` already exists, the gates run directly on the host against the **project-pinned** `.venv` toolchain (no container cold start, no image pull, no volume warm-up). The native gate resolves every tool from `${REPO_ROOT}/.venv/bin` and **never** silently falls back to lookalike host-PATH tools: a missing `.venv` or a missing required tool is a hard failure (exit 3) with an actionable message (#256 AC2/AC3). Only when the host has neither `uv` nor a project `.venv` does the run fall back to the container path above, with the same isolation guarantees (same security flags, expressed rootless-correctly — `--userns=keep-id` replaces `--user 1000:1000`, §5; same two-phase deps/gate design, same coverage threshold). Every phase prints which path it took and why.
 
 | Stack | Native gate requires in the project `.venv` | Native deps requires |
 | :--- | :--- | :--- |
@@ -210,7 +216,7 @@ The namespace-exclusivity regression suite (stdlib `unittest`) guards `check_coa
 python3 harness/config-validation/test_check_coach_exclusivity.py
 ```
 
-The harness native-gate regression suite (stdlib `unittest`) guards `run.sh` toolchain pinning (#256) — deps retains dev extras, the native gate resolves tools from the project `.venv` (never host PATH) and exits 3 when the venv or a required tool is missing, and the container fallback keeps its security flags:
+The harness native-gate regression suite (stdlib `unittest`) guards `run.sh` toolchain pinning (#256) and the single container-runtime token (#418) — deps retains dev extras, the native gate resolves tools from the project `.venv` (never host PATH) and exits 3 when the venv or a required tool is missing, and the container fallback keeps its isolation flags (`--userns=keep-id` non-root bound, `--network=none`, read-only root) while resolving its runtime from `CONTAINER_RUNTIME` (default `podman`, env-overridable) with no hardcoded `docker` invocation:
 
 ```bash
 python3 harness/config-validation/test_harness_run.py
