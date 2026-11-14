@@ -64,7 +64,7 @@
     // #109: native binary transport (same pinned build as GITHUB, installed by
     // install.sh). #107 toolset restriction preserved on the binary transport:
     // --toolsets=context,repos,pull_requests — 33 tools / ~83 KB vs 46 / ~127 KB
-    // default (−35% schema, #106 baseline; re-measured on v2.0.2). Review work
+    // default (−35% schema, #106 baseline; re-measured on v2.0.3). Review work
     // needs no issues/labels toolsets.
     "GITHUB_CODE_REVIEWER": {
       "type": "local",
