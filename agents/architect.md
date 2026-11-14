@@ -1,7 +1,7 @@
 ---
 description: "Architect — Technical Lead & Solution Architect"
 mode: primary
-model: "openrouter/deepseek/deepseek-v4.1-flash"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.2
 permission:
   # 340: bash inherits the root permission.bash baseline (opencode.jsonc) —

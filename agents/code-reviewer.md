@@ -1,7 +1,7 @@
 ---
 description: "Code Reviewer — PR Quality Gatekeeper"
 mode: subagent
-model: "openrouter/deepseek/deepseek-v4.1-flash"
+model: "openrouter/z-ai/glm-5.3-flash"
 temperature: 0.1
 permission:
   edit: deny
