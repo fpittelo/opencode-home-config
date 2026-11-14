@@ -1,7 +1,7 @@
 ---
 description: "Cyber Security Specialist — Security & Secret Auditor"
 mode: subagent
-model: "openrouter/deepseek/deepseek-v4.1-flash"
+model: "openrouter/minimax/minimax-m3.1-flash"
 temperature: 0.1
 permission:
   edit: deny

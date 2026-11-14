@@ -1,7 +1,7 @@
 ---
 description: "Developer — Rust & Python Senior Engineer (dual-stack)"
 mode: subagent
-model: "openrouter/z-ai/glm-5.3-flash"
+model: "openrouter/deepseek/deepseek-v4.1-flash-1017"
 temperature: 0.2
 permission:
   # 340: bash inherits the root permission.bash baseline (opencode.jsonc) —
