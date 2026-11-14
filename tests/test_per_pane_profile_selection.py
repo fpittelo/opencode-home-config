@@ -46,7 +46,8 @@ HOME_SECRETS_NAME = ".secrets-home.env"
 PODMAN_LOG_NAME = "podman-calls.log"
 # Tools install.sh needs on PATH before it reaches the runtime guard (#416):
 # the masked run must not inherit the developer's real PATH — a podman
-# installed on the host would otherwise satisfy the guard.
+# installed on the host would otherwise satisfy the guard. node/npx are the
+# BROWSER MCP runtime prerequisites the #435 guard checks first (#435).
 GUARD_PATH_TOOLS = (
     "bash",
     "cat",
@@ -55,6 +56,8 @@ GUARD_PATH_TOOLS = (
     "ln",
     "mkdir",
     "mktemp",
+    "node",
+    "npx",
     "rm",
     "sed",
 )
