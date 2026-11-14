@@ -130,7 +130,7 @@ C4Container
         Container(mcp_github, "GITHUB MCP", "Native binary process", "Board & repo operations as @fpittelo")
         Container(mcp_reviewer, "GITHUB_CODE_REVIEWER MCP", "Native binary process", "Formal PR reviews as @devfpittelo (SoD)")
         Container(mcp_security, "GITHUB_SECURITY MCP", "Native binary process", "Code/secret/dependency alerts, read-only (MADR-0011)")
-        Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Rootless Podman containers (MADR-0024, proposed)", "Intervals.icu coaching, env-scoped")
+        Container(mcp_coach, "COACH_DEV/QA/MAIN MCP", "Rootless Podman containers (MADR-0024)", "Intervals.icu coaching, env-scoped")
         Container(mcp_browser, "BROWSER MCP", "npx @playwright/mcp (pinned, stdio)", "Ephemeral-profile browser automation, loopback-origin allowlist (MADR-0009)")
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
     }
