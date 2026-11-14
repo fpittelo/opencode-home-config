@@ -24,8 +24,8 @@ ln -sfn "$SCRIPT_DIR/skills" "$DEST/skills"
 #    artifact is downloaded, verified, then extracted. Idempotent: skipped when
 #    the pinned version is already installed (trusted on --version alone —
 #    deliberate: anyone able to write ~/.local/bin already has code execution).
-GITHUB_MCP_VERSION="2.0.3"
-GITHUB_MCP_TARBALL_SHA256="f797c20fe02a755865d0e2d46184ab47e31bf1619b0855b8d89c531e45a651c2" # github-mcp-server_Linux_x86_64.tar.gz, per github-mcp-server_2.0.3_checksums.txt
+GITHUB_MCP_VERSION="2.1.0"
+GITHUB_MCP_TARBALL_SHA256="a442f9db287cea01008bcb55fe6bc0292270301046c3edbd1a8b22d6e4157b2b" # github-mcp-server_Linux_x86_64.tar.gz, per github-mcp-server_2.1.0_checksums.txt
 BIN_DIR="$HOME/.local/bin"
 BIN_PATH="$BIN_DIR/github-mcp-server"
 mkdir -p "$BIN_DIR"
