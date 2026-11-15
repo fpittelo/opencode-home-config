@@ -16,7 +16,8 @@
 # install.sh is deliberately EXCLUDED: a mechanical pin bump (e.g. #447,
 # herdr binary digest refresh) changes supply-chain material but not
 # architecture-relevant behaviour — forcing an ADR per pin would spam the
-# MADR index and train humans to wave docs through.
+# MADR index and train humans to wave docs through. Test files (test_*.py)
+# are likewise excluded (#461): tests are non-architectural by construction.
 #
 # The requires-architecture LABEL remains, advisory-only: a reviewer may set
 # it as a hint, but the gate no longer reads it and no requirement hangs on
@@ -59,6 +60,27 @@ if ! CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"; then
 fi
 HITS="$(printf '%s\n' "$CHANGED" | grep -E "$TRIGGER_RE" || true)"
 DOCS="$(printf '%s\n' "$CHANGED" | grep -E "$DOC_RE" || true)"
+
+# Test files are non-architectural by construction (#461, audit R2 — gate
+# precision): a diff consisting ONLY of test files cannot alter architecture
+# semantics, so the trip is satisfied-by-exclusion — WITHOUT reopening the
+# omission bypass (a mixed diff still carries its non-test trigger paths and
+# fails without docs, with the trigger list narrowed to them). Pattern
+# derived from the repo's REAL test layout (pytest convention: every test
+# file is test_*.py under harness/**/ or tests/; checkers are check_*.py —
+# no other test naming exists). Precedent: the deliberate install.sh
+# exclusion (#421).
+TEST_FILE_RE='(^|/)test_[^/]*\.py$'
+if [ -n "$HITS" ]; then
+  NON_TEST_HITS="$(printf '%s\n' "$HITS" | grep -Ev "$TEST_FILE_RE" || true)"
+  if [ -z "$NON_TEST_HITS" ]; then
+    echo "PASS: only test-file paths changed among the architecture-relevant hits — tests are non-architectural by construction (#461); no arc42/ADR touch required."
+    echo "Excluded test paths:"
+    printf '%s\n' "$HITS" | sed 's/^/  - /'
+    exit 0
+  fi
+  HITS="$NON_TEST_HITS"
+fi
 
 if [ -z "$HITS" ]; then
   echo "PASS: no architecture-relevant paths changed (gate not tripped, #421)."
