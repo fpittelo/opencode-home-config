@@ -142,4 +142,13 @@ python3 harness/config-validation/test_github_identity_probe.py || fail "test_gi
 # longer invoked is a stale-inventory finding. #142 A1 pattern: negative
 # fixtures + real-repo positive control, offline, stdlib-only.
 python3 harness/config-validation/test_check_external_prerequisites.py || fail "test_check_external_prerequisites.py failed"
+# gate 18 gitleaks allowlist + tracked-runtime-artifact gate (#448): no
+# opencode runtime artifact (service.json, cli.json) may ever be TRACKED — the
+# #405 `git add -A` class that put a daemon credential in public history for 22
+# days — and the incident's .gitleaks.toml allowlist must stay exactly ONE
+# entry, attached to a rule with condition = "AND", scoped to the public commit
+# fd15509 + the anchored service.json path (a path-only or OR entry would be a
+# blanket waiver), carrying no secret material. Fail-closed; git-backed
+# fixtures + real-repo positive control.
+python3 harness/config-validation/test_check_gitleaks_allowlist.py || fail "test_check_gitleaks_allowlist.py failed"
 echo "PASS run-config-gate: all gates green (${REPO_ROOT})"
