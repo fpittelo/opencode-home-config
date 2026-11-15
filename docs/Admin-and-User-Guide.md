@@ -103,7 +103,21 @@ Secrets mechanics (profile-scoped files, per-pane wrapper-subshell sourcing, bar
 ( set -a; . ~/.config/opencode/.secrets-home.env; set +a; opencode service restart )
 ```
 
-Verify identities with a live probe asserting the **expected login AND id per namespace** (`GITHUB` → `fpittelo`/`3135901`, `GITHUB_CODE_REVIEWER` → `devfpittelo`/`327061373`, `GITHUB_SECURITY` → `fpittelo`) — a login-name check passes broken states (#423).
+Verify identities with the read-only probe — after provisioning secrets, after a service restart, and after a reboot:
+
+```bash
+python3 harness/probes/verify-github-identities.py
+```
+
+Every namespace must print `PASS`; the probe asserts the **expected login AND id** per namespace and exits non-zero on any drift or missing token (a login-only check passes broken states, #423). This table is the SSOT the probe asserts against:
+
+| Namespace | Expected login | Expected id |
+|:---|:---|:---|
+| `GITHUB` | `fpittelo` | `3135901` |
+| `GITHUB_CODE_REVIEWER` | `devfpittelo` | `327061373` |
+| `GITHUB_SECURITY` | `fpittelo` | `3135901` |
+
+The probe also prints `daemon env fresh: yes|no|unknown` — a digest-only comparison (no token value or hash is ever displayed) between the secrets file and the running service environment. `no` means the daemon still holds the pre-rotation value: restart it with secrets sourced, as above.
 
 **To populate secrets:**
 
@@ -238,7 +252,7 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 | OpenCode panes show no live state in the Herdr sidebar | Integration files missing or stale (e.g. after a Herdr upgrade) | `herdr integration install opencode`, then restart the OpenCode panes; verify with `herdr integration status` |
 | OpenCode conversation lost after `herdr server stop` | Session snapshots disabled or Herdr stopped uncleanly | Keep session snapshots at defaults (ON); restart with `herdr` — the layout restores and OpenCode resumes via its session ID |
 | GitHub MCP issue-label writes: verification reads return empty for existing labels | **The label WRITE usually succeeds** — the unreliable part is the READ path: `issue_read`→`get_labels` can return an empty/stale label set in long-lived MCP sessions, and filtered `list_issues` can lag; `search_issues` with `label:` qualifiers is authoritative but indexes new issues slowly | Verify via `issue_read`→`get` (labels render correctly there) or a `search_issues` `label:` query once the issue has indexed; never conclude a write failed from `get_labels` alone — re-check with a second read shape before repairing (#370/#372/#373/#376/#389; corrected 2026-11-14 after a false-negative caused a redundant repair run) |
-| Wrong MCP identity / token after a restart or reboot (reviews blocked, PRs created by the wrong account, self-approval rejections) | MCP servers are children of the `opencode serve --service` daemon and **inherit its environment at spawn**: editing the secrets file does nothing to running servers, a bare `opencode service restart` relaunches with an **empty** environment, and after a reboot the service may start from a boot chain that carries stale tokens | Restart with secrets sourced: `( set -a; . ~/.config/opencode/.secrets-home.env; set +a; opencode service restart )`; verify identities with a live probe asserting the **expected login AND id per namespace** (`GITHUB` → `fpittelo`/`3135901`, `GITHUB_CODE_REVIEWER` → `devfpittelo`/`327061373`, `GITHUB_SECURITY` → `fpittelo`) — a login-only check passes broken states (#423) |
+| Wrong MCP identity / token after a restart or reboot (reviews blocked, PRs created by the wrong account, self-approval rejections) | MCP servers are children of the `opencode serve --service` daemon and **inherit its environment at spawn**: editing the secrets file does nothing to running servers, a bare `opencode service restart` relaunches with an **empty** environment, and after a reboot the service may start from a boot chain that carries stale tokens | Restart with secrets sourced: `( set -a; . ~/.config/opencode/.secrets-home.env; set +a; opencode service restart )`; then run `python3 harness/probes/verify-github-identities.py` — it asserts the expected login **and** id per namespace (§2.3 table is the SSOT) and refuses to pass on a login-only match (#423) |
 | `test_pin_consistency.py` fails with *"re-run install.sh to update the binary"* | The host `github-mcp-server` binary is older than the pin — the **drift signal working as designed** (not a repo defect; CI skips this check on hosts without the binary) | Re-run `./install.sh` — it downloads the pinned release, verifies the published checksum, and reports the new `--version`; idempotent |
 
 ### 2.10 GitHub PAT Permissions Checklist
@@ -256,10 +270,11 @@ Minimum scopes for squad PATs (fine-grained; classic-PAT equivalent in parenthes
 **After a token rotation, verify in this order:**
 
 1. `gh auth status` (or MCP `get_me`) — token valid.
-2. `podman pull --policy=missing ghcr.io/fpittelo/coach:dev` — runtime OK. The `ghcr.io/fpittelo/coach` package is **public**, so this pull is anonymous: it does **not** exercise `Packages: Read` (that scope only matters for any *private* `ghcr.io/fpittelo/*` package).
-3. Push a trivial branch and open a draft PR — Contents/Workflows/PRs OK.
-4. Comment on any issue — Issues OK.
-5. Trigger a `workflow_dispatch` run (Actions tab) — Actions OK.
+2. `python3 harness/probes/verify-github-identities.py` — every GitHub namespace resolves to its expected **login AND id** (§2.3 table is the SSOT; `GITHUB_CODE_REVIEWER` must be the `@devfpittelo` machine account, never the authoring identity). Exits non-zero on identity drift or a missing token, and flags a stale daemon environment (`daemon env fresh: no`).
+3. `podman pull --policy=missing ghcr.io/fpittelo/coach:dev` — runtime OK. The `ghcr.io/fpittelo/coach` package is **public**, so this pull is anonymous: it does **not** exercise `Packages: Read` (that scope only matters for any *private* `ghcr.io/fpittelo/*` package).
+4. Push a trivial branch and open a draft PR — Contents/Workflows/PRs OK.
+5. Comment on any issue — Issues OK.
+6. Trigger a `workflow_dispatch` run (Actions tab) — Actions OK.
 
 ---
 
