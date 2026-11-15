@@ -22,6 +22,7 @@ Run:
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,11 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "check_arch_coverage.sh"
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_TEXT = SCRIPT.read_text(encoding="utf-8")
+# The script's own single-sourced exclusion pattern, parsed from its source
+# so the match-reality pin tests THE script's pattern (no python-side copy).
+_TEST_FILE_RE_MATCH = re.search(r"^TEST_FILE_RE='([^']+)'$", SCRIPT_TEXT, re.M)
+TEST_FILE_RE = _TEST_FILE_RE_MATCH.group(1) if _TEST_FILE_RE_MATCH else ""
 
 
 def _git(root: Path, *args: str) -> None:
@@ -268,6 +274,109 @@ class FailClosedOnDiffFailure(FixtureTestCase):
         )
         self.assertIn("could not compute the diff", proc.stdout)
         self.assertNotIn("PASS", proc.stdout)
+
+
+class TestFileExclusion(FixtureTestCase):
+    """#461 (audit R2, gate precision): test-only diffs do not trip the gate.
+
+    Tests are non-architectural by construction: a diff whose changed paths
+    are ALL test files cannot alter architecture semantics, so the trip is
+    satisfied-by-exclusion. The anti-bypass shape is preserved: a MIXED diff
+    still carries its non-test trigger paths and fails without docs, and the
+    failure's trigger list is narrowed to those non-test paths (the test file
+    appears only in the full changed-path list). Pattern source of truth: the
+    repo's REAL test layout — every test file is `test_*.py` (pytest
+    convention) under `harness/**/` or `tests/`; checkers are `check_*.py`.
+    """
+
+    def test_config_validation_test_only_passes(self) -> None:
+        proc = gate(
+            ("harness/config-validation/test_check_arch_coverage.py", "x\n")
+        )
+        self.assert_pass(proc)
+        self.assertIn("#461", proc.stdout)
+
+    def test_tests_dir_test_only_passes(self) -> None:
+        proc = gate(("tests/test_per_pane_profile_selection.py", "x\n"))
+        self.assert_pass(proc)
+
+    def test_docs_validation_test_only_passes(self) -> None:
+        """The discovered third test location matches the same pattern."""
+        proc = gate(("harness/docs-validation/test_check_mermaid_syntax.py", "x\n"))
+        self.assert_pass(proc)
+
+    def test_mixed_test_plus_non_test_without_docs_fails(self) -> None:
+        """AC2 anti-bypass: the non-test trigger path still trips."""
+        proc = gate(
+            ("harness/config-validation/check_external_prerequisites.py", "x\n"),
+            ("harness/config-validation/test_check_external_prerequisites.py", "x\n"),
+        )
+        self.assert_fail(proc, "check_external_prerequisites.py")
+        # The trigger list is NARROWED to non-test paths: the test file must
+        # not appear between the trigger header and the guidance header.
+        trigger_section = proc.stdout.split("Trigger paths hit in this diff:")[1]
+        trigger_section = trigger_section.split("Accepted documentation paths")[0]
+        self.assertNotIn("test_check_external_prerequisites.py", trigger_section)
+        self.assertIn("check_external_prerequisites.py", trigger_section)
+
+    def test_test_file_plus_doc_only_passes(self) -> None:
+        proc = gate(
+            ("harness/config-validation/test_pin_consistency.py", "x\n"),
+            ("docs/adr/0027-example.md", "adr\n"),
+        )
+        self.assert_pass(proc)
+
+    def test_deleted_test_file_passes(self) -> None:
+        repo, base, head = build_repo({})
+        (repo / "tests").mkdir(parents=True, exist_ok=True)
+        (repo / "tests" / "test_fixture.py").write_text("x\n", encoding="utf-8")
+        _git(repo, "add", "tests/test_fixture.py")
+        _git(repo, "commit", "-q", "-m", "add")
+        mid = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        (repo / "tests" / "test_fixture.py").unlink()
+        _git(repo, "add", "tests/test_fixture.py")
+        _git(repo, "commit", "-q", "-m", "delete")
+        new_head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        self.assert_pass(run_gate(repo, mid, new_head))
+
+    def test_deleted_non_test_harness_file_still_fails(self) -> None:
+        """The prior deletion-surface control survives the exclusion."""
+        repo, base, head = build_repo({})
+        (repo / "harness").mkdir(parents=True, exist_ok=True)
+        (repo / "harness" / "run.sh").write_text("x\n", encoding="utf-8")
+        _git(repo, "add", "harness/run.sh")
+        _git(repo, "commit", "-q", "-m", "add")
+        mid = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        (repo / "harness" / "run.sh").unlink()
+        _git(repo, "add", "harness/run.sh")
+        _git(repo, "commit", "-q", "-m", "delete")
+        new_head = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        self.assert_fail(run_gate(repo, mid, new_head), "harness/run.sh")
+
+    def test_pattern_matches_every_real_test_file_and_no_checker(self) -> None:
+        """Match-reality pin: the pattern fits the repo's REAL test layout."""
+        self.assertTrue(TEST_FILE_RE, "TEST_FILE_RE must exist in the script")
+        pattern = re.compile(TEST_FILE_RE)
+        real_tests = sorted(str(p.relative_to(REPO_ROOT)) for p in REPO_ROOT.rglob("test_*.py") if "__pycache__" not in str(p))
+        self.assertGreaterEqual(len(real_tests), 13)
+        for path in real_tests:
+            with self.subTest(test_file=path):
+                self.assertRegex(path, pattern)
+        for path in ("harness/check_arch_coverage.sh", "harness/run-config-gate.sh", "opencode.jsonc"):
+            with self.subTest(non_test=path):
+                self.assertIsNone(pattern.search(path))
 
 
 if __name__ == "__main__":

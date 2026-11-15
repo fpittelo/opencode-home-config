@@ -101,8 +101,10 @@ jobs:
         # or this job fails. install.sh is deliberately EXCLUDED from the
         # trigger set: a mechanical pin bump (e.g. #447, herdr digest
         # refresh) changes supply-chain material, not architecture-relevant
-        # behaviour — forcing an ADR per pin would spam the MADR index. The
-        # requires-architecture LABEL remains advisory-only: reviewers may
+        # behaviour — forcing an ADR per pin would spam the MADR index.
+        # Test files (test_*.py) are likewise excluded (#461): tests are
+        # non-architectural by construction.
+        # The requires-architecture LABEL remains advisory-only: reviewers may
         # set it as a hint, the gate never reads it (AC4). API-free: the
         # label read (and its #287 live-read lesson) is gone entirely; the
         # gate is read-only over the local diff.
