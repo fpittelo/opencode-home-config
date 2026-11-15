@@ -154,6 +154,14 @@ class StaleInstalledPosture(FixtureTestCase):
         """Single source of truth: the checker requires the pinned tail."""
         self.assertIn(CANARY, tiers.BASELINE_DENY_TAIL)
         self.assertIn("gh api *", tiers.BASELINE_DENY_TAIL)
+        # MADR-0027 (#463) parity canary: the tail grew by EXACTLY the three
+        # kill-broadcast entries (70 -> 73), no removals, no reordering —
+        # verdict §4.8. A future tail edit must update this pin deliberately.
+        self.assertEqual(len(tiers.BASELINE_DENY_TAIL), 73)
+        for entry in ("kill 0*", "kill -1*", "kill * -1*"):
+            self.assertIn(entry, tiers.BASELINE_DENY_TAIL)
+        for entry in ("rm -rf /*", "*.env*", "*.key*", "gh api *"):
+            self.assertIn(entry, tiers.BASELINE_DENY_TAIL)  # no removals
 
 
 class UnreadableInstalledPosture(FixtureTestCase):

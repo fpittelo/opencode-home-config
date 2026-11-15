@@ -518,12 +518,19 @@ class PodmanRuntimeReconciliationTests(unittest.TestCase):
             self.assertIn(fragment, output)
 
     def test_deny_tail_entries_are_appended_last(self) -> None:
-        # Order is semantic (deny rules LAST, MADR-0004): the two new entries
-        # are the final rules of the pinned root block.
-        self.assertEqual(CHECKER.BASELINE_DENY_TAIL[-2:], self.PODMAN_DENIES)
+        # Order is semantic (deny rules LAST, MADR-0004): the tail's final
+        # rules are the MADR-0027 kill-broadcast entries (appended after the
+        # MADR-0024 podman entries, verdict C3 — additions only).
         self.assertEqual(
-            [pattern for pattern, _ in CHECKER.BASELINE_ROOT_RULES][-2:],
-            list(self.PODMAN_DENIES),
+            CHECKER.BASELINE_DENY_TAIL[-5:-3], self.PODMAN_DENIES
+        )
+        self.assertEqual(
+            CHECKER.BASELINE_DENY_TAIL[-3:],
+            ("kill 0*", "kill -1*", "kill * -1*"),
+        )
+        self.assertEqual(
+            [pattern for pattern, _ in CHECKER.BASELINE_ROOT_RULES][-3:],
+            ["kill 0*", "kill -1*", "kill * -1*"],
         )
 
     def test_system_service_and_machine_are_denied(self) -> None:
@@ -863,6 +870,51 @@ class RealRepositoryTests(unittest.TestCase):
                 f"agents/{name}.md must carry the MADR-0022 gh "
                 f"CI-triage bash posture (C6/C7)",
             )
+
+
+class RmCarveoutPlacementTests(unittest.TestCase):
+    """MADR-0027 C1 canary (#463): the rm carve-outs live in the ROOT ask
+    tier and in NO agent profile block. An agent-level `rm -rf */.venv`
+    allow appends AFTER the root deny tail (#350) and defeats it for any
+    matching glob — verified in the AC0 review (`rm -rf
+    /home/fr/proj/.venv` flips deny -> allow). The checker's
+    check_rm_carveout_placement enforces both directions; these cases pin
+    the enforcement."""
+
+    def test_real_repo_root_placement_passes(self) -> None:
+        proc = self._run(REPO_ROOT)
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"expected exit 0, got {proc.returncode}:\n{proc.stdout}{proc.stderr}",
+        )
+
+    def test_agent_level_mutation_fails(self) -> None:
+        """The #350 trap as an executable assertion: moving a carve-out to an
+        agent map must FAIL the checker."""
+        agent_bash = {"developer": (("rm -rf */.venv", "allow"),)}
+        proc = self._run(build_repo(agent_bash=agent_bash))
+        self.assertEqual(
+            proc.returncode,
+            1,
+            f"expected exit 1, got {proc.returncode}:\n{proc.stdout}{proc.stderr}",
+        )
+        self.assertIn("FORBIDDEN at agent level", proc.stdout)
+        self.assertIn("rm -rf */.venv", proc.stdout)
+
+    def test_root_removal_fails(self) -> None:
+        """Removing the carve-outs from the root block fails the canary too."""
+        drifted = tuple(
+            rule for rule in KNOWN_GOOD_RULES if rule[0] != "rm -rf .venv"
+        )
+        self.assertNotEqual(drifted, KNOWN_GOOD_RULES)
+        proc = self._run(build_repo(root_rules=drifted))
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("must be an ALLOW in the ROOT permission block", proc.stdout)
+
+    @staticmethod
+    def _run(root: Path) -> subprocess.CompletedProcess[str]:
+        return run_checker(root)
 
 
 if __name__ == "__main__":
