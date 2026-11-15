@@ -110,7 +110,7 @@ When closing an issue upon squash merge into `main`, **`@scrum-master`** posts t
 
 - [x] **Acceptance Criteria:** All acceptance criteria fulfilled and verified against test suite.
 - [x] **Branching & Merge:** Feature branch squash-merged into `main` via PR #<PR_NUMBER>.
-- [x] **CI Pipeline:** 100% clean GitHub Actions run (0 warnings, 0 failures).
+- [x] **CI Pipeline & Deep Validation:** CI 100% clean GitHub Actions run (0 warnings, 0 failures) **and Deep Validation green on the exact trunk head** — verify on the run, not by inference: `gh run list --repo <owner>/<repo> --branch main --workflow deep-validation.yml --limit 1` and check the run's head SHA equals the merge commit being closed (the Sprint 29 retro addendum, #440: closeout gated on CI Pipeline only missed 8 consecutive red DV heads while the leak sat in history — #448/#449).
 - [x] **Code Review:** Formal `APPROVE` decision documented by `@code-reviewer`.
 - [x] **Traceability:** PR and commits linked to Issue #<ISSUE_NUMBER>.
 

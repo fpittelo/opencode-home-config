@@ -19,6 +19,17 @@ name: Deep Validation
 # on cron/workflow_dispatch. On push/tag events harness-image-build.yml already
 # builds all three images, so building them here too duplicated every trunk
 # push (6 builds -> 3).
+#
+# Run-record integrity (#449 AC2b): two mechanisms make the DV signal
+# deletion-evident, closing the #448 mechanism (run records #76-#90 deleted
+# while sibling workflows stayed contiguous - red-gate evidence silently
+# removed). (1) run-record-census lists this workflow's own run numbers and
+# detects holes - run numbers are allocated at creation and never re-used, so
+# a missing number is a created-then-deleted record; detected holes are a
+# non-failing signal (::warning:: + summary). (2) record-run-status posts a
+# LEGACY COMMIT STATUS on the head sha - statuses live outside the deletable
+# run records, so a deleted run leaves its status behind and the deletion is
+# evident. Neither is a branch-protection required check (signal, not gate).
 
 on:
   schedule:
@@ -148,3 +159,103 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  run-record-census:
+    name: Census DV run numbers (deletion-evident hole check)
+    # #449 AC2b (option B, zero write permissions): run numbers are allocated
+    # at run creation and never re-used, so a gap in this workflow's own
+    # numbering is a created-then-deleted record (the #448 mechanism). The
+    # census re-runs on every DV execution, so deletion is detected on the
+    # next run even though the deleted records themselves are gone. Holes
+    # are a SIGNAL: ::warning:: + summary, never a build breaker (a red
+    # census would be indistinguishable from the gate failing and would
+    # break the trunk over infrastructure noise). actions: read is the
+    # least privilege needed to list this workflow's own runs.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Detect run-number holes in this workflow's record
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          workflow_id="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deep-validation.yml" --jq '.id' 2>/dev/null || true)"
+          numbers="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow_id}/runs?per_page=100" --jq '.workflow_runs[].run_number' 2>/dev/null | sort -n || true)"
+          if [ -z "$numbers" ]; then
+            echo "::warning::DV run-number census inconclusive: the workflow's run records could not be listed (API/auth/network) — silence here is NOT a verified-contiguous record (C11 class, #449)"
+            {
+              echo "### DV run-number census: inconclusive"
+              echo ""
+              echo "The workflow's run records could not be listed this run; hole detection did not execute. The deletion-evident integrity check is degraded — investigate the API failure (#449)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          holes="$(printf '%s\n' "$numbers" | awk 'NR==1{prev=$1;next}{if($1>prev+1)for(i=prev+1;i<$1;i++)printf "%s ",i;prev=$1}END{}')"
+          if [ -n "$holes" ]; then
+            echo "::warning::DV run-record holes detected: run numbers [${holes% }] missing — numbers are allocated at creation and never re-used, so these are created-then-deleted records (the #449 mechanism; investigate who/what, the API cannot attribute deletions on personal repos)"
+            {
+              echo "### DV run-number census: HOLES DETECTED"
+              echo ""
+              echo "| | |"
+              echo "|---|---|"
+              echo "| Missing run numbers | ${holes% } |"
+              echo ""
+              echo "Run numbers are allocated sequentially at creation and never re-used; every missing number is a run whose record was deleted after creation. Deletion attribution is not available via the API on personal repos — record the holes and investigate via the account Security log."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### DV run-number census: contiguous"
+              echo ""
+              echo "Run numbers present up to $(printf '%s' "$numbers" | tail -1) with no gaps — no deleted-record holes detected this run."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0
+
+  record-run-status:
+    name: Record DV verdict as a durable commit status
+    # #449 AC2b (option A): a legacy commit status on the head sha lives
+    # OUTSIDE the deletable run records (statuses are keyed by sha + context,
+    # not part of the run record) — if the runs vanish, the status remains
+    # and the deletion is evident. Permission tradeoff, evaluated against
+    # MADR-0026-style least privilege: statuses: write lets this workflow
+    # post a status on any sha in-repo; the principal able to delete runs
+    # can already edit this workflow file, so the marginal forgery risk sits
+    # inside the existing trust boundary and is accepted for the durable
+    # record (#449). Signal, not gate: never a branch-protection required
+    # check.
+    needs: [secret-scan-full-history, docs-render-validation, image-build-verification]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Post the commit status (durable, deletion-evident)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SCAN_RESULT: ${{ needs.secret-scan-full-history.result }}
+          RENDER_RESULT: ${{ needs.docs-render-validation.result }}
+          IMAGE_RESULT: ${{ needs.image-build-verification.result }}
+        run: |
+          # Overall DV verdict: failure if any DV job failed or was
+          # cancelled; skipped jobs (image-build-verification on push/tag
+          # events) do not fail the verdict.
+          overall="success"
+          for result in "$SCAN_RESULT" "$RENDER_RESULT" "$IMAGE_RESULT"; do
+            case "$result" in
+              failure | cancelled) overall="failure" ;;
+            esac
+          done
+          if gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state="$overall" \
+            -f context="deep-validation" \
+            -f description="deep-validation ${overall} (run ${GITHUB_RUN_ID})" \
+            -f target_url="$RUN_URL" >/dev/null 2>&1; then
+            echo "durable commit status posted: deep-validation=$overall on ${SHA} (survives run deletion, #449)"
+          else
+            echo "::warning::could not post the deep-validation commit status — the durable deletion-evident record is MISSING for this run; investigate the API failure (C11 class, #449)"
+          fi
+          exit 0
