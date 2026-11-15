@@ -151,4 +151,18 @@ python3 harness/config-validation/test_check_external_prerequisites.py || fail "
 # blanket waiver), carrying no secret material. Fail-closed; git-backed
 # fixtures + real-repo positive control.
 python3 harness/config-validation/test_check_gitleaks_allowlist.py || fail "test_check_gitleaks_allowlist.py failed"
+# gate 19 MADR-0026 pin-freshness workflow gate (#446, C6): the O3 signal
+# workflow's blast radius is machine-checkable — job-level permissions exactly
+# {contents: read, issues: write} (no top-level block, no contents: write /
+# pull-requests: write / actions: write / id-token), built-in token only (zero
+# secrets.*/PAT references), checkout persist-credentials: false, tri-state
+# failure paths (unknown on every API/parse failure branch, fresh assigned
+# exactly once by the semver comparison, never a || fallback-to-fresh),
+# non-failing (no non-zero exit), weekly Monday cron staggered off the
+# deep-validation slot (fail-closed on that file), and the deterministic
+# drift-issue mechanics (hidden marker, fixed agent::devops + type::task
+# labels, @devfpittelo notification statement, asset + checksums naming, no
+# status:: label, no auto-close, no cache, no second version literal).
+# #142 A1 pattern: negative fixtures + real-repo positive control, offline.
+python3 harness/config-validation/test_check_pin_freshness_workflow.py || fail "test_check_pin_freshness_workflow.py failed"
 echo "PASS run-config-gate: all gates green (${REPO_ROOT})"

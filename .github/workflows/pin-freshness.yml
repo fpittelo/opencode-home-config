@@ -1,0 +1,330 @@
+name: Pin Freshness (github-mcp-server)
+
+# MADR-0026 O3 (#446): scheduled pin-freshness signal for the pinned native
+# github-mcp-server binary (install.sh GITHUB_MCP_VERSION, MADR-0002 D3).
+#
+# This is a SIGNAL, never a gate: it must NOT be added to branch-protection
+# required checks, and it never fails CI — the tri-state result is
+# fresh | drift | unknown, and drift/unknown surface via run annotation,
+# job summary and the single tracking issue, always with exit 0 (C11).
+# The bump itself stays the manual reviewed checklist (#310/#439): this
+# workflow never installs, never downloads binaries and never computes or
+# writes a SHA256 anywhere (C3) — the issue body is a notification, not an
+# authorization (C9): a bump requires a PR reviewed by the genuine
+# @devfpittelo identity (Tier B, MADR-0017).
+#
+# Triggers:
+#   - weekly cron, Mondays 05:30 UTC — staggered 30 minutes off the
+#     deep-validation cron (Mondays 05:00 UTC) so the two scheduled API
+#     readers never coincide (#446 AC1).
+#   - workflow_dispatch: manual on-demand detection (also the C12 hygiene
+#     path when the scheduled cadence has been silent).
+#
+# Invariants (MADR-0026 C1-C12): job permissions exactly
+# {contents: read, issues: write}; built-in token only (C4, anti-recursion:
+# token-created events do not trigger workflow runs); zero secrets refs and
+# no PAT (C5); the pin is read from install.sh at RUN time — no cache, no
+# state file, no second version literal (C2); drift = normalized semver
+# strictly greater (a backport release never reads as drift, C7); exactly
+# ONE tracking issue located by the hidden body marker below, labels fixed
+# to type::task + agent::devops, never any status label, never auto-closed
+# (C8/C10); re-open on persistent drift only when no bump PR referencing
+# the issue exists (C8).
+
+on:
+  schedule:
+    - cron: "30 5 * * 1" # Mondays 05:30 UTC — staggered off deep-validation (05:00 UTC, C12)
+  workflow_dispatch:
+
+concurrency:
+  # Serialize detection + issue writes: two overlapping runs could both see
+  # "no tracking issue" and create duplicates (C8 deterministic idempotency).
+  group: pin-freshness
+  cancel-in-progress: false
+
+jobs:
+  pin-freshness:
+    name: Detect github-mcp-server pin drift
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Detect pin drift (tri-state fresh / drift / unknown)
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UPSTREAM="github/github-mcp-server"
+          RESULT="unknown"
+          PINNED=""
+          UPSTREAM_TAG=""
+          PUBLISHED=""
+          REASON="unspecified"
+
+          semver_shaped() { printf '%s' "$1" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; }
+          iso_shaped() { printf '%s' "$1" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'; }
+
+          finish() {
+            {
+              echo "result=$RESULT"
+              echo "pinned=$PINNED"
+              echo "upstream_tag=$UPSTREAM_TAG"
+              echo "published=$PUBLISHED"
+              echo "reason=$REASON"
+            } >> "$GITHUB_OUTPUT"
+            {
+              echo "### Pin freshness (github-mcp-server): **$RESULT**"
+              echo ""
+              echo "| | |"
+              echo "|---|---|"
+              echo "| Pinned (install.sh, read at run time) | ${PINNED:-(unreadable)} |"
+              echo "| Upstream releases/latest | ${UPSTREAM_TAG:-(unavailable)} (${PUBLISHED:-(unavailable)}) |"
+              echo "| Reason (when inconclusive) | ${REASON:-(n/a)} |"
+              echo ""
+              echo "Signal, never a gate (MADR-0026 O3, #446): drift updates the single tracking issue — notification, not authorization."
+            } >> "$GITHUB_STEP_SUMMARY"
+            if [ "$RESULT" = "unknown" ]; then
+              echo "::warning::pin-freshness inconclusive: $REASON — failures map to unknown, never fresh (C11)"
+            elif [ "$RESULT" = "drift" ]; then
+              echo "pin drift detected: upstream $UPSTREAM_TAG is newer than pinned $PINNED — tracking issue updated (notification, not authorization)"
+            fi
+            exit 0
+          }
+
+          # 1) Read the pin from install.sh at RUN time — the single source of
+          #    truth (C2): no cache, no state file, no second version literal.
+          pin_line="$(grep -m1 -E '^GITHUB_MCP_VERSION=' install.sh || true)"
+          PINNED="$(printf '%s' "$pin_line" | sed -n 's/^GITHUB_MCP_VERSION="\([^"]*\)".*/\1/p')"
+          if [ -z "$PINNED" ] || ! semver_shaped "$PINNED"; then
+            # C9 (review 5910211237): an unvalidated value must never reach
+            # the issue body — blank it before finish() exports it, so the
+            # inconclusive body shows the "(unreadable)" placeholder.
+            PINNED=""
+            RESULT="unknown"
+            REASON="install.sh pin read or semver parse failed"
+            finish
+          fi
+
+          # 2) Upstream latest release, authenticated with the built-in token
+          #    (C4/C11 rate-limit mitigation); ANY failure maps to unknown.
+          up_json="$(gh api "repos/${UPSTREAM}/releases/latest" 2>/dev/null || true)"
+          if [ -z "$up_json" ]; then
+            RESULT="unknown"
+            REASON="upstream releases/latest read failed (API/network/auth)"
+            finish
+          fi
+          UPSTREAM_TAG="$(printf '%s' "$up_json" | jq -r '.tag_name // empty' 2>/dev/null || true)"
+          PUBLISHED="$(printf '%s' "$up_json" | jq -r '.published_at // empty' 2>/dev/null || true)"
+          if ! semver_shaped "$UPSTREAM_TAG"; then
+            # C9 (review 5910211237): tag_name is upstream-controlled. It
+            # failed the shape check, so it is NOT validated — blank both
+            # values before finish() rather than interpolating raw upstream
+            # text into the issue body (table cell + constructed URLs).
+            UPSTREAM_TAG=""
+            PUBLISHED=""
+            RESULT="unknown"
+            REASON="upstream tag missing or not semver-shaped (parse failure)"
+            finish
+          fi
+          if ! iso_shaped "$PUBLISHED"; then
+            # C9: published_at is upstream-controlled and failed validation —
+            # blank it before exporting. UPSTREAM_TAG is already validated on
+            # this path and may stay.
+            PUBLISHED=""
+            RESULT="unknown"
+            REASON="upstream published_at missing or not ISO-8601 Z (parse failure)"
+            finish
+          fi
+
+          # 3) Normalized semver compare (C7): drift = upstream strictly
+          #    greater; a backport (upstream older) compares as fresh.
+          pinned_norm="${PINNED#v}"
+          upstream_norm="${UPSTREAM_TAG#v}"
+          top="$(printf '%s\n%s\n' "$pinned_norm" "$upstream_norm" | sort -V | tail -1)"
+          if [ "$top" = "$upstream_norm" ] && [ "$upstream_norm" != "$pinned_norm" ]; then
+            RESULT="drift"
+          else
+            RESULT="fresh"
+          fi
+          REASON=""
+          finish
+
+      - name: Reconcile the tracking issue (drift update / unknown streak / fresh reset)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.detect.outputs.result }}
+          PINNED: ${{ steps.detect.outputs.pinned }}
+          UPSTREAM_TAG: ${{ steps.detect.outputs.upstream_tag }}
+          PUBLISHED: ${{ steps.detect.outputs.published }}
+          REASON: ${{ steps.detect.outputs.reason }}
+        run: |
+          MARKER='<!-- pin-freshness:managed-issue -->'
+          STREAK_PREFIX='<!-- pin-freshness:unknown-streak '
+          BOARD_MARKER='<!-- pin-freshness:inconclusive-board-item -->'
+          ISSUE_TITLE='pin-freshness: github-mcp-server upstream drift / inconclusive signal (bot-managed)'
+          UPSTREAM="github/github-mcp-server"
+          RUN_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          warn() { echo "::warning::pin-freshness reconcile: $1"; }
+
+          issue_json="$(gh issue list --repo "$GITHUB_REPOSITORY" --state all --limit 200 --json number,state,body 2>/dev/null || true)"
+          issue_num="$(printf '%s' "$issue_json" | jq -r --arg m "$MARKER" '[.[] | select((.body // "") | contains($m))] | sort_by(number) | (.[0].number // empty)' 2>/dev/null || true)"
+
+          # C9: only the validated tag, the ISO publish date and CONSTRUCTED
+          # URLs are interpolated — never upstream release body or changelog
+          # prose. The body states the review requirement (notification, not
+          # authorization) and names the asset + checksums source of truth.
+          write_body() {
+            local ver="${UPSTREAM_TAG#v}"
+            local checksums_url="(unavailable — inconclusive check)"
+            local release_url="(unavailable — inconclusive check)"
+            local compare_url="(unavailable — inconclusive check)"
+            if [ -n "$UPSTREAM_TAG" ]; then
+              checksums_url="https://github.com/${UPSTREAM}/releases/download/${UPSTREAM_TAG}/github-mcp-server_${ver}_checksums.txt"
+              release_url="https://github.com/${UPSTREAM}/releases/tag/${UPSTREAM_TAG}"
+              compare_url="https://github.com/${UPSTREAM}/compare/${PINNED}...${UPSTREAM_TAG}"
+            fi
+            local reason_line=""
+            if [ "$RESULT" = "unknown" ] && [ -n "$REASON" ]; then
+              reason_line=" — $REASON"
+            fi
+            cat > "$1" <<BODY_EOF
+          $MARKER
+          **Signal (MADR-0026 O3, #446) — notification, not authorization.** A version bump requires a PR (single pin change + \`GITHUB_MCP_TARBALL_SHA256\` taken from the upstream checksums file at bump time — never from this issue) reviewed by the genuine \`@devfpittelo\` identity (Tier B, MADR-0017). This workflow never writes status labels and never closes this issue — \`@scrum-master\` owns all status transitions after grooming (MADR-0013).
+
+          **Latest scheduled check:** \`$RESULT\` at $RUN_AT$reason_line
+
+          | | |
+          |---|---|
+          | Pinned (\`install.sh\`, read at run time) | ${PINNED:-(unreadable)} |
+          | Upstream \`releases/latest\` | ${UPSTREAM_TAG:-(unavailable)}${PUBLISHED:+ (published $PUBLISHED)} |
+          | Asset to hash at bump time | \`github-mcp-server_Linux_x86_64.tar.gz\` |
+          | Checksums file (bump-time source of truth) | $checksums_url |
+          | Upstream release | $release_url |
+          | Pin comparison | $compare_url |
+
+          Detection: \`.github/workflows/pin-freshness.yml\` — weekly Monday 05:30 UTC (staggered off the deep-validation 05:00 UTC cron) + \`workflow_dispatch\`; a non-failing signal, never a branch-protection required check.
+          BODY_EOF
+          }
+
+          create_issue() {
+            local body_file url
+            body_file="$(mktemp)"
+            write_body "$body_file"
+            url="$(gh issue create --repo "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" --body-file "$body_file" --label "type::task" --label "agent::devops" 2>/dev/null || true)"
+            rm -f "$body_file"
+            if [ -z "$url" ]; then
+              warn "could not create the tracking issue — next weekly run retries (deterministic locate, C8)"
+              return 0
+            fi
+            issue_num="$(printf '%s' "$url" | grep -oE '[0-9]+$' || true)"
+            echo "tracking issue created: $url"
+          }
+
+          streak_bump() {
+            # Two-consecutive-unknown detection, stateless per C2: the streak
+            # state lives on the tracking issue itself (the only allowed
+            # state) as a marked comment; this run reads it, increments it,
+            # and raises/refreshes the board item at count >= 2 (C11).
+            local comments latest cid cbody count first_run new_count streak_body board_id board_body
+            comments="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${issue_num}/comments?per_page=100" 2>/dev/null || true)"
+            latest="$(printf '%s' "$comments" | jq -r --arg p "$STREAK_PREFIX" '[.[] | select((.body // "") | startswith($p))] | last // empty' 2>/dev/null || true)"
+            cid="$(printf '%s' "$latest" | jq -r '.id // empty' 2>/dev/null || true)"
+            cbody="$(printf '%s' "$latest" | jq -r '.body // empty' 2>/dev/null || true)"
+            count="$(printf '%s' "$cbody" | sed -n 's/.*"count":\([0-9]*\).*/\1/p')"
+            first_run="$(printf '%s' "$cbody" | sed -n 's/.*"first_run":"\([^"]*\)".*/\1/p')"
+            : "${count:=0}"
+            new_count=$((count + 1))
+            streak_body="$STREAK_PREFIX{\"count\":$new_count,\"first_run\":\"$first_run\",\"last_run\":\"$RUN_AT\"} -->"
+            if [ -n "$cid" ]; then
+              gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${cid}" -f body="$streak_body" >/dev/null 2>&1 || warn "streak comment update failed on #$issue_num"
+            else
+              gh issue comment "$issue_num" --repo "$GITHUB_REPOSITORY" --body "$streak_body" >/dev/null 2>&1 || warn "streak comment create failed on #$issue_num"
+            fi
+            if [ "$new_count" -ge 2 ]; then
+              board_body="$BOARD_MARKER
+          **Persistent inconclusive pin-freshness signal (MADR-0026 C11).** Consecutive \`unknown\` checks: count=$new_count (first $first_run, latest $RUN_AT). The drift truth could not be computed, so silence is NOT verified freshness. @devops — inspect the workflow run logs (\`gh run list --workflow pin-freshness.yml\`) and the upstream API; a \`fresh\`/\`drift\` run resets the streak."
+              board_id="$(printf '%s' "$comments" | jq -r --arg p "$BOARD_MARKER" '[.[] | select((.body // "") | startswith($p))] | last // empty' 2>/dev/null | jq -r '.id // empty' 2>/dev/null || true)"
+              if [ -n "$board_id" ]; then
+                gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${board_id}" -f body="$board_body" >/dev/null 2>&1 || warn "board-item comment update failed on #$issue_num"
+              else
+                gh issue comment "$issue_num" --repo "$GITHUB_REPOSITORY" --body "$board_body" >/dev/null 2>&1 || warn "board-item comment create failed on #$issue_num"
+              fi
+            fi
+          }
+
+          reset_streak() {
+            # A successful detection (fresh or drift) breaks the unknown
+            # streak: reset the marked streak comment to count 0 (C2 state).
+            local comments latest cid cbody count
+            [ -n "$issue_num" ] || return 0
+            comments="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${issue_num}/comments?per_page=100" 2>/dev/null || true)"
+            latest="$(printf '%s' "$comments" | jq -r --arg p "$STREAK_PREFIX" '[.[] | select((.body // "") | startswith($p))] | last // empty' 2>/dev/null || true)"
+            cid="$(printf '%s' "$latest" | jq -r '.id // empty' 2>/dev/null || true)"
+            cbody="$(printf '%s' "$latest" | jq -r '.body // empty' 2>/dev/null || true)"
+            count="$(printf '%s' "$cbody" | sed -n 's/.*"count":\([0-9]*\).*/\1/p')"
+            if [ -n "$cid" ] && [ -n "$count" ] && [ "$count" != "0" ]; then
+              gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${cid}" -f body="$STREAK_PREFIX{\"count\":0,\"last_run\":\"$RUN_AT\",\"reset_by\":\"$RESULT\"} -->" >/dev/null 2>&1 || warn "streak reset failed on #$issue_num"
+            fi
+          }
+
+          case "$RESULT" in
+            drift)
+              # C8: create-or-update the ONE managed issue; a new upstream
+              # release updates it rather than spawning duplicates.
+              if [ -z "$issue_num" ]; then
+                create_issue
+              else
+                body_file="$(mktemp)"
+                write_body "$body_file"
+                if gh issue edit "$issue_num" --repo "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" --body-file "$body_file" >/dev/null 2>&1; then
+                  echo "tracking issue #$issue_num updated (upstream $UPSTREAM_TAG vs pinned $PINNED)"
+                else
+                  warn "could not update tracking issue #$issue_num — next weekly run retries (C8)"
+                fi
+                rm -f "$body_file"
+                gh issue edit "$issue_num" --repo "$GITHUB_REPOSITORY" --add-label "type::task" --add-label "agent::devops" >/dev/null 2>&1 || warn "label ensure failed on #$issue_num"
+                # C8/C10: re-open on persistent drift ONLY when no bump PR
+                # referencing the issue exists; never auto-close.
+                state="$(gh issue view "$issue_num" --repo "$GITHUB_REPOSITORY" --json state --jq '.state' 2>/dev/null || true)"
+                if [ "$state" = "CLOSED" ]; then
+                  refs="$(gh pr list --repo "$GITHUB_REPOSITORY" --state all --limit 200 --json number,title,body 2>/dev/null | jq -r --argjson n "$issue_num" '[.[] | select(((.title // "") + " " + (.body // "")) | test("#\\($n)([^0-9]|$)"))] | length' 2>/dev/null || echo 0)"
+                  if [ "$refs" = "0" ]; then
+                    if gh issue reopen "$issue_num" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                      echo "persistent drift, no referencing bump PR — issue #$issue_num re-opened (C8)"
+                    else
+                      warn "could not re-open #$issue_num"
+                    fi
+                  else
+                    echo "drift persists but a bump PR referencing #$issue_num exists — left closed (C8)"
+                  fi
+                fi
+              fi
+              reset_streak
+              ;;
+            unknown)
+              if [ -z "$issue_num" ]; then
+                create_issue
+              fi
+              if [ -n "$issue_num" ]; then
+                streak_bump
+              fi
+              ;;
+            fresh)
+              # Fresh-repo tolerance: with no tracking issue ever created,
+              # a fresh run is a no-op (#446 dispatch note 3).
+              if [ -n "$issue_num" ]; then
+                reset_streak
+              fi
+              ;;
+            *)
+              warn "unexpected detection result '$RESULT' — no issue action"
+              ;;
+          esac
+          echo "pin-freshness reconcile complete (result=$RESULT)"
+          exit 0
