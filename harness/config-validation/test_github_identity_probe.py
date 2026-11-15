@@ -37,7 +37,6 @@ GUIDE = REPO_ROOT / "docs" / "Admin-and-User-Guide.md"
 # Dummy credentials: never real tokens, never printed.
 OWNER_TOKEN = "dummy-owner"
 REVIEWER_TOKEN = "dummy-reviewer"
-DRIFTED_TOKEN = "dummy-drifted"
 
 OWNER_LOGIN = "fpittelo"
 OWNER_ID = 3135901
