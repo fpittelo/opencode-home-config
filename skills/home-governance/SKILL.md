@@ -190,7 +190,7 @@ All AI agents function collaboratively as members of the **HOME SCRUM Team**:
 An issue is **Done** and may only be closed when:
 1. All acceptance criteria in the issue description are fulfilled.
 2. Code is merged into `main` via PR using **squash-and-merge** (`merge_method: "squash"`).
-3. GitHub Actions CI pipeline completed with **0 warnings and 0 failures**.
+3. GitHub Actions CI pipeline completed with **0 warnings and 0 failures**, and Deep Validation green on the **exact trunk head** being closed — verified on the run (the run's head SHA equals the merge commit), not by inference (provenance: #440 Sprint 29 retro addendum → #449 PR #455; the operational form of this criterion is the closeout template in `github-scrum-board` §5).
 4. `@code-reviewer` approval is explicitly documented on the PR.
 5. Deliverable and PR link are documented in the closing summary comment on the GitHub issue.
 
