@@ -192,4 +192,16 @@ python3 harness/config-validation/test_check_installed_posture_freshness.py || f
 # and a real-repo no-op control. #142 A1 pattern: synthetic fixtures +
 # real-repo positive control, offline, stdlib-only.
 python3 harness/config-validation/test_check_arch_coverage.py || fail "test_check_arch_coverage.py failed"
+# gate 22 operator-doctor orchestrator semantics (#462): harness/doctor.sh is
+# a thin REPORT-ONLY orchestrator of reused checkers (gate-16 identity probe
+# + gate-20 posture checker) — the suite pins its OWN contract: exit
+# semantics (findings -> 1 with per-check rows), per-check isolation (one
+# failing check never aborts the others), the SKIP mapping, report-only
+# behavior (fake HOME untouched), and the #448 iron rule as a static pin
+# (the script stat()s the secrets file, never cat/source/read-redirects it;
+# no token material in output). Offline: the probe fails fast on a missing
+# ambient token; the all-fresh path is covered by the live host run in the
+# PR. Two-tier doctrine: the doctor itself is never wired into CI — only
+# its regression suite runs here.
+python3 harness/config-validation/test_doctor_script.py || fail "test_doctor_script.py failed"
 echo "PASS run-config-gate: all gates green (${REPO_ROOT})"

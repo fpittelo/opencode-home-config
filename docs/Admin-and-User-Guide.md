@@ -261,6 +261,8 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 
 **Architecture-coverage gate — path-derived and self-triggering (#421):** a PR diff touching `agents/**`, `opencode.jsonc`, `.github/workflows/**`, `harness/**` or `skills/**` must also touch `docs/adr/**` (a MADR) or `docs/architecture/arc42/**` (an arc42 update) in the same diff, or the CI job fails — zero human action, no `gh api` (the former gate read a human-applied PR label that no agent could set through any permitted path, so it passed trivially for every squad PR). `install.sh` is deliberately excluded: mechanical pin bumps (e.g. the #447 herdr digest refresh) must not force ADRs. The `requires-architecture` label remains **advisory-only** — reviewers may set it as a hint; the gate never reads it. Gate logic: `harness/check_arch_coverage.sh`, pinned by config gate 21.
 
+**Operator doctor (#462):** `bash harness/doctor.sh` — one command, **report-only** posture check: (1) service token freshness (secrets-file existence + mtime age; contents are **never** read — the #448 iron rule), (2) GitHub identity resolution (invokes the gate-16 probe verbatim — login/ID only, never token material), (3) installed-posture integrity (invokes the gate-20 checker verbatim). Exit 0 = all fresh; exit 1 = findings with a per-check remediation hint (findings name the remediation command, never run it). Run it under the `oc-home` wrapper so the ambient environment carries the tokens the identity probe needs. Operator diagnostic, not wired into CI (two-tier doctrine); its regression suite is config gate 22.
+
 ### 2.9 Troubleshooting
 
 | Symptom | Likely Cause | Fix |
