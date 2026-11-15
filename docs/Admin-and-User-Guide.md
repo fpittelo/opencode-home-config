@@ -73,7 +73,7 @@ Clone-and-install commands: SSOT is [README — Installation](../README.md).
 | 1 | Symlink the config file | `~/.config/opencode/opencode.jsonc` → repo's `opencode.jsonc` |
 | 1 | Symlink the agents directory | `~/.config/opencode/agents` → repo's `agents/` |
 | 1 | Symlink the skills directory | `~/.config/opencode/skills` → repo's `skills/` |
-| 2 | Install pinned `github-mcp-server` v2.0.3 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
+| 2 | Install pinned `github-mcp-server` v2.1.0 binary — downloaded from the official GitHub release, SHA256-verified against the published release checksums file (skipped if the pinned version is already installed) | `~/.local/bin/github-mcp-server` |
 | 3 | Install pinned `herdr` v0.9.3 binary — downloaded from the official Herdr release, SHA256-verified against the pinned release-asset digest (skipped if the pinned version is already installed) | `~/.local/bin/herdr` |
 | 4 | Verify the pinned `@playwright/mcp` v0.0.83 registry tarball (SHA512 via `openssl`; read-only pin-time audit — nothing is installed, `npx` resolves the pinned version at session start) | npm registry (verification only) |
 | 5 | Verify the container runtime (`podman`, fail-closed) and pre-pull the pinned Coach image (idempotent — `--policy=missing`) | `ghcr.io/fpittelo/coach:dev` (Podman, anonymous — public package) |
