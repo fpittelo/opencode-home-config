@@ -233,6 +233,8 @@ new release ships a newer integration.
 
 SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-security.md) — per-PR gate composition, deep-validation split, and the 0-warnings/0-failures merge gate; harness details: [harness/README.md](../harness/README.md); workflow: [.github/workflows/ci.yml](../.github/workflows/ci.yml).
 
+**Gate 17 — external-prerequisite inventory (#441):** `harness/config-validation/check_external_prerequisites.py` fails closed on any external command the configuration invokes but does not own. Every `mcp.*.command[0]` launcher must be declared in the inventory; a `command -v` entry needs its guard line in `install.sh` (a `provisioned` entry needs its install step); an unguarded or stale entry fails the gate. This is the control that stops the #416 (Podman) → #422 (git identity) → #435 (Node) class of silently unowned prerequisites, where the absence only surfaced mid-session. Run it in isolation with `python3 harness/config-validation/check_external_prerequisites.py`.
+
 ### 2.9 Troubleshooting
 
 | Symptom | Likely Cause | Fix |
