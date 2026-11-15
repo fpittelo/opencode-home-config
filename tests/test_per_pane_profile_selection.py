@@ -72,6 +72,7 @@ GUARD_PATH_TOOLS = (
 # sandboxed runs take the "already installed / verified" skip paths instead
 # of touching the network.
 GITHUB_MCP_VERSION = "2.1.0"
+HERDR_VERSION = "0.9.5"
 PLAYWRIGHT_MCP_DIGEST = "oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg=="
 
 # The live legacy switcher block (uncommented variant, references
@@ -218,7 +219,7 @@ def _install_stubs(
     )
     os.chmod(spy_github, 0o755)
     spy_herdr = local_bin / "herdr"
-    spy_herdr.write_text("#!/bin/sh\necho 'herdr 0.9.3'\n", encoding="utf-8")
+    spy_herdr.write_text(f"#!/bin/sh\necho 'herdr {HERDR_VERSION}'\n", encoding="utf-8")
     os.chmod(spy_herdr, 0o755)
     return stub_bin
 
