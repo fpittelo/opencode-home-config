@@ -19,7 +19,8 @@ ADR_DIR = "docs/adr"
 README = "README.md"
 H1_RE = re.compile(r"^# MADR-(\d{4}): .+$")
 STATUS_RE = re.compile(
-    r"^- \*\*Status:\*\* (proposed|accepted|superseded|deprecated)"
+    r"^- \*\*Status:\*\* (proposed|accepted|superseded|deprecated"
+    r"|accepted-pending-PO)"
     r"( \(superseded by MADR-\d{4}\))?$"
 )
 DATE_RE = re.compile(r"^- \*\*Date:\*\* \d{4}-\d{2}-\d{2}$")
