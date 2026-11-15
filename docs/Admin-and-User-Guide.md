@@ -235,6 +235,8 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 
 **Gate 17 — external-prerequisite inventory (#441):** `harness/config-validation/check_external_prerequisites.py` fails closed on any external command the configuration invokes but does not own. Every `mcp.*.command[0]` launcher must be declared in the inventory; a `command -v` entry needs its guard line in `install.sh` (a `provisioned` entry needs its install step); an unguarded or stale entry fails the gate. This is the control that stops the #416 (Podman) → #422 (git identity) → #435 (Node) class of silently unowned prerequisites, where the absence only surfaced mid-session. Run it in isolation with `python3 harness/config-validation/check_external_prerequisites.py`.
 
+**Gate 18 — secret-history controls (#448):** `harness/config-validation/check_gitleaks_allowlist.py` enforces (1) that no opencode runtime artifact (`service.json`, `cli.json`) is ever **tracked** — the `git add -A` class that put a daemon credential into public history for 22 days — and (2) that the incident's `.gitleaks.toml` allowlist stays exactly one entry, `condition = "AND"` scoped to the public commit `fd15509…` **and** the anchored `service.json` path (a path-only or OR-scoped entry would be a blanket waiver), carrying no secret material. Run it in isolation with `python3 harness/config-validation/check_gitleaks_allowlist.py`.
+
 ### 2.9 Troubleshooting
 
 | Symptom | Likely Cause | Fix |

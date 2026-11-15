@@ -1,0 +1,44 @@
+# Gitleaks configuration — HOME configuration repository.
+#
+# The DV "Secret Scan" job runs gitleaks v8.24.3 from a digest-pinned image and
+# scans the FULL history (`detect --source`, no --log-opts). This file extends
+# the upstream default ruleset: every default rule stays active and keeps its
+# own regex, entropy and keywords (gitleaks merges a re-declared rule's
+# allowlists INTO the base rule — config/config.go, extend() in v8.24.3).
+[extend]
+useDefault = true
+
+# Incident #448 — public-history credential exposure (single historical blob).
+#
+# `service.json` was swept into commit
+# fd15509fa6cebebbb8bd02bd7a50caa639a7588a (2026-10-24, PR #405) by a wide
+# `git add -A` of untracked opencode runtime artifacts. It carried a local
+# opencode daemon registration password — bound to 127.0.0.1:49374, loopback
+# only. The credential was rotated and is DEAD as of 2026-11-15 (liveness probe:
+# HTTP 401 on every endpoint with a validated positive control); exploitability
+# ENDED. Disposition (B) "rotate + document" was accepted: a history purge was
+# declined as disproportionate for a secret that was already published and
+# fetched (see arc42/03 §3).
+#
+# WHY A PER-RULE ALLOWLIST AND NOT A GLOBAL ONE:
+# the global `[allowlist]` table in v8.24.3 has no `condition` field and matches
+# with OR semantics, so `paths = ["service.json"]` there would silently waive
+# EVERY finding at that path — a blanket waiver, including future commits
+# (forbidden by the #448 conditions C2/C3). A `[[rules.allowlists]]` entry with
+# `condition = "AND"` requires BOTH the commit and the path to match, so:
+#   * a future commit that tracks `service.json` is still detected, and
+#   * any other file inside that historical commit is still detected.
+# Regression-proven by harness/config-validation/check_gitleaks_allowlist.py
+# (gate 18) and by the two-way scan recorded on PR #448.
+#
+# This entry contains NO secret value, NO value prefix and NO value hash — the
+# credential is never re-materialised in a second tracked file.
+# Review by: 2027-05-15 (re-evaluate; the entry is needed while the blob stays
+# reachable in history).
+[[rules]]
+id = "generic-api-key"
+  [[rules.allowlists]]
+  description = "Incident #448: dead loopback-only opencode daemon password in the historical service.json blob at fd15509 (rotated 2026-11-15, exploitability ENDED, disposition B rotate+document; review by 2027-05-15)"
+  condition = "AND"
+  commits = ["fd15509fa6cebebbb8bd02bd7a50caa639a7588a"]
+  paths = ['''^service\.json$''']
