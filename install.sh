@@ -136,6 +136,25 @@ if ! command -v openssl >/dev/null 2>&1; then
     echo "❌  openssl not found — required to verify @playwright/mcp ${PLAYWRIGHT_MCP_VERSION}." >&2
     exit 1
 fi
+# 4b. Git identity guard (#422). Same posture as the guards above — verify,
+#     never provision (MADR-0024 D4): a fresh clone carries no identity, so
+#     every commit dies with "empty ident name (for <...>) not allowed", far
+#     from its cause. Resolution is repo-local or global (whatever git would
+#     use for a commit here); no identity VALUE is asserted, only presence —
+#     and the installer never writes one, since setting a personal identity
+#     from a repo bootstrap would be intrusive and unverifiable (#422 AC1).
+if ! command -v git >/dev/null 2>&1; then
+    echo "❌  git not found — required to resolve the commit identity and to work in this repository." >&2
+    echo "   Remediate (WSL2 side on VIDAR): sudo apt-get install -y git" >&2
+    exit 1
+fi
+if [ -z "$(git config --get user.name 2>/dev/null)" ] || [ -z "$(git config --get user.email 2>/dev/null)" ]; then
+    echo "❌  git author identity is incomplete — commits will fail with 'empty ident name (for <...>) not allowed'." >&2
+    echo "   Remediate (repo-local or global — your choice; this installer never sets it):" >&2
+    echo '     git config --global user.name  "<Your Name>"' >&2
+    echo '     git config --global user.email "<you@example.com>"' >&2
+    exit 1
+fi
 echo "⏳  Verifying pinned @playwright/mcp ${PLAYWRIGHT_MCP_VERSION}..."
 PLAYWRIGHT_MCP_ARTIFACT="mcp-${PLAYWRIGHT_MCP_VERSION}.tgz"
 curl -fsSL --proto '=https' --tlsv1.2 --retry 3 -o "$TMP_DIR/$PLAYWRIGHT_MCP_ARTIFACT" "https://registry.npmjs.org/@playwright/mcp/-/$PLAYWRIGHT_MCP_ARTIFACT"

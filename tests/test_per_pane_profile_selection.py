@@ -20,6 +20,12 @@
 #   specifically, sits BEFORE the pre-pull, and aborts fail-closed with the
 #   remediation command; the pre-pull uses that same runtime token.
 #
+# AC1/AC2 (#422): the git identity guard verifies `command -v git` plus a
+#   non-empty user.name/user.email (repo-local or global), aborts with the
+#   exact remediation commands, and never writes an identity itself. The
+#   sandbox stubs `git` so the suite never reads (or writes) the real host
+#   git config.
+#
 # LIVE-HOST SAFETY: every behavioral test runs install.sh against a
 # SANDBOXED fake $HOME with stubbed systemctl (no systemd user session),
 # podman, curl, openssl, and pinned-binary version spies — never the real
@@ -147,7 +153,9 @@ def _make_fake_home(tmp_path: Path) -> Path:
     return fake_home
 
 
-def _install_stubs(fake_home: Path, *, mask_podman: bool = False) -> Path:
+def _install_stubs(
+    fake_home: Path, *, mask_podman: bool = False, git_identity: bool = True
+) -> Path:
     """Install stub executables so install.sh never touches the network,
     the real systemd user session, or the real container runtime.
 
@@ -158,6 +166,9 @@ def _install_stubs(fake_home: Path, *, mask_podman: bool = False) -> Path:
     - curl: creates the requested output file (empty) instead of downloading.
     - openssl: prints the pinned @playwright/mcp digest (base64 subcommand
       passes stdin through, mirroring the dgst | base64 pipe).
+    - git: reports a sandbox identity for `config --get user.name|user.email`
+      (or fails both when `git_identity` is False) → install.sh never reads
+      the host git config, and the #422 guard is deterministic.
     - github-mcp-server / herdr: version spies matching the pinned versions
       so the binary-install blocks take their idempotent skip paths.
     """
@@ -186,6 +197,16 @@ def _install_stubs(fake_home: Path, *, mask_podman: bool = False) -> Path:
         '#!/bin/sh\ncase "$*" in\n'
         f"  *base64*) cat ;;\n  *) echo '{PLAYWRIGHT_MCP_DIGEST}' ;;\nesac\n",
     )
+    if git_identity:
+        stub(
+            "git",
+            '#!/bin/sh\ncase "$*" in\n'
+            '  "config --get user.name") echo "Sandboxed Agent" ;;\n'
+            '  "config --get user.email") echo "agent@example.invalid" ;;\n'
+            "  *) exit 0 ;;\nesac\n",
+        )
+    else:
+        stub("git", "#!/bin/sh\nexit 1\n")
     # Version spies live in $HOME/.local/bin (where install.sh checks for the
     # pinned binaries), so both install blocks take their idempotent skip
     # paths and never download anything.
@@ -202,10 +223,10 @@ def _install_stubs(fake_home: Path, *, mask_podman: bool = False) -> Path:
     return stub_bin
 
 
-def _guard_path(fake_home: Path, stub_bin: Path) -> Path:
-    """Minimal PATH for the masked-podman guard run (#416 AC2/C7).
+def _guard_path(fake_home: Path, stub_bin: Path, *, mask_git: bool = False) -> Path:
+    """Minimal PATH for the masked guard runs (#416 AC2/C7, #422 AC1).
 
-    The developer's real PATH is deliberately NOT inherited: a podman
+    The developer's real PATH is deliberately NOT inherited: a podman (or git)
     installed on the host would otherwise satisfy the guard and the test
     would prove nothing. The directory holds symlinks to the few host tools
     install.sh needs to reach the guard, plus every stub.
@@ -219,20 +240,28 @@ def _guard_path(fake_home: Path, stub_bin: Path) -> Path:
         if resolved is not None:
             os.symlink(resolved, masked_bin / tool)
     for entry in stub_bin.iterdir():
+        if mask_git and entry.name == "git":
+            continue
         os.symlink(entry, masked_bin / entry.name)
     return masked_bin
 
 
 def run_install(
-    fake_home: Path, *, mask_podman: bool = False
+    fake_home: Path,
+    *,
+    mask_podman: bool = False,
+    git_identity: bool = True,
+    mask_git: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     """Run install.sh against a sandboxed fake $HOME (never the real one)."""
-    stub_bin = _install_stubs(fake_home, mask_podman=mask_podman)
+    stub_bin = _install_stubs(
+        fake_home, mask_podman=mask_podman, git_identity=git_identity
+    )
     env = os.environ.copy()
     env["HOME"] = str(fake_home)
     env["PATH"] = (
-        str(_guard_path(fake_home, stub_bin))
-        if mask_podman
+        str(_guard_path(fake_home, stub_bin, mask_git=mask_git))
+        if (mask_podman or mask_git)
         else f"{stub_bin}{os.pathsep}{env.get('PATH', '')}"
     )
     return subprocess.run(
@@ -946,6 +975,114 @@ class TestContainerRuntimeGuard(unittest.TestCase):
                 "the pre-pull must use the guarded runtime token and the "
                 "missing-policy (AC3)",
             )
+
+
+class TestGitIdentityGuard(unittest.TestCase):
+    """AC1/AC2 (#422): the bootstrap verifies the git identity, never writes it."""
+
+    def test_guard_verifies_identity_without_ever_writing_one(self) -> None:
+        """AC1: read-only identity resolution — a repo installer must not set it."""
+        text = install_text()
+        self.assertIn(
+            "command -v git",
+            text,
+            "install.sh must fail closed when git is absent (AC1)",
+        )
+        self.assertIn("git config --get user.name", text, "AC1: name is verified")
+        self.assertIn("git config --get user.email", text, "AC1: email is verified")
+        # Every `git config` occurrence must be a read: either a --get call or
+        # the echoed remediation text. A write invocation would set a personal
+        # identity from the installer, which AC1 forbids.
+        for line in text.splitlines():
+            stripped = line.strip()
+            if "git config" not in stripped or stripped.startswith("#"):
+                continue
+            self.assertTrue(
+                "--get" in stripped or stripped.startswith("echo"),
+                f"install.sh must never write a git identity (AC1): {stripped}",
+            )
+
+    def test_guard_sits_with_the_external_tool_guards_before_the_runtime_pull(
+        self,
+    ) -> None:
+        """AC2: grouped with the guard cluster, before later fail-prone steps."""
+        text = install_text()
+        self.assertLess(
+            text.find("command -v openssl"),
+            text.find("command -v git"),
+            "the git guard belongs with the guard cluster (AC2)",
+        )
+        self.assertLess(
+            text.find("command -v git"),
+            text.find('command -v "$CONTAINER_RUNTIME"'),
+            "the identity guard must precede later steps that can fail (AC2)",
+        )
+
+    def test_aborts_with_remediation_when_the_identity_is_unset(self) -> None:
+        """AC1/AC4: an identity-less host aborts with the exact commands."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = _make_fake_home(Path(tmp))
+            result = run_install(fake_home, git_identity=False)
+
+        self.assertNotEqual(
+            result.returncode, 0, "an unset identity must abort the install (AC1)"
+        )
+        self.assertIn(
+            "empty ident",
+            result.stderr,
+            "the abort must name the actual consequence (AC2)",
+        )
+        self.assertIn(
+            "git config --global user.name",
+            result.stderr,
+            "the abort must print the name remediation command (AC1)",
+        )
+        self.assertIn(
+            "git config --global user.email",
+            result.stderr,
+            "the abort must print the email remediation command (AC1)",
+        )
+        self.assertNotIn(
+            "configured successfully",
+            result.stdout,
+            "the guard must abort the run, not warn and continue (AC1)",
+        )
+
+    def test_passes_once_the_identity_resolves(self) -> None:
+        """AC4: a host with a configured identity completes the bootstrap."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = _make_fake_home(Path(tmp))
+            result = run_install(fake_home)
+
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"a configured identity must not block the install (AC1): "
+            f"{result.stderr}",
+        )
+        self.assertIn("configured successfully", result.stdout)
+
+    def test_aborts_with_remediation_when_git_is_absent(self) -> None:
+        """AC1: missing git is a fail-closed abort, not a confusing late error."""
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = _make_fake_home(Path(tmp))
+            result = run_install(fake_home, mask_git=True)
+
+        self.assertNotEqual(result.returncode, 0, "missing git must abort (AC1)")
+        self.assertIn(
+            "git not found", result.stderr, "the abort must name the command (AC1)"
+        )
+        self.assertIn(
+            "apt-get install -y git",
+            result.stderr,
+            "the abort must print the remediation command (AC1)",
+        )
 
 
 if __name__ == "__main__":

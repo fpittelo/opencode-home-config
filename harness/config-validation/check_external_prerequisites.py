@@ -82,6 +82,11 @@ INVENTORY: tuple[Mapping[str, str], ...] = (
         "guard": GUARD_COMMAND_V,
     },
     {
+        "tool": "git",
+        "invoked_where": "install.sh git identity guard (user.name/user.email, #422)",
+        "guard": GUARD_COMMAND_V,
+    },
+    {
         "tool": "podman",
         "invoked_where": "opencode.jsonc mcp.COACH_* command[0]; install.sh pre-pull",
         "guard": GUARD_COMMAND_V,
