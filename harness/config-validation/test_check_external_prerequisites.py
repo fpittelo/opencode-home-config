@@ -289,6 +289,22 @@ class RealRepositoryControl(unittest.TestCase):
             with self.subTest(launcher=launcher):
                 self.assertIn(launcher, declared)
 
+    def test_git_identity_guard_is_inventoried(self) -> None:
+        """#422: install.sh now invokes git — the inventory must say so."""
+        entries = {item["tool"]: item for item in checker.INVENTORY}
+        self.assertIn(
+            "git",
+            entries,
+            "install.sh invokes git for the identity guard (#422) — declare it "
+            "in the external-prerequisite inventory",
+        )
+        self.assertEqual(entries["git"]["guard"], checker.GUARD_COMMAND_V)
+        self.assertNotIn(
+            "guard_var",
+            entries["git"],
+            "git is guarded by the literal 'command -v git' line, not a token",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
