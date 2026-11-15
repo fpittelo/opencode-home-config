@@ -165,4 +165,17 @@ python3 harness/config-validation/test_check_gitleaks_allowlist.py || fail "test
 # status:: label, no auto-close, no cache, no second version literal).
 # #142 A1 pattern: negative fixtures + real-repo positive control, offline.
 python3 harness/config-validation/test_check_pin_freshness_workflow.py || fail "test_check_pin_freshness_workflow.py failed"
+# gate 20 installed-posture freshness (#449 AC2a): the root bash deny tail
+# (gh run delete*, gh cache delete*, gh auth *, gh api *, ...) only protects
+# sessions whose INSTALLED config carries it — opencode serve --service and
+# every agent session boot from $HOME/.config/opencode/opencode.jsonc, which
+# install.sh wires as a symlink that can go stale (moved checkout) or be
+# replaced by a copy, silently dropping the denies (the #423 boot-chain
+# class). The check asserts the installed file carries EVERY deny entry of
+# the pinned BASELINE_DENY_TAIL (single-sourced from gate 14's checker);
+# fail-closed on unreadable/broken-symlink/unparsable/tampered-posture
+# shapes; explicit SKIP (exit 0) when no HOME-profile install exists (bare
+# CI runners). #142 A1 pattern: negative fixtures + real-host positive
+# control, offline, stdlib-only.
+python3 harness/config-validation/test_check_installed_posture_freshness.py || fail "test_check_installed_posture_freshness.py failed"
 echo "PASS run-config-gate: all gates green (${REPO_ROOT})"
