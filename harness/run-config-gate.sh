@@ -178,4 +178,18 @@ python3 harness/config-validation/test_check_pin_freshness_workflow.py || fail "
 # CI runners). #142 A1 pattern: negative fixtures + real-host positive
 # control, offline, stdlib-only.
 python3 harness/config-validation/test_check_installed_posture_freshness.py || fail "test_check_installed_posture_freshness.py failed"
+# gate 21 architecture-coverage gate logic (#421): the path-derived
+# self-triggering gate that replaced the requires-architecture label read —
+# a PR diff touching agents/**, opencode.jsonc, .github/workflows/**,
+# harness/** or skills/** must carry docs/adr/** or docs/architecture/arc42/**
+# changes in the same diff, or the CI job fails; install.sh deliberately
+# excluded (mechanical pin bumps must not force ADRs, #447 class). The test
+# suite drives the REAL script (harness/check_arch_coverage.sh — the exact
+# logic ci.yml invokes) against synthetic two-commit diffs: per-path
+# negative cases, both accepted doc paths as satisfiers, docs-only and
+# excluded-path positives, deletion-surface, empty-diff, message quality
+# (failure names hit paths + accepted doc paths + the exclusion rationale),
+# and a real-repo no-op control. #142 A1 pattern: synthetic fixtures +
+# real-repo positive control, offline, stdlib-only.
+python3 harness/config-validation/test_check_arch_coverage.py || fail "test_check_arch_coverage.py failed"
 echo "PASS run-config-gate: all gates green (${REPO_ROOT})"

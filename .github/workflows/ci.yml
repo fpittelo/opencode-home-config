@@ -9,7 +9,9 @@ name: CI Pipeline
 # permission invariant (#150 COACH_*, #207 BROWSER_*), native docs
 # validators (links, MADR schema, mermaid syntax) and their regression
 # suites. Only genuinely CI-only steps remain inline: the diff-scoped
-# secret scan and the label-conditional architecture gate.
+# secret scan and the path-derived self-triggering architecture-coverage
+# gate (#421 — thin invocation of harness/check_arch_coverage.sh, logic
+# pinned by gate 21).
 # Deep checks (full-history secret scan, Chromium render validation, image
 # builds) moved to the scheduled deep-validation workflow (MADR-0003 D2-D4,
 # #133) where their latency is irrelevant.
@@ -89,30 +91,29 @@ jobs:
           # the job, post a PR review comment and appear in the job summary).
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
 
-      - name: Enforce architecture coverage for requires-architecture PRs
+      - name: Enforce architecture coverage for architecture-relevant paths
+        # #421: PATH-DERIVED and SELF-TRIGGERING — no human label application
+        # is required (the label variant passed trivially for every agent PR:
+        # no MCP tool labels PRs, `gh api *` is root-denied for every agent,
+        # and `gh pr edit` is broken for label writes #304). Any diff touching
+        # agents/**, opencode.jsonc, .github/workflows/**, harness/** or
+        # skills/** must also touch docs/adr/** or docs/architecture/arc42/**,
+        # or this job fails. install.sh is deliberately EXCLUDED from the
+        # trigger set: a mechanical pin bump (e.g. #447, herdr digest
+        # refresh) changes supply-chain material, not architecture-relevant
+        # behaviour — forcing an ADR per pin would spam the MADR index. The
+        # requires-architecture LABEL remains advisory-only: reviewers may
+        # set it as a hint, the gate never reads it (AC4). API-free: the
+        # label read (and its #287 live-read lesson) is gone entirely; the
+        # gate is read-only over the local diff.
+        # Diff mechanics: BASE_SHA = the event's base tip = the merge ref's
+        # first parent (1 hop, covered by the depth-60 checkout above), the
+        # exact mechanics the previous gate used for its diff — only the
+        # trigger source changed. The logic lives in
+        # harness/check_arch_coverage.sh so the landed gate is testable
+        # as-is (gate 21 pins the trigger/doc sets and the failure shapes).
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          # Label is read LIVE from the API: the event snapshot is frozen at PR
-          # creation, so a label added seconds later was invisible to the first
-          # run (#287, retro #282 finding 3 — forced empty-commit re-triggers).
-          # The API call is a separate statement: under set -e a gh failure must
-          # fail the step loudly, never silently route to the trivial pass.
-          LABELS="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels" --jq '.[].name')"
-          if ! echo "$LABELS" | grep -qx 'requires-architecture'; then
-            echo "NOTE: PR does not carry the 'requires-architecture' label - architecture gate passes trivially."
-            exit 0
-          fi
-          echo "PR carries 'requires-architecture': the diff must touch docs/adr/** or docs/architecture/arc42/**."
-          CHANGED="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
-          echo "$CHANGED"
-          if echo "$CHANGED" | grep -Eq '^(docs/adr/|docs/architecture/arc42/)'; then
-            echo "PASS: architecture documentation updated (docs/adr/** or docs/architecture/arc42/**)."
-            exit 0
-          fi
-          echo "::error::PR labeled 'requires-architecture' but the diff contains no changes under docs/adr/** or docs/architecture/arc42/**. Label semantics: apply 'requires-architecture' to PRs that change architecture-relevant behaviour; the two accepted paths to satisfy this gate are (1) a new or updated ADR under docs/adr/** (MADR schema) or (2) an arc42 documentation update under docs/architecture/arc42/**. Add the corresponding changes or remove the label."
-          exit 1
+          HEAD_SHA: ${{ github.sha }}
+        run: bash harness/check_arch_coverage.sh "$BASE_SHA" "$HEAD_SHA"
