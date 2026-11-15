@@ -1,15 +1,14 @@
 # MADR-0028: Async DV closeout verification via the durable commit status
 
-- **Status:** accepted-pending-PO
+- **Status:** accepted
 - **Date:** 2026-11-15
-- **Deciders:** @architect (decision author, #464 dispatch), @fpittelo (PO — AC4 sign-off pending on #464), @devops (file work)
+- **Deciders:** @architect (decision author, #464 dispatch), @fpittelo (PO — AC4 sign-off recorded at #464 comment 6895137568), @devops (file work)
 
-> **AC4 status gate (hard):** this record's status flips from
-> `accepted-pending-PO` to `accepted` ONLY when @fpittelo posts an explicit
-> sign-off comment on #464 approving the amended closeout semantics (the
-> change modifies a #448-derived commitment — Rule-5-adjacent governance
-> change). @scrum-master verifies the sign-off comment exists at closeout.
-> This PR must not be merged before that comment exists.
+> **AC4 sign-off recorded:** accepted on the PO sign-off recorded at #464
+> comment 6895137568 (2026-11-15 — the in-session "approved", quoting the
+> amended closeout semantics verbatim). The pre-merge
+> `accepted-pending-PO` state and its hard gate applied to PR #470
+> (technical APPROVE 5910973280) and are satisfied.
 
 ## Context
 
@@ -63,4 +62,4 @@ Chosen option: **"Option 2 — async closeout verification via the durable commi
 
 - #464 (this change), #460 (audit R1), #448 (incident provenance), #449 (durable status + trunk-head requirement), #440 (Sprint 29 retro addendum lineage)
 - `skills/home-governance/SKILL.md` §7 criterion 3, `skills/github-scrum-board/SKILL.md` §5 template, `docs/architecture/arc42/03-cross-cutting-and-security.md` §1.2 (the amended surfaces)
-- AC4 sign-off: @fpittelo comment on #464 (required before merge; status flips to `accepted`)
+- AC4 sign-off: @fpittelo recorded at #464 comment 6895137568 (2026-11-15) — the flip `accepted-pending-PO` → `accepted` is executed in a visible commit referencing it
