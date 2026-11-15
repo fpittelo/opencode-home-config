@@ -70,15 +70,15 @@ fi
 #    write ~/.local/bin already has code execution).
 #    Pin source: upstream publishes no checksums file; the SHA256 below is the
 #    asset digest published by the GitHub release API for herdr-linux-x86_64
-#    (api.github.com/repos/herdrdev/herdr/releases/tags/v0.9.3).
-HERDR_VERSION="0.9.3"
-HERDR_BINARY_SHA256="18a8dc65f1c2fa485884344356dea1cfd911c6f06cf46fa78e193f4087f4dba7"
+#    (api.github.com/repos/herdrdev/herdr/releases/tags/v0.9.5, `assets[].digest`).
+HERDR_VERSION="0.9.5"
+HERDR_BINARY_SHA256="14d9e8bc8b4a9e0118d77c32266f76d461f09b40342eb23752960bd89f59929d"
 BIN_DIR="$HOME/.local/bin"
 BIN_PATH="$BIN_DIR/herdr"
 mkdir -p "$BIN_DIR"
 
-# Token-boundary match instead of grep -qF: a bare "0.9.3" pin must not
-# substring-match a future "0.9.31" --version output and freeze a stale
+# Token-boundary match instead of grep -qF: a bare "0.9.5" pin must not
+# substring-match a future "0.9.51" --version output and freeze a stale
 # binary in the skip path (github-mcp-server avoids this via its full
 # "Version: X" line format; herdr's output format is not line-anchored).
 HERDR_VERSION_RX="$(printf '%s' "$HERDR_VERSION" | sed 's/\./\\./g')"

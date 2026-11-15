@@ -82,7 +82,7 @@ C4Context
 | Playwright browser MCP (`BROWSER`, MADR-0009 #207) | stdio → npx `@playwright/mcp` (pinned 0.0.83; pin-time registry audit by `install.sh` — npx re-resolves per session) | Ephemeral-profile browser automation for user-journey verification against coach-web dev/qa lanes; loopback-origin allowlist; @developer/@devops only. |
 | OpenRouter MCP (`openrouter`) | remote streamable-HTTP | OAuth handled by OpenCode on first use; no stored token. |
 | LLM inference | HTTPS (OpenRouter API) | Model per agent via `openrouter/<model>` assignments. |
-| Herdr agent runtime (MADR-0005, #148) | Unix socket `~/.config/herdr/herdr.sock` + real PTY panes | Technology Layer node on VIDAR — hosts OpenCode TUI panes, reports agent lifecycle (working/blocked/idle); pinned v0.9.3 binary installed by `install.sh`; strictly local (no SSH remote). |
+| Herdr agent runtime (MADR-0005, #148) | Unix socket `~/.config/herdr/herdr.sock` + real PTY panes | Technology Layer node on VIDAR — hosts OpenCode TUI panes, reports agent lifecycle (working/blocked/idle); pinned v0.9.5 binary installed by `install.sh`; strictly local (no SSH remote). |
 | CI | GitHub Actions | JSONC validation + diff-scoped Gitleaks scan per PR (pinned gitleaks-action v3.0.0); full-history scan runs in the scheduled deep-validation workflow (MADR-0003). |
 
 ### 3.3 Scope Decisions
@@ -135,7 +135,7 @@ C4Container
         Container(mcp_openrouter, "openrouter MCP", "Remote streamable-HTTP", "Model catalog & docs lookup, OAuth")
     }
 
-    Container(herdr_runtime, "Herdr Agent Runtime", "Native binary (pinned v0.9.3, SHA256-verified)", "PTY pane host + lifecycle state server (MADR-0005); integration plugins in ~/.config/opencode are untracked and Herdr-owned")
+    Container(herdr_runtime, "Herdr Agent Runtime", "Native binary (pinned v0.9.5, SHA256-verified)", "PTY pane host + lifecycle state server (MADR-0005); integration plugins in ~/.config/opencode are untracked and Herdr-owned")
 
     Rel(fpittelo, agents, "Owns & approves")
     Rel(agents, mcp_github, "Board ops via", "GITHUB_* tools")
