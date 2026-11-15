@@ -243,5 +243,32 @@ class MessageQuality(FixtureTestCase):
         self.assertIn("docs/adr/0027-example.md", proc.stdout)
 
 
+class FailClosedOnDiffFailure(FixtureTestCase):
+    """Review 5910441948: a diff-command failure must fail the gate loudly.
+
+    The first draft swallowed a git-diff failure with ``|| true``, yielding an
+    empty CHANGED list and a misleading PASS — a fail-open on a failure path
+    (e.g. an unresolvable base sha beyond the depth-60 checkout on a
+    >58-commit PR chain; the OLD inline gate failed loudly in this case, and
+    the replacement must too, per the house fail-closed doctrine — gate 20's
+    honest-SKIP semantics, MADR-0026 C11 "unknown, never fresh"). The honest
+    outcomes are PASS (verified no-op or covered diff) and FAIL (coverage gap
+    OR uncomputable diff) — never a silent PASS.
+    """
+
+    def test_unresolvable_base_sha_fails_loudly(self) -> None:
+        repo, _, head = build_repo({})
+        bogus = "1234567890123456789012345678901234567890"
+        proc = run_gate(repo, bogus, head)
+        self.assertEqual(
+            proc.returncode,
+            1,
+            f"expected FAIL on an uncomputable diff, got {proc.returncode}:\n"
+            f"{proc.stdout}{proc.stderr}",
+        )
+        self.assertIn("could not compute the diff", proc.stdout)
+        self.assertNotIn("PASS", proc.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

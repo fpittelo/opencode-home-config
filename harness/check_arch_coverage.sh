@@ -45,7 +45,18 @@ TRIGGER_RE='^(agents/|\.github/workflows/|harness/|skills/|opencode\.jsonc$)'
 # The two accepted documentation paths (either satisfies the gate).
 DOC_RE='^(docs/adr/|docs/architecture/arc42/)'
 
-CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)"
+# Fail-closed on an uncomputable diff (review 5910441948): an empty CHANGED
+# list from a FAILED diff command would read as "nothing changed" — a
+# misleading PASS on exactly the failure path (unresolvable base sha beyond
+# the shallow checkout) where the OLD inline gate failed loudly. The honest
+# outcomes are PASS (verified diff) and FAIL (coverage gap OR uncomputable
+# diff) — never a silent PASS.
+if ! CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"; then
+  echo "::error::architecture-coverage gate could not compute the diff between $BASE_SHA and $HEAD_SHA — an unverifiable diff must never read as covered (fail-closed, #421 review 5910441948)."
+  echo "Likely cause: the base commit is outside the shallow checkout (the depth-60 bound fails loudly beyond ~58-commit PR chains) or a base ref moved."
+  echo "Remediate: update the PR branch so the merge ref covers the base tip, or re-run the workflow after the base advances."
+  exit 1
+fi
 HITS="$(printf '%s\n' "$CHANGED" | grep -E "$TRIGGER_RE" || true)"
 DOCS="$(printf '%s\n' "$CHANGED" | grep -E "$DOC_RE" || true)"
 
