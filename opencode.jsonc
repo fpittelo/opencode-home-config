@@ -299,6 +299,17 @@
       "rm *": "ask",
       "rm /tmp/opencode/*": "allow",
       "rm -r /tmp/opencode/*": "allow",
+      // MADR-0027 (#463, AC0 verdict C1): scoped cache-cleanup carve-outs,
+      // ROOT ask-tier placement ONLY — an agent-level `rm -rf */.venv`
+      // allow appends AFTER the deny tail and defeats it for the matching
+      // glob (verified in the AC0 review). Enforced by the gate-14 canary
+      // (check_rm_carveout_placement).
+      "rm -rf .venv": "allow",
+      "rm -rf */.venv": "allow",
+      "rm -rf __pycache__": "allow",
+      "rm -rf */__pycache__": "allow",
+      "rm -rf .pytest_cache": "allow",
+      "rm -rf */.pytest_cache": "allow",
       "pip install*": "ask",
       "pip3 install*": "ask",
       "uv pip install*": "ask",
@@ -422,7 +433,17 @@
       // narrowing must be a root deny + scoped carve-outs, never a scoped
       // allow set, which tightens nothing under the "*": allow head (C3).
       "podman system service*": "deny",
-      "podman machine*": "deny"
+      "podman machine*": "deny",
+      // MADR-0027 (#463, AC0 verdict C3): kill broadcast forms are
+      // control-plane-DoS primitives — `kill 0` (own process group),
+      // `kill -1` (every process of the user), `kill <pid> -1` (pid +
+      // broadcast; empirically grounded by the pre-review probe).
+      // Additions only (tightening): the per-pid kill ALLOW is DEFERRED
+      // (C4(b) — no per-case AC1 evidence), so plain `kill <pid>` stays
+      // ask-tier.
+      "kill 0*": "deny",
+      "kill -1*": "deny",
+      "kill * -1*": "deny"
     }
   },
   "compaction": {

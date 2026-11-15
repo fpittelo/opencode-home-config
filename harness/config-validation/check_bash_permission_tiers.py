@@ -170,6 +170,15 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # D3, arc42 §3).
     "podman system service*",
     "podman machine*",
+    # MADR-0027 (#463, AC0 verdict C3): kill broadcast forms are
+    # control-plane-DoS primitives — `kill 0` (own process group), `kill -1`
+    # (every process of the user), `kill <pid> -1` (pid + broadcast;
+    # empirically grounded by the pre-review probe). Additions only
+    # (tightening): the per-pid kill ALLOW is DEFERRED (C4(b) — no per-case
+    # AC1 evidence), so plain `kill <pid>` stays ask.
+    "kill 0*",
+    "kill -1*",
+    "kill * -1*",
 )
 
 # Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
@@ -179,6 +188,16 @@ BASELINE_ASK_TIER: tuple[tuple[str, str], ...] = (
     ("rm *", "ask"),
     ("rm /tmp/opencode/*", "allow"),
     ("rm -r /tmp/opencode/*", "allow"),
+    # MADR-0027 (#463, AC0 verdict C1): scoped cache-cleanup carve-outs,
+    # ROOT ask-tier placement ONLY — an agent-level `rm -rf */.venv` allow
+    # appends AFTER the deny tail and defeats it for the matching glob
+    # (verified in the AC0 review). Enforced by check_rm_carveout_placement.
+    ("rm -rf .venv", "allow"),
+    ("rm -rf */.venv", "allow"),
+    ("rm -rf __pycache__", "allow"),
+    ("rm -rf */__pycache__", "allow"),
+    ("rm -rf .pytest_cache", "allow"),
+    ("rm -rf */.pytest_cache", "allow"),
     ("pip install*", "ask"),
     ("pip3 install*", "ask"),
     ("uv pip install*", "ask"),
@@ -399,6 +418,33 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("podman create -e VAR=1 ghcr.io/fpittelo/coach:dev", "allow"),
     ("podman start 7f3a1c9d", "allow"),
     ("podman unshare chown -R 1000:1000 /workspace", "allow"),
+    # MADR-0027 (#463, AC0 verdict): the scoped cache-cleanup carve-outs and
+    # their preserved boundaries — positive carve-outs, deny preservation on
+    # absolute/secret paths, generic-rm and kill-broadcast shapes, and the
+    # credential-shadow control that answers the #350 question.
+    ("rm -rf .venv", "allow"),
+    ("rm -rf pkg/.venv", "allow"),
+    ("rm -rf __pycache__", "allow"),
+    ("rm -rf pkg/__pycache__", "allow"),
+    ("rm -rf .pytest_cache", "allow"),
+    ("rm -rf pkg/.pytest_cache", "allow"),
+    ("rm -rf /abs/path/.venv", "deny"),
+    ("rm -rf /abs/path/__pycache__", "deny"),
+    ("rm -rf /abs/path/.pytest_cache", "deny"),
+    ("rm -rf ~/.config/opencode/x", "deny"),
+    ("rm -rf .venv *", "ask"),
+    # Not covered by the carve-outs AND an absolute path: resolves deny via
+    # rm -rf /* (pre-existing) — a widening of the carve-outs to absolute
+    # paths would flip this to allow and trip the gate.
+    ("rm -rf /tmp/opencode/cache", "deny"),
+    ("pip install -r creds.env", "deny"),
+    ("pip install evil", "ask"),
+    ("kill 0", "deny"),
+    ("kill -1", "deny"),
+    ("kill 1234 -1", "deny"),
+    ("kill -- -1", "deny"),
+    ("kill 1234", "ask"),
+    ("kill -9 1234", "ask"),
 )
 
 # Per-segment evaluation of compound command lines (#419): the documented
@@ -688,6 +734,53 @@ def check_compound_truth_table(
             )
 
 
+RM_CARVEOUT_PATTERNS: tuple[str, ...] = (
+    "rm -rf .venv",
+    "rm -rf */.venv",
+    "rm -rf __pycache__",
+    "rm -rf */__pycache__",
+    "rm -rf .pytest_cache",
+    "rm -rf */.pytest_cache",
+)
+
+
+def check_rm_carveout_placement(root: Path, failures: list[str]) -> None:
+    """MADR-0027 C1 canary (#463): the rm carve-outs are ROOT ask-tier ONLY.
+
+    Agent rules append AFTER the root deny tail (#350), so an agent-level
+    ``rm -rf */.venv`` allow would defeat the tail for any matching glob —
+    verified in the AC0 review: ``rm -rf /home/fr/proj/.venv`` resolves deny
+    at root but allow once the glob is appended agent-level. This canary
+    fails if the carve-outs are ever (a) removed from the root ask tier or
+    (b) mirrored into any agent profile block.
+    """
+    rules = root_rules(root, failures)
+    if rules is None:
+        return
+    root_map = dict(rules)
+    for pattern in RM_CARVEOUT_PATTERNS:
+        if root_map.get(pattern) != "allow":
+            failures.append(
+                f"opencode.jsonc: rm carve-out {pattern!r} must be an ALLOW "
+                "in the ROOT permission block (MADR-0027 C1) — root "
+                "placement keeps the deny tail last and winning"
+            )
+    for agent in sorted((root / "agents").glob("*.md")):
+        present, agent_rules = agent_bash(root, agent, failures)
+        if not present:
+            continue
+        agent_map = dict(agent_rules)
+        for pattern in RM_CARVEOUT_PATTERNS:
+            if pattern in agent_map:
+                failures.append(
+                    f"{agent.relative_to(root)}: rm carve-out {pattern!r} is "
+                    "FORBIDDEN at agent level (MADR-0027 C1) — an "
+                    "agent-level glob allow appends after the deny tail and "
+                    "defeats it; the carve-out lives in the root ask tier "
+                    "only"
+                )
+
+
 def main(argv: list[str]) -> int:
     root = (
         Path(argv[1]).resolve()
@@ -705,6 +798,7 @@ def main(argv: list[str]) -> int:
         check_compound_truth_table(root_rule_list, "opencode.jsonc", failures)
     check_agent_inheritance(root, failures)
     check_non_inheritance_agents(root, failures)
+    check_rm_carveout_placement(root, failures)
     if failures:
         print("FAIL check_bash_permission_tiers: bash tier invariant violated:")
         for failure in failures:

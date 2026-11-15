@@ -347,6 +347,8 @@ SSOT: the `home-governance` skill §5 ([SKILL.md](../skills/home-governance/SKIL
 
 SSOT: arc42 [Security & Privacy §1.1](architecture/arc42/03-cross-cutting-and-security.md) and [MADR-0004](adr/0004-allow-by-default-bash-permission-posture.md) — allow-by-default with catastrophic-deny guardrails, last-match-wins evaluation, per-segment compound-command checks, file-centric secret denies (#167).
 
+**MADR-0027 carve-outs (#463, AC0 verdict):** routine cache cleanup and process management no longer prompt where scoped: `rm -rf .venv`, `rm -rf */.venv`, `rm -rf __pycache__`, `rm -rf */__pycache__`, `rm -rf .pytest_cache`, `rm -rf */.pytest_cache` are **root-placed allow** (agent-level placement of these is forbidden — the #350 append-override would defeat the deny tail; canary in gate 14). Generic `rm` still asks; absolute paths still deny (`rm -rf /*`). Kill broadcast forms are **denied outright** (`kill 0`, `kill -1`, `kill <pid> -1`); a plain `kill <pid>` still asks — and a `kill` of the opencode daemon is a recoverable session-wide outage (restart the service to restore tool access). **Dependency setup: use `uv sync`** (already allow) — `pip install` intentionally remains ask-tier (AC0 verdict: supply-chain; install-time code execution from a remote index is not carved). Known residual: the ask/deny tiers are bypassable via wrapper prefixes (`xargs`/`env`/`timeout`/`nohup`) — recorded in arc42 §3 and routed to #468.
+
 ---
 
 ## 4. Switching Between HOME and WORK Profiles
