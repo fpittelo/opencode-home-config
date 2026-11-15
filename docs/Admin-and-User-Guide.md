@@ -259,6 +259,8 @@ SSOT: arc42 [Quality Gates & CI §1.2](architecture/arc42/03-cross-cutting-and-s
 
 **Gate 18 — secret-history controls (#448):** `harness/config-validation/check_gitleaks_allowlist.py` enforces (1) that no opencode runtime artifact (`service.json`, `cli.json`) is ever **tracked** — the `git add -A` class that put a daemon credential into public history for 22 days — and (2) that the incident's `.gitleaks.toml` allowlist stays exactly one entry, `condition = "AND"` scoped to the public commit `fd15509…` **and** the anchored `service.json` path (a path-only or OR-scoped entry would be a blanket waiver), carrying no secret material. Run it in isolation with `python3 harness/config-validation/check_gitleaks_allowlist.py`.
 
+**Architecture-coverage gate — path-derived and self-triggering (#421):** a PR diff touching `agents/**`, `opencode.jsonc`, `.github/workflows/**`, `harness/**` or `skills/**` must also touch `docs/adr/**` (a MADR) or `docs/architecture/arc42/**` (an arc42 update) in the same diff, or the CI job fails — zero human action, no `gh api` (the former gate read a human-applied PR label that no agent could set through any permitted path, so it passed trivially for every squad PR). `install.sh` is deliberately excluded: mechanical pin bumps (e.g. the #447 herdr digest refresh) must not force ADRs. The `requires-architecture` label remains **advisory-only** — reviewers may set it as a hint; the gate never reads it. Gate logic: `harness/check_arch_coverage.sh`, pinned by config gate 21.
+
 ### 2.9 Troubleshooting
 
 | Symptom | Likely Cause | Fix |
