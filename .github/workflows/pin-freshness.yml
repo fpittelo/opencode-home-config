@@ -102,6 +102,10 @@ jobs:
           pin_line="$(grep -m1 -E '^GITHUB_MCP_VERSION=' install.sh || true)"
           PINNED="$(printf '%s' "$pin_line" | sed -n 's/^GITHUB_MCP_VERSION="\([^"]*\)".*/\1/p')"
           if [ -z "$PINNED" ] || ! semver_shaped "$PINNED"; then
+            # C9 (review 5910211237): an unvalidated value must never reach
+            # the issue body — blank it before finish() exports it, so the
+            # inconclusive body shows the "(unreadable)" placeholder.
+            PINNED=""
             RESULT="unknown"
             REASON="install.sh pin read or semver parse failed"
             finish
@@ -118,11 +122,21 @@ jobs:
           UPSTREAM_TAG="$(printf '%s' "$up_json" | jq -r '.tag_name // empty' 2>/dev/null || true)"
           PUBLISHED="$(printf '%s' "$up_json" | jq -r '.published_at // empty' 2>/dev/null || true)"
           if ! semver_shaped "$UPSTREAM_TAG"; then
+            # C9 (review 5910211237): tag_name is upstream-controlled. It
+            # failed the shape check, so it is NOT validated — blank both
+            # values before finish() rather than interpolating raw upstream
+            # text into the issue body (table cell + constructed URLs).
+            UPSTREAM_TAG=""
+            PUBLISHED=""
             RESULT="unknown"
             REASON="upstream tag missing or not semver-shaped (parse failure)"
             finish
           fi
           if ! iso_shaped "$PUBLISHED"; then
+            # C9: published_at is upstream-controlled and failed validation —
+            # blank it before exporting. UPSTREAM_TAG is already validated on
+            # this path and may stay.
+            PUBLISHED=""
             RESULT="unknown"
             REASON="upstream published_at missing or not ISO-8601 Z (parse failure)"
             finish

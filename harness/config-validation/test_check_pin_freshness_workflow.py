@@ -19,6 +19,7 @@ Run:
 """
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -42,6 +43,32 @@ REAL_DEEP = (REPO_ROOT / ".github/workflows/deep-validation.yml").read_text(
 # rename of the real file breaks loudly here instead of silently).
 REAL_JOB_PERMS = "      contents: read\n      issues: write\n"
 REAL_CHECKOUT_WITH = "        with:\n          persist-credentials: false\n"
+
+# C9 (review 5910211237): each inconclusive branch carries its clears BEFORE
+# finish() exports the values. Sentinels locate the branch; the *_CLEARS blocks
+# are the exact target text the negative fixtures mutate.
+PIN_SENTINEL = 'if [ -z "$PINNED" ] || ! semver_shaped "$PINNED"; then'
+TAG_SENTINEL = 'if ! semver_shaped "$UPSTREAM_TAG"; then'
+PUB_SENTINEL = 'if ! iso_shaped "$PUBLISHED"; then'
+TAG_CLEARS = (
+    '            UPSTREAM_TAG=""\n'
+    '            PUBLISHED=""\n'
+    '            RESULT="unknown"\n'
+    '            REASON="upstream tag missing or not semver-shaped (parse failure)"\n'
+    '            finish\n'
+)
+PUB_CLEARS = (
+    '            PUBLISHED=""\n'
+    '            RESULT="unknown"\n'
+    '            REASON="upstream published_at missing or not ISO-8601 Z (parse failure)"\n'
+    '            finish\n'
+)
+PIN_CLEARS = (
+    '            PINNED=""\n'
+    '            RESULT="unknown"\n'
+    '            REASON="install.sh pin read or semver parse failed"\n'
+    '            finish\n'
+)
 
 
 def build_repo(
@@ -234,6 +261,113 @@ class TriState(FixtureTestCase):
 
     def test_summary_written(self) -> None:
         self.assertIn("GITHUB_STEP_SUMMARY", REAL_WORKFLOW)
+
+
+class UnvalidatedInterpolation(FixtureTestCase):
+    """C9 — an inconclusive branch must blank what it could not validate.
+
+    Review 5910211237 (PR #453): the tag-shape and published-shape failure
+    branches finished with RESULT=unknown but left the raw upstream-controlled
+    string in scope, and the reconcile step interpolates it into the
+    bot-managed issue body (table cell + constructed URLs). Agents read issues
+    over MCP, so that is the indirect prompt-injection surface C9 closes:
+    every interpolated value must be validated or empty.
+    """
+
+    def branch(self, text: str, sentinel: str) -> str:
+        """The branch body from its `if` line through the matching `fi`."""
+        start = text.find(sentinel)
+        self.assertGreaterEqual(start, 0, f"branch sentinel absent: {sentinel!r}")
+        lines = text[start:].splitlines()
+        collected = [lines[0]]
+        for line in lines[1:]:
+            collected.append(line)
+            if line.strip() == "fi":
+                break
+        return "\n".join(collected)
+
+    def assert_cleared_first(self, branch: str, variable: str) -> None:
+        assignment = f'{variable}=""'
+        self.assertIn(
+            assignment,
+            branch,
+            f"{variable} is interpolated into the issue body but this "
+            "inconclusive branch never blanks it (MADR-0026 C9, review "
+            "5910211237)",
+        )
+        # The `finish` COMMAND line — not the word inside a comment.
+        finish_match = re.search(r"(?m)^\s*finish\s*$", branch)
+        self.assertIsNotNone(finish_match, "branch does not call finish")
+        assert finish_match is not None
+        self.assertLess(
+            branch.index(assignment),
+            finish_match.start(),
+            f"{variable} must be blanked BEFORE finish() exports it "
+            "(MADR-0026 C9)",
+        )
+
+    def test_tag_failure_branch_blanks_upstream_values(self) -> None:
+        branch = self.branch(REAL_WORKFLOW, TAG_SENTINEL)
+        self.assertIn('RESULT="unknown"', branch)
+        self.assert_cleared_first(branch, "UPSTREAM_TAG")
+        self.assert_cleared_first(branch, "PUBLISHED")
+
+    def test_published_failure_branch_blanks_published(self) -> None:
+        branch = self.branch(REAL_WORKFLOW, PUB_SENTINEL)
+        self.assertIn('RESULT="unknown"', branch)
+        self.assert_cleared_first(branch, "PUBLISHED")
+
+    def test_pin_failure_branch_blanks_pinned(self) -> None:
+        """Same class, third site: the pin read can fail shape validation."""
+        branch = self.branch(REAL_WORKFLOW, PIN_SENTINEL)
+        self.assertIn('RESULT="unknown"', branch)
+        self.assert_cleared_first(branch, "PINNED")
+
+    def test_validated_paths_keep_their_values(self) -> None:
+        """The drift path must keep both values: they are validated there."""
+        drift_line = 'RESULT="drift"'
+        self.assertIn(drift_line, REAL_WORKFLOW)
+        semver_idx = REAL_WORKFLOW.index(TAG_SENTINEL)
+        drift_idx = REAL_WORKFLOW.index(drift_line)
+        self.assertLess(semver_idx, drift_idx, "drift must follow both shape checks")
+
+    def test_tag_branch_leaving_upstream_tag_fails(self) -> None:
+        workflow = mutated(TAG_CLEARS, TAG_CLEARS.replace('            UPSTREAM_TAG=""\n', ""))
+        self.assert_finding(
+            checker.check_repo(build_repo(workflow=workflow)), "UPSTREAM_TAG", "C9"
+        )
+
+    def test_tag_branch_leaving_published_fails(self) -> None:
+        workflow = mutated(TAG_CLEARS, TAG_CLEARS.replace('            PUBLISHED=""\n', ""))
+        self.assert_finding(
+            checker.check_repo(build_repo(workflow=workflow)), "PUBLISHED", "C9"
+        )
+
+    def test_published_branch_leaving_published_fails(self) -> None:
+        workflow = mutated(PUB_CLEARS, PUB_CLEARS.replace('            PUBLISHED=""\n', ""))
+        self.assert_finding(
+            checker.check_repo(build_repo(workflow=workflow)), "PUBLISHED", "C9"
+        )
+
+    def test_pin_branch_leaving_pinned_fails(self) -> None:
+        workflow = mutated(PIN_CLEARS, PIN_CLEARS.replace('            PINNED=""\n', ""))
+        self.assert_finding(
+            checker.check_repo(build_repo(workflow=workflow)), "PINNED", "C9"
+        )
+
+    def test_clear_after_finish_fails(self) -> None:
+        """Ordering matters: a clear after finish() never reaches the output."""
+        swapped = (
+            '            RESULT="unknown"\n'
+            '            REASON="upstream tag missing or not semver-shaped (parse failure)"\n'
+            '            finish\n'
+            '            UPSTREAM_TAG=""\n'
+            '            PUBLISHED=""\n'
+        )
+        workflow = mutated(TAG_CLEARS, swapped)
+        self.assert_finding(
+            checker.check_repo(build_repo(workflow=workflow)), "before finish"
+        )
 
 
 class CronStagger(FixtureTestCase):

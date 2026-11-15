@@ -27,6 +27,11 @@ on ``.github/workflows/pin-freshness.yml``:
      authenticated ``releases/latest`` read — and zero ``status::`` labels,
      zero auto-close, zero ``actions/cache`` state, zero second version
      literals (C2: ``install.sh`` stays the single pin).
+  6. **C9 (no unvalidated interpolation)** — every inconclusive branch blanks
+     the values it could not validate *before* ``finish()`` exports them, so
+     no raw upstream-controlled string can reach the bot-managed issue body
+     (the indirect prompt-injection surface, since agents read issues over
+     MCP; review 5910211237 on PR #453).
 
 YAML structure is parsed with ``yaml`` (already the house dependency of
 ``check_agent_frontmatter.py``); the failure-path logic inside ``run:``
@@ -51,6 +56,19 @@ DRIFT_LABELS = ("agent::devops", "type::task")
 MANAGED_MARKER = "<!-- pin-freshness:managed-issue -->"
 UPSTREAM_REPO = "github/github-mcp-server"
 ASSET_NAME = "github-mcp-server_Linux_x86_64.tar.gz"
+
+# C9 (review 5910211237 on PR #453): agents read issues over MCP, so an
+# upstream-controlled string interpolated into the bot-managed body is an
+# indirect prompt-injection surface. Every inconclusive branch must therefore
+# BLANK what it could not validate, before finish() exports it — the body then
+# shows the "(unavailable)"/"(unreadable)" placeholders. Each entry names the
+# branch sentinel and the variables that must be cleared inside it (and only
+# those: a variable already validated on that path may keep its value).
+INCONCLUSIVE_BRANCH_CLEARS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ('if [ -z "$PINNED" ] || ! semver_shaped "$PINNED"; then', ("PINNED",)),
+    ('if ! semver_shaped "$UPSTREAM_TAG"; then', ("UPSTREAM_TAG", "PUBLISHED")),
+    ('if ! iso_shaped "$PUBLISHED"; then', ("PUBLISHED",)),
+)
 
 # Raw-text forbiddens with their MADR-0026 invariant tags (C1/C2/C5/C10).
 FORBIDDEN = (
@@ -126,6 +144,58 @@ def _structure_findings(workflow: dict[str, Any]) -> list[str]:
                     f"checkout step in job {name!r} must set "
                     "persist-credentials: false (MADR-0026 C1), found "
                     f"{with_block.get('persist-credentials')!r}"
+                )
+    return findings
+
+
+def branch_body(text: str, sentinel: str) -> str | None:
+    """The branch from its ``if`` line through the matching ``fi`` (None absent).
+
+    The branches these invariants target are flat (no nested ``if``), so the
+    first line that strips to ``fi`` closes the block.
+    """
+    start = text.find(sentinel)
+    if start < 0:
+        return None
+    lines = text[start:].splitlines()
+    collected = [lines[0]]
+    for line in lines[1:]:
+        collected.append(line)
+        if line.strip() == "fi":
+            break
+    return "\n".join(collected)
+
+
+def _c9_findings(text: str) -> list[str]:
+    """C9: inconclusive branches must blank their unvalidated values."""
+    findings: list[str] = []
+    for sentinel, variables in INCONCLUSIVE_BRANCH_CLEARS:
+        branch = branch_body(text, sentinel)
+        if branch is None:
+            findings.append(
+                f"cannot locate the inconclusive branch {sentinel!r} — the "
+                "C9 blanking invariant cannot be verified (fail-closed; "
+                "review 5910211237)"
+            )
+            continue
+        for variable in variables:
+            assignment = f'{variable}=""'
+            if assignment not in branch:
+                findings.append(
+                    f"{variable} is interpolated into the issue body but the "
+                    f"branch {sentinel!r} never blanks it — an unvalidated "
+                    "upstream value must not reach the body (MADR-0026 C9, "
+                    "review 5910211237)"
+                )
+                continue
+            # Match the `finish` COMMAND line, not the word in prose: the
+            # branch comments explain finish() and would otherwise match.
+            finish_match = re.search(r"(?m)^\s*finish\s*$", branch)
+            if finish_match is not None and branch.index(assignment) > finish_match.start():
+                findings.append(
+                    f"{variable} must be blanked before finish() in the "
+                    f"branch {sentinel!r} — a clear after finish() never "
+                    "reaches the exported outputs (MADR-0026 C9)"
                 )
     return findings
 
@@ -277,6 +347,7 @@ def check_repo(root: Path) -> list[str]:
 
     findings.extend(_structure_findings(workflow))
     findings.extend(_text_findings(pin_text))
+    findings.extend(_c9_findings(pin_text))
 
     deep_text: str | None = None
     try:
