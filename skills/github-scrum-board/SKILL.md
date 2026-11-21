@@ -117,6 +117,14 @@ When closing an issue upon squash merge into `main`, **`@scrum-master`** posts t
 **Status:** Completed and verified. Issue closed.
 ```
 
+### Automated Closeout Signal (#481)
+
+On every squash merge into `main`, the report-only `dod-closeout` workflow (`.github/workflows/dod-closeout.yml`) re-verifies the five machine-derivable DoD facts on the pushed trunk sha — squash merge into `main`, CI Pipeline check runs green, the durable `deep-validation` commit status green (bounded window; a not-yet-published status renders `pending`, never failure — MADR-0028), the formal `APPROVE` by the genuine `@devfpittelo` identity (login AND id, #423 parity), and the native issue↔PR closing linkage — and posts/updates **one machine-derived line** on the linked issue (hidden marker, at most one comment per issue):
+
+- **Green signal (✅):** all five facts verified — `@scrum-master` closes the issue after posting the closing-summary template above. The signal does not replace criterion 5 (the closing summary) and is **never the DoD gate**: it is a signal that does not close the DoD gate.
+- **Failure / `pending` / `unknown` signal (⚠️):** an exception under the existing impediment protocol — verify the outstanding fact(s) manually before any close (the `deep-validation` commit status remains the DV verdict of record, MADR-0028); no issue may be closed on a non-green signal.
+- The workflow is strictly report-only: it never closes issues, never writes labels/statuses/check runs and never blocks a merge or dispatch; the 5 DoD criteria are unchanged (`home-governance` §7 — SSOT).
+
 ### Pending-PO Closeout Precedent (#180, #181)
 
 When a story's acceptance criteria are all fulfilled **except** a pending-PO one-click acceptance (e.g. a template flag toggle, a CI glance), **`@scrum-master`** must **close the issue** with an explicit `pending-PO` note referencing the one-click item (precedent: #180, #181), rather than holding the closeout (the #190 deviation).

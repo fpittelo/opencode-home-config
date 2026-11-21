@@ -20,7 +20,7 @@ This suite pins the split so it cannot silently regress:
 3. The DV workflow runs every Tier B suite in a dedicated failing job, and
    its schedule is unchanged.
 4. ``harness/README.md`` carries the Tier A / Tier B mapping table accounting
-   for every current gate (1-22) — no gate silently dropped.
+   for every current gate (1-23) — no gate silently dropped.
 
 stdlib unittest only, no network, < 1 s.
 """
@@ -48,8 +48,17 @@ TIER_A_DIRECT_CHECKERS = (
     "check_pin_freshness_workflow.py",
 )
 
-# Kept in Tier A: the suite itself only asserts real-repo pin invariants.
-TIER_A_KEPT_SUITE = "test_pin_consistency.py"
+# Kept in Tier A: suites invoked DIRECTLY as gate steps because they carry
+# real-repo invariants. test_pin_consistency.py asserts real-repo pin
+# invariants only (#479); the two #481 suites each carry the real-repo
+# positive control for the DoD closeout signal (#481 AC11/R5-C12/R5-C13
+# mandates per-push execution — a suite executed by no gate is advisory
+# only) and stay inside the < 5 s per-push budget.
+TIER_A_KEPT_SUITES = (
+    "test_pin_consistency.py",
+    "test_check_dod_closeout_workflow.py",
+    "test_dod_closeout_verifier.py",
+)
 
 # #479 Tier B: the regression suites moved to the scheduled DV cadence.
 TIER_B_SUITES = (
@@ -73,9 +82,9 @@ TIER_B_SUITES = (
 # real-repo invariant to re-express) — and the ones that keep a Tier A home.
 # Gate 21 keeps its per-push home (the ci.yml check_arch_coverage.sh
 # invocation, unchanged) and only its suite moves to Tier B.
-GATES_TIER_A_ONLY = {1, 2, 3, 4, 5, 6, 7, 9, 10, 13, 14, 15, 17, 18, 19, 20, 21}
+GATES_TIER_A_ONLY = {1, 2, 3, 4, 5, 6, 7, 9, 10, 13, 14, 15, 17, 18, 19, 20, 21, 23}
 GATES_TIER_B_ONLY = {8, 11, 12, 16, 22}
-GATES_TIER_B_EMPTY = {1, 2, 3, 4, 5, 6, 7, 13}
+GATES_TIER_B_EMPTY = {1, 2, 3, 4, 5, 6, 7, 13, 23}
 
 
 def read(path: Path) -> str:
@@ -95,10 +104,12 @@ class TierAGateScriptTest(unittest.TestCase):
                     f"Tier A must invoke {checker} directly against the repo root",
                 )
 
-    def test_keeps_the_real_repo_pin_consistency_suite(self) -> None:
-        self.assertIn(
-            f"python3 harness/config-validation/{TIER_A_KEPT_SUITE}", self.script
-        )
+    def test_keeps_the_real_repo_kept_suites(self) -> None:
+        for suite in TIER_A_KEPT_SUITES:
+            with self.subTest(suite=suite):
+                self.assertIn(
+                    f"python3 harness/config-validation/{suite}", self.script
+                )
 
     def test_runs_no_tier_b_regression_suite(self) -> None:
         # Comments may (and do) point at the Tier B suite that guards each
@@ -159,7 +170,7 @@ class MappingTableTest(unittest.TestCase):
                 self.rows[int(match.group(1))] = cells
 
     def test_accounts_for_every_current_gate(self) -> None:
-        self.assertEqual(sorted(self.rows), list(range(1, 23)))
+        self.assertEqual(sorted(self.rows), list(range(1, 24)))
 
     def test_every_gate_has_a_home_and_the_right_one(self) -> None:
         tier_a_only: set[int] = set()
