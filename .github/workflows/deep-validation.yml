@@ -15,6 +15,11 @@ name: Deep Validation
 #     the same full-history scan and render validation run at release time.
 #   - workflow_dispatch: manual on-demand deep checks.
 #
+# TIER B of the config validation split (#479, arc42 §1.2): the config-repo
+# checker regression suites (negative fixtures + sandboxed behavioral suites)
+# run in the config-regression-suites job on this deep cadence. The per-push
+# gate (harness/run-config-gate.sh) keeps only direct real-repo invariants.
+#
 # Image-build verification (#375): the image-build-verification job runs only
 # on cron/workflow_dispatch. On push/tag events harness-image-build.yml already
 # builds all three images, so building them here too duplicated every trunk
@@ -212,6 +217,50 @@ jobs:
           fi
           exit 0
 
+  config-regression-suites:
+    name: Config Checker Regression Suites (Tier B)
+    # #479 (two-tier config validation, arc42 §1.2): TIER B of the split. The
+    # per-push config gate (harness/run-config-gate.sh) keeps the real-repo
+    # invariants as DIRECT checker invocations; these regression suites —
+    # negative fixtures plus sandboxed behavioral suites — move to this deep
+    # cadence where their latency is irrelevant (MADR-0003 D2/D3). Tier B is
+    # NOT a weaker tier: any suite failure fails this job, fails the DV run,
+    # and a RED DV on trunk pauses new dispatches fail-closed (MADR-0028).
+    # The suite list is pinned by harness/config-validation/
+    # test_config_gate_tiers.py so a suite cannot be dropped silently.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run Tier B config regression suites
+        # set -e: the first failing suite aborts the step, which fails the job
+        # and the DV run. Every suite is stdlib-only and offline.
+        run: |
+          set -euo pipefail
+          suites=(
+            harness/docs-validation/test_check_mermaid_syntax.py
+            harness/config-validation/test_check_coach_exclusivity.py
+            harness/config-validation/test_check_browser_launch_flags.py
+            harness/config-validation/test_check_bash_permission_tiers.py
+            harness/config-validation/test_check_agent_frontmatter.py
+            harness/config-validation/test_github_identity_probe.py
+            harness/config-validation/test_check_external_prerequisites.py
+            harness/config-validation/test_check_gitleaks_allowlist.py
+            harness/config-validation/test_check_pin_freshness_workflow.py
+            harness/config-validation/test_check_installed_posture_freshness.py
+            harness/config-validation/test_check_arch_coverage.py
+            harness/config-validation/test_doctor_script.py
+            harness/config-validation/test_harness_run.py
+            tests/test_per_pane_profile_selection.py
+            harness/config-validation/test_config_gate_tiers.py
+          )
+          for suite in "${suites[@]}"; do
+            echo "::group::${suite}"
+            python3 "$suite"
+            echo "::endgroup::"
+          done
+
   record-run-status:
     name: Record DV verdict as a durable commit status
     # #449 AC2b (option A): a legacy commit status on the head sha lives
@@ -224,7 +273,7 @@ jobs:
     # inside the existing trust boundary and is accepted for the durable
     # record (#449). Signal, not gate: never a branch-protection required
     # check.
-    needs: [secret-scan-full-history, docs-render-validation, image-build-verification]
+    needs: [secret-scan-full-history, docs-render-validation, image-build-verification, config-regression-suites]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -239,12 +288,13 @@ jobs:
           SCAN_RESULT: ${{ needs.secret-scan-full-history.result }}
           RENDER_RESULT: ${{ needs.docs-render-validation.result }}
           IMAGE_RESULT: ${{ needs.image-build-verification.result }}
+          SUITES_RESULT: ${{ needs.config-regression-suites.result }}
         run: |
           # Overall DV verdict: failure if any DV job failed or was
           # cancelled; skipped jobs (image-build-verification on push/tag
           # events) do not fail the verdict.
           overall="success"
-          for result in "$SCAN_RESULT" "$RENDER_RESULT" "$IMAGE_RESULT"; do
+          for result in "$SCAN_RESULT" "$RENDER_RESULT" "$IMAGE_RESULT" "$SUITES_RESULT"; do
             case "$result" in
               failure | cancelled) overall="failure" ;;
             esac

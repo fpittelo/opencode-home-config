@@ -197,12 +197,14 @@ These are the local commands (§2); `harness/run.sh` resolves the same runtime f
 
 The Python deps phase runs `uv sync --all-extras` so the dev extras (the gate toolchain) are retained in the project `.venv` (#256 AC1). The gate command chains are identical in both paths (`pytest --cov-fail-under=80` included). The network-off guarantee of the gate phase is container-only; native runs execute on the host under the operator's own controls.
 
-`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, the namespace-exclusivity permission invariant (#150 COACH_*, #207 BROWSER_*, `harness/config-validation/check_coach_exclusivity.py`) plus its stdlib unittest regression suite, the three native docs validators (links, MADR, mermaid syntax), and the harness native-gate toolchain-pinning regression suite (#256). Zero Docker, fail-fast, well under 5 s:
+`run-config-gate.sh` is the native pre-flight for **this configuration repository** (no `pyproject.toml`/`Cargo.toml`, so `run.sh` SKIPs its deps phase). It is **Tier A** of the two-tier config validation doctrine (§9): JSONC validation of `opencode.jsonc`, `bash -n install.sh`, agent/skill presence, the direct real-repo invariant checkers (`check_agent_frontmatter.py`, `check_coach_exclusivity.py`, `check_browser_launch_flags.py`, `check_bash_permission_tiers.py`, `check_gitleaks_allowlist.py`, `check_external_prerequisites.py`, `check_installed_posture_freshness.py`, `check_pin_freshness_workflow.py`), the three native docs validators (links, MADR, mermaid syntax), and the install-pin consistency suite (`test_pin_consistency.py`, real-repo assertions only). Zero Docker, fail-fast, well under 5 s (measured 0.43 s on VIDAR; the pre-#479 gate ran the regression suites and took 9.9 s):
 
 ```bash
 bash harness/run-config-gate.sh            # this repo (default root)
 bash harness/run-config-gate.sh /tmp/repo  # alternate root (negative-path tests)
 ```
+
+The regression suites below are **Tier B** (§9): they run on the scheduled Deep Validation cadence (`.github/workflows/deep-validation.yml`, `config-regression-suites` job), not in the per-push gate. They are fully blocking — any suite failure fails the DV run (MADR-0028 fail-closed).
 
 The mermaid syntax-mode regression suite (stdlib `unittest`) guards `check_mermaid.py --syntax`:
 
@@ -222,7 +224,7 @@ The harness native-gate regression suite (stdlib `unittest`) guards `run.sh` too
 python3 harness/config-validation/test_harness_run.py
 ```
 
-The per-pane profile selection regression suite (stdlib `unittest`, gate 12 of 15, wired into both gates by #263) guards the dual-profile coexistence and per-pane secrets isolation delivered by #244 — profiles.sh provisioning and the `oc-home` wrapper semantics, the secrets split/migration (`.secrets-home.env`, shared `.secrets.env` retirement), legacy `/AI_OS_ROOT` switcher cleanup, permission hardening (700 config dir, mode-600 secrets, fail-closed assertion), and `.gitignore` coverage. Every behavioral test runs `install.sh` against a sandboxed fake `$HOME` with stubbed `systemctl`/`docker`/`curl`/`openssl` — never the real home directory, never the network:
+The per-pane profile selection regression suite (stdlib `unittest`, Tier B §9, #263) guards the dual-profile coexistence and per-pane secrets isolation delivered by #244 — profiles.sh provisioning and the `oc-home` wrapper semantics, the secrets split/migration (`.secrets-home.env`, shared `.secrets.env` retirement), legacy `/AI_OS_ROOT` switcher cleanup, permission hardening (700 config dir, mode-600 secrets, fail-closed assertion), and `.gitignore` coverage. Every behavioral test runs `install.sh` against a sandboxed fake `$HOME` with stubbed `systemctl`/`docker`/`curl`/`openssl` — never the real home directory, never the network:
 
 ```bash
 python3 tests/test_per_pane_profile_selection.py
@@ -233,3 +235,45 @@ The agent front-matter validity gate (#338, `harness/config-validation/check_age
 ```bash
 python3 harness/config-validation/check_agent_frontmatter.py .
 ```
+
+---
+
+## 9. Two-Tier Config Validation (#479)
+
+Config validation is split so that **per-push cost tracks real-repo invariants** while the checker regression suites run on the deep cadence:
+
+- **Tier A — per-push** (`harness/run-config-gate.sh`, invoked by `ci.yml` and as the local pre-flight): direct, real-repo invariant checks only. Fail-closed, first failing gate aborts, non-zero exit.
+- **Tier B — scheduled** (`.github/workflows/deep-validation.yml`, `config-regression-suites` job): the checker regression suites — negative fixtures plus sandboxed behavioral suites. Any suite failure fails the DV run; a RED DV on trunk pauses new dispatches (MADR-0028, fail-closed).
+
+**Invariant (non-negotiable):** every real-repo check enforced per-push before #479 is still enforced per-push — re-expressed as a **direct checker invocation** where it used to run only inside a `test_*.py` suite (the #371 removal of the back-to-back standalone checker runs had made those reachable only through their suites). No gate was dropped; the mapping below accounts for all 22 pre-split gates.
+
+The split is machine-pinned by `harness/config-validation/test_config_gate_tiers.py` (Tier B): Tier A must invoke every mandated direct checker and no Tier B suite, the DV job must run every Tier B suite, and this table must keep covering gates 1–22.
+
+| Gate | Check | Tier A — per-push (`run-config-gate.sh`) | Tier B — scheduled DV |
+| :--- | :--- | :--- | :--- |
+| 1 | `opencode.jsonc` parses as JSONC | gate 1 | — |
+| 2 | `bash -n install.sh` | gate 2 | — |
+| 3 | Agent files present (7) | gate 3 | — |
+| 4 | Skill directories present (16) | gate 4 | — |
+| 5 | Native links validator | gate 5 — `check_links.py .` | — |
+| 6 | Native MADR schema validator | gate 6 — `check_madr.py .` | — |
+| 7 | Mermaid syntax validator | gate 7 — `check_mermaid.py --syntax .` | — |
+| 8 | Mermaid syntax checker regression suite | — | `test_check_mermaid_syntax.py` |
+| 9 | COACH_*/BROWSER_*/GITHUB_SECURITY_*/openrouter_*/GITHUB_CODE_REVIEWER_* namespace exclusivity | gate 9 — `check_coach_exclusivity.py .` | `test_check_coach_exclusivity.py` |
+| 10 | BROWSER launch-flag invariant | gate 10 — `check_browser_launch_flags.py .` | `test_check_browser_launch_flags.py` |
+| 11 | `run.sh` native-gate toolchain pinning | — | `test_harness_run.py` |
+| 12 | Per-pane profile selection / secrets isolation | — | `test_per_pane_profile_selection.py` |
+| 13 | Install-pin consistency (real-repo only) | gate 16 — `test_pin_consistency.py` | — |
+| 14 | Bash tier baseline, truth tables, agent inheritance | gate 11 — `check_bash_permission_tiers.py .` | `test_check_bash_permission_tiers.py` |
+| 15 | Agent YAML front-matter validity | gate 8 — `check_agent_frontmatter.py .` | `test_check_agent_frontmatter.py` |
+| 16 | GitHub namespace identity probe | — | `test_github_identity_probe.py` |
+| 17 | External-prerequisite inventory | gate 13 — `check_external_prerequisites.py .` | `test_check_external_prerequisites.py` |
+| 18 | Gitleaks allowlist + tracked runtime artifacts | gate 12 — `check_gitleaks_allowlist.py .` | `test_check_gitleaks_allowlist.py` |
+| 19 | Pin-freshness workflow blast radius (MADR-0026 C6) | gate 15 — `check_pin_freshness_workflow.py .` | `test_check_pin_freshness_workflow.py` |
+| 20 | Installed-posture freshness (deny tail + ordered wrappers) | gate 14 — `check_installed_posture_freshness.py .` | `test_check_installed_posture_freshness.py` |
+| 21 | Architecture-coverage gate logic (#421) | `ci.yml` — `check_arch_coverage.sh` (unchanged) | `test_check_arch_coverage.py` |
+| 22 | Operator doctor orchestrator semantics | — | `test_doctor_script.py` |
+
+Gates 8, 11, 12, 16 and 22 assert the behaviour of checkers and scripts against fixtures — they carry no real-repo invariant, so they are Tier B only. Gate 21 keeps its per-push enforcement in `ci.yml` (the script invocation, unchanged by #479) and only its suite moved.
+
+**Runtime (AC4):** the per-push gate measures **0.43 s** after the split versus **9.9 s** before it (3-run median, VIDAR, same host), comfortably inside the < 5 s budget.
