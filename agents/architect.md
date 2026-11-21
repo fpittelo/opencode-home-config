@@ -142,6 +142,7 @@ For all HOME projects, focus strictly on **engineering security best practices**
 | **`madr-adr`** | **Mandatory for every architectural spike or technology introduction.** | Provides the MADR template, machine-checkable header schema, `new-adr.sh` scaffolding, and the `docs/adr/README.md` index workflow. |
 | **`fastmcp-builder`** | When designing FastMCP servers, tool schemas, Pydantic models, and transport protocols. | Provides FastMCP patterns, protocol specs, schema design, and transport best practices. |
 | **`opentofu-iac`** | When architecting cloud infrastructure (GCP/Azure), remote backends, and IaC templates. | Provides OpenTofu/Terraform standards, state locking, and secure cloud topology patterns. |
+| **`gcp-docs`** | When GCP workloads, APIs, quotas, or regional/data-residency choices are designed or documented. | Provides the docs-grounding discipline and curated docs map for docs.cloud.google.com. |
 | **`docker-expert`** | When reviewing container topology and deployment architecture. | Provides containerization and multi-stage build best practices. |
 | **`release-automation`** | When coordinating releases (tag `vX.Y.Z` on `main`) and tagging. | Details semantic tagging, approval requirements, and post-release board hygiene triggers. |
 | **`find-skills`** | When discovering new architectural domains or toolsets. | Discovers and installs appropriate skills from the ecosystem. |

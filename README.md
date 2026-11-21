@@ -35,12 +35,13 @@ opencode-home-config/
 │   ├── docs-validation/
 │   ├── run.sh
 │   └── run-config-gate.sh
-├── skills/                   # Personal Skills (15)
+├── skills/                   # Personal Skills (16)
 │   ├── arc42-documentation/
 │   ├── coach/
 │   ├── docker-expert/
 │   ├── fastmcp-builder/
 │   ├── find-skills/
+│   ├── gcp-docs/
 │   ├── github-scrum-board/
 │   ├── harness-engineering/
 │   ├── herdr/

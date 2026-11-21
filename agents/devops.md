@@ -158,6 +158,7 @@ If you encounter an unexpected failure with the **GitHub MCP Server**:
 | **`release-automation`** | **Mandatory during release tagging & publishing.** | Orchestrates tag-from-trunk releases (MADR-0017), semantic tagging (`vX.Y.Z`), and release notes. |
 | **`docker-expert`** | **Mandatory when creating or modifying Dockerfile, `.dockerignore`, or compose files.** | Provides production Docker patterns: multi-stage builds, non-root user hardening, layer caching, and minimal base images. |
 | **`opentofu-iac`** | **Mandatory when deploying or modifying GCP/Azure IaC templates.** | Provides OpenTofu/Terraform standards, state locking, module layout, and validation pipelines. |
+| **`gcp-docs`** | **Mandatory when deploying or operating GCP workloads and asserting quotas, regional availability, or IAM behavior.** | Provides the docs-grounding discipline and curated docs map for docs.cloud.google.com. |
 | **`find-skills`** | When discovering new DevOps tooling, cloud automation, or GitHub Actions patterns. | Identifies and installs matching ecosystem skills. |
 
 ---
