@@ -128,9 +128,18 @@ class StaleInstalledPosture(FixtureTestCase):
             "gh cache delete*",
             "gh auth *",
             "gh api *",
+            "xargs *",
+            "timeout *",
         ):
             with self.subTest(entry=entry):
-                stale = REAL_SOURCE.replace(f'      "{entry}": "deny",\n', "")
+                # The tail's last entry carries no trailing comma.
+                stale = REAL_SOURCE.replace(
+                    f'      "{entry}": "deny",\n', ""
+                )
+                if stale == REAL_SOURCE:
+                    stale = REAL_SOURCE.replace(
+                        f',\n      "{entry}": "deny"\n', "\n"
+                    )
                 self.assertNotEqual(stale, REAL_SOURCE)
                 self.assert_finding(
                     checker.check_repo(
@@ -156,12 +165,47 @@ class StaleInstalledPosture(FixtureTestCase):
         self.assertIn("gh api *", tiers.BASELINE_DENY_TAIL)
         # MADR-0027 (#463) parity canary: the tail grew by EXACTLY the three
         # kill-broadcast entries (70 -> 73), no removals, no reordering —
-        # verdict §4.8. A future tail edit must update this pin deliberately.
-        self.assertEqual(len(tiers.BASELINE_DENY_TAIL), 73)
+        # verdict §4.8. MADR-0029 (#475) parity canary: the tail then grew by
+        # EXACTLY the 13 curated wrapper-family denies (73 -> 86), additions
+        # only, no removals, no reordering. A future tail edit must update
+        # this pin deliberately.
+        self.assertEqual(len(tiers.BASELINE_DENY_TAIL), 86)
         for entry in ("kill 0*", "kill -1*", "kill * -1*"):
+            self.assertIn(entry, tiers.BASELINE_DENY_TAIL)
+        for entry in ("xargs *", "env *", "timeout *", "find * -exec*"):
             self.assertIn(entry, tiers.BASELINE_DENY_TAIL)
         for entry in ("rm -rf /*", "*.env*", "*.key*", "gh api *"):
             self.assertIn(entry, tiers.BASELINE_DENY_TAIL)  # no removals
+
+
+class OrderedWrapperResolution(FixtureTestCase):
+    """MADR-0029 C3 (#475): gate 20 resolves, it does not just count.
+
+    Deny-set membership alone is insufficient: the installed rules are an
+    ORDERED last-match-wins list, so a posture can carry every wrapper deny
+    entry yet still resolve them to ``allow`` when the ``"*": allow`` head
+    sits after them (stale copy, hand edit, drifted merge). Gate 20 must
+    therefore resolve representative wrapper commands against the ordered
+    installed rules and require ``deny``.
+    """
+
+    def test_wrapper_denies_before_the_allow_head_fail(self) -> None:
+        moved = REAL_SOURCE.replace('      "*": "allow",\n', "", 1)
+        moved = moved.replace(
+            '      "xargs *": "deny"\n',
+            '      "xargs *": "deny",\n      "*": "allow"\n',
+            1,
+        )
+        self.assertNotEqual(moved, REAL_SOURCE)
+        findings = checker.check_repo(REPO_ROOT, build_home(installed=moved))
+        self.assert_finding(findings, "xargs pip install pkg", "deny")
+
+    def test_compound_wrapper_probe_is_required(self) -> None:
+        probes = checker.WRAPPER_ORDERED_PROBES
+        self.assertIn("xargs pip install pkg", probes)
+        self.assertIn("timeout 5 curl", probes)
+        self.assertIn("env gh api", probes)
+        self.assertIn("true && xargs curl", probes)
 
 
 class UnreadableInstalledPosture(FixtureTestCase):

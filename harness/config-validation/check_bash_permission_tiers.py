@@ -54,6 +54,19 @@ Consequences enforced below:
      style (scalar ``bash: deny`` / flow mapping ``bash: {"*": deny}``);
      a flow-style header is no longer silently blessed.
 
+  5. WRAPPER-FAMILY DENY (MADR-0029, #475 resolves #468) — the curated
+      bash wrapper/executor family (``xargs``, ``env``, ``timeout``,
+      ``nohup``, ``setsid``, ``stdbuf``, ``nice``, ``watch``, ``command``,
+      ``exec``, ``time``, ``eval``, ``find … -exec…``) is denied at the
+      root tail: the engine resolves each subcommand as raw text with
+      last-match-wins, so a wrapper prefix used to catch the ``"*": allow``
+      head before any ask/deny pattern could match (live-verified on
+      opencode v2.3.2). A canary rejects any agent allow/ask rule whose
+      executable head is a denied wrapper, and the gate-20 ordered-
+      resolution probes are shared from here. Bare-prefix patterns are
+      path-insensitive by construction: path-qualified spellings are the
+      recorded residual (AC2/C2).
+
 Usage: check_bash_permission_tiers.py [REPO_ROOT]
 """
 from __future__ import annotations
@@ -69,6 +82,69 @@ from jsonc_utils import strip_jsonc
 # The four allow-default agent specs that used to mirror the tiers verbatim
 # (MADR-0004) and now inherit the root baseline (#340).
 AGENT_FILES = ("architect.md", "developer.md", "devops.md", "cyber-security.md")
+
+# MADR-0029 (#475, resolves #468 — C1): the curated bash wrapper/executor
+# family denied at the ROOT tail. The engine's shell scanner resolves each
+# subcommand's own raw text and the rule list is last-match-wins, so a wrapper
+# prefix (`xargs curl …`, `timeout 5 printenv …`) used to catch the
+# `"*": allow` head BEFORE any ask/deny pattern could match — live-verified on
+# opencode v2.3.2 (#468). The upstream maintainers designate wrapper-scoped
+# denies as the sanctioned workaround (anomalyco/opencode#54008 closed
+# not-planned; #58775 open/reproduced; #62513 closed as duplicate), and the
+# engine is unpinned (no CI vehicle for a runtime fix), so the mitigation is
+# config-side. Patterns are BARE-PREFIX on purpose (C2): bare-prefix globs are
+# path-insensitive, which is reviewed and accepted (false positives such as a
+# `nice -n 5 …` invocation block in the safe direction); path-qualified
+# wrapper AND direct-command spellings (`/usr/bin/xargs …`, `/usr/bin/curl …`,
+# `/bin/sh -c …`) remain the recorded residual (arc42 §3, MADR-0029).
+# Alphabetical; the block is appended LAST in the tail (deny rules go last).
+WRAPPER_DENY_PATTERNS: tuple[str, ...] = (
+    "command *",
+    "env *",
+    "eval *",
+    "exec *",
+    "find * -exec*",
+    "nice *",
+    "nohup *",
+    "setsid *",
+    "stdbuf *",
+    "time *",
+    "timeout *",
+    "watch *",
+    "xargs *",
+)
+
+# Executable heads that must never appear in an agent ALLOW/ASK rule (C4
+# canary). `find` is deliberately absent: only its `-exec*` form is denied,
+# the read-only `find` surface stays allowed. Match is exact-or-head-token,
+# after stripping any leading path (`/usr/bin/xargs *` -> `xargs`).
+WRAPPER_DENY_HEADS: frozenset[str] = frozenset(
+    {
+        "command",
+        "env",
+        "eval",
+        "exec",
+        "nice",
+        "nohup",
+        "setsid",
+        "stdbuf",
+        "time",
+        "timeout",
+        "watch",
+        "xargs",
+    }
+)
+
+# MADR-0029 C3 (#475): representative wrapper commands that gate 20 must
+# resolve to DENY against the ORDERED installed rule list — deny-set
+# membership alone is not proof (last-match-wins makes order semantic).
+# Shared from here so the checker and the installed-posture gate cannot drift.
+WRAPPER_ORDERED_PROBES: tuple[str, ...] = (
+    "xargs pip install pkg",
+    "timeout 5 curl",
+    "env gh api",
+    "true && xargs curl",
+)
 
 # Deny-tail baseline captured from origin/dev HEAD before the #320 Slice B
 # delta (MADR-0015): the ordered deny patterns that must never move.
@@ -179,6 +255,16 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     "kill 0*",
     "kill -1*",
     "kill * -1*",
+    # MADR-0029 (#475, resolves #468 — C1): tail append — the curated wrapper/
+    # executor family. Additions only (tightening): a wrapper prefix can no
+    # longer reach the `"*": allow` head before the ask tier / deny tail
+    # (`xargs curl`, `xargs printenv`, `xargs rm -rf /` — all live-verified as
+    # executing on v2.3.2); the dispositioned remainder of the executor
+    # inventory (ionice, chrt, taskset, flock, unshare, nsenter, setpriv,
+    # bwrap, script, unbuffer, parallel) is recorded in MADR-0029. The
+    # path-qualified spellings and env-var assignment prefixes stay the
+    # recorded residual (arc42 §3, C2).
+    *WRAPPER_DENY_PATTERNS,
 )
 
 # Ask-tier baseline as ratified by the MADR-0015 delta (#320 Slice B),
@@ -445,6 +531,36 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("kill -- -1", "deny"),
     ("kill 1234", "ask"),
     ("kill -9 1234", "ask"),
+    # MADR-0029 (#475, resolves #468 — C5): the wrapper family resolves DENY
+    # at the root tail. Before this delta every one of these commands fell
+    # through to the `"*": allow` head (live-verified on v2.3.2); the rows
+    # pin both the newly admitted heads and the #468 probe shapes, including
+    # the deny-tail command that used to execute (`xargs rm -rf /`).
+    ("xargs pip install pkg", "deny"),
+    ("env pip install pkg", "deny"),
+    ("timeout 5 pip install pkg", "deny"),
+    ("xargs rm -rf /", "deny"),
+    ("xargs curl --version", "deny"),
+    ("xargs printenv --version", "deny"),
+    ("exec curl --version", "deny"),
+    ("time curl --version", "deny"),
+    ("eval curl --version", "deny"),
+    ("find . -exec curl --version", "deny"),
+    ("nohup curl --version", "deny"),
+    ("setsid curl --version", "deny"),
+    ("stdbuf -oL curl --version", "deny"),
+    ("nice -n 5 curl --version", "deny"),
+    ("watch -n 1 curl --version", "deny"),
+    ("command curl --version", "deny"),
+    # C2 recorded residual, pinned as an explicit ALLOW so the limit is
+    # legible rather than a silent widening: bare-prefix patterns are
+    # path-insensitive, so a path-qualified wrapper or direct command
+    # (`/usr/bin/xargs …`, `/usr/bin/curl …`, `/bin/sh -c …`) is NOT matched.
+    # Closing this class needs upstream scanner normalization (arc42 §3).
+    ("/usr/bin/xargs curl --version", "allow"),
+    ("/usr/bin/timeout 5 curl --version", "allow"),
+    ("/usr/bin/curl --version", "allow"),
+    ("/bin/sh -c 'curl --version'", "allow"),
 )
 
 # Per-segment evaluation of compound command lines (#419): the documented
@@ -463,6 +579,11 @@ COMPOUND_TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     # stays allowed (the migration is not broken by the compound rule).
     ("rm x; podman ps", "ask"),
     ("podman ps && podman run -i --rm ghcr.io/fpittelo/coach:dev", "allow"),
+    # MADR-0029 C5 (#475): the wrapper deny composes per segment — one denied
+    # wrapper segment blocks the whole line, so an allowed segment cannot
+    # launder `xargs curl` / `timeout 5 printenv`.
+    ("true && xargs curl --version", "deny"),
+    ("echo ok && timeout 5 printenv --version", "deny"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
@@ -781,6 +902,41 @@ def check_rm_carveout_placement(root: Path, failures: list[str]) -> None:
                 )
 
 
+def check_wrapper_carveout_canary(root: Path, failures: list[str]) -> None:
+    """MADR-0029 C4 canary (#475): no agent may re-admit a denied wrapper.
+
+    Agent rules append AFTER the root deny tail (last-match-wins, #350), so an
+    agent-level allow/ask for a denied wrapper head silently defeats the
+    MADR-0029 tail for that role. The canary inspects EVERY agent spec —
+    allow-default (inheritance) and non-inheritance alike — and rejects any
+    allow/ask rule whose executable head is a denied wrapper, including narrow
+    (`xargs rm*`) and path-qualified (`/usr/bin/xargs *`) variants.
+    """
+    for agent in sorted((root / "agents").glob("*.md")):
+        present, agent_rules = agent_bash(root, agent, failures)
+        if not present:
+            continue
+        rel = agent.relative_to(root)
+        for pattern, tier in agent_rules:
+            if tier not in ("allow", "ask"):
+                continue
+            tokens = pattern.split()
+            head = tokens[0].rsplit("/", 1)[-1] if tokens else ""
+            # `find` is not denied as a head; only its `-exec*` form is, so an
+            # agent rule re-admitting that form is the same defect.
+            readmits = head in WRAPPER_DENY_HEADS or (
+                head == "find" and " -exec" in pattern
+            )
+            if readmits:
+                failures.append(
+                    f"{rel}: bash rule {pattern!r} ({tier}) re-admits a "
+                    "denied wrapper head (MADR-0029 C4) — agent rules append "
+                    "after the root deny tail, so this defeats the wrapper "
+                    "deny for this role; wrappers have NO agent-level "
+                    "carve-out of any kind"
+                )
+
+
 def main(argv: list[str]) -> int:
     root = (
         Path(argv[1]).resolve()
@@ -799,6 +955,7 @@ def main(argv: list[str]) -> int:
     check_agent_inheritance(root, failures)
     check_non_inheritance_agents(root, failures)
     check_rm_carveout_placement(root, failures)
+    check_wrapper_carveout_canary(root, failures)
     if failures:
         print("FAIL check_bash_permission_tiers: bash tier invariant violated:")
         for failure in failures:
@@ -814,7 +971,9 @@ def main(argv: list[str]) -> int:
         f"with zero root re-statements, and {len(NON_INHERITANCE_AGENTS)} "
         f"non-inheritance agents match their pinned order-sensitive bash "
         f"shapes incl. the scrum-master trailing secret-file denies "
-        f"(#340, #350; opencode 1.19.0 verified)"
+        f"(#340, #350; opencode 1.19.0 verified); {len(WRAPPER_DENY_PATTERNS)}-"
+        f"pattern wrapper-family deny with zero agent re-admission "
+        f"(MADR-0029, #475)"
     )
     return 0
 
