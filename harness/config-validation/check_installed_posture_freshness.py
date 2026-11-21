@@ -70,11 +70,6 @@ def bash_rules(text: str) -> list[tuple[str, str]]:
     return [(str(pattern), str(tier)) for pattern, tier in bash.items()]
 
 
-def bash_denies(text: str) -> set[str]:
-    """The deny-keyed patterns of a config's root permission.bash block."""
-    return {pattern for pattern, tier in bash_rules(text) if tier == "deny"}
-
-
 def skip_reason(root: Path, home: Path) -> str | None:
     """Why the check skips (no HOME-profile install detected), else None.
 
@@ -134,7 +129,6 @@ def check_repo(root: Path, home: Path) -> list[str]:
         return findings
 
     try:
-        installed_denies = bash_denies(installed_text)
         installed_rules = bash_rules(installed_text)
     except (json.JSONDecodeError, ValueError) as exc:
         findings.append(
@@ -142,6 +136,8 @@ def check_repo(root: Path, home: Path) -> list[str]:
             "the posture is fresh (#449 AC2a, fail-closed)"
         )
         return findings
+
+    installed_denies = {pattern for pattern, tier in installed_rules if tier == "deny"}
 
     missing = sorted(set(BASELINE_DENY_TAIL) - installed_denies)
     for entry in missing:
