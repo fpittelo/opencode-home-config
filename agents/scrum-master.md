@@ -107,6 +107,7 @@ stateDiagram-v2
    - The PR author executes the squash-and-merge into `main` and sets `status::done`.
 3. **Definition of Done (DoD) Verification & Closeout:**
    Verify all 5 DoD criteria — **see `home-governance` §7 — SSOT** (ACs fulfilled; squash-and-merge into `main`; CI 0 warnings / 0 failures; `@code-reviewer` approval documented; closing summary with PR link).
+   **Automated closeout signal (#481):** on every squash merge into `main`, the report-only `dod-closeout` workflow (`.github/workflows/dod-closeout.yml`) posts/updates one machine-derived closeout-signal line on the linked issue. Close on a **green (✅) signal** (after posting the closing summary — the signal never replaces it); treat a **failure / `pending` / `unknown` (⚠️) signal as an exception** under the existing impediment protocol and verify the outstanding fact(s) manually before any close. The signal is report-only — never the DoD gate, never a required check — and the 5 DoD criteria are unchanged.
 4. **Post Closing Summary & Immediate Next Handoff:**
    - Post a structured closing summary comment referencing the merged PR using `GITHUB_add_issue_comment`.
      - **Parameter guidance (#251):** call with ONLY `owner`, `repo`, `issue_number`, `body` — NEVER `comment_id` (that parameter belongs to the pull-request-comment reply tool; combining them is the known 3× failure mode).

@@ -140,4 +140,23 @@ python3 harness/config-validation/check_pin_freshness_workflow.py . || fail "che
 # guard). Kept in Tier A by #479: the suite asserts real-repo invariants only
 # (no fixtures), so it IS the direct check.
 python3 harness/config-validation/test_pin_consistency.py || fail "test_pin_consistency.py failed"
+# gate 17 DoD closeout workflow blast radius (#481 AC11, R5-C12): the
+# closeout signal workflow's report-only contract is machine-checkable —
+# job-level permissions exactly {contents/checks/statuses/pull-requests:
+# read, issues: write}, no top-level permissions block, zero secrets refs,
+# checkout persist-credentials: false, a write surface limited to
+# issue-comment create/update (zero issue-close/label/status/check-run
+# writes), the always-exit-0 contract, push-to-main trigger + concurrency
+# group, and the single-job CI-scoping preconditions in ci.yml. Wired as the
+# SUITE per #481 AC11 ("a suite executed by no gate is advisory only"):
+# negative fixtures + the real-repo positive control in one unittest run —
+# the suite IS the direct check (the test_pin_consistency.py precedent,
+# < 1 s, keeping the Tier A budget).
+python3 harness/config-validation/test_check_dod_closeout_workflow.py || fail "test_check_dod_closeout_workflow.py failed"
+# gate 18 DoD closeout verifier logic (#481 AC12, R5-C13): the tri-state fact
+# verification — native closing-linkage issue derivation, squash/CI/DV/
+# review/traceability facts, bounded-window DV pending semantics, comment
+# rendering — as a stdlib unittest suite with negative fixtures, importing
+# the exact module the dod-closeout workflow executes at runtime.
+python3 harness/config-validation/test_dod_closeout_verifier.py || fail "test_dod_closeout_verifier.py failed"
 echo "PASS run-config-gate: all gates green (${REPO_ROOT})"

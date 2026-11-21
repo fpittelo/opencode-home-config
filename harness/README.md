@@ -245,9 +245,9 @@ Config validation is split so that **per-push cost tracks real-repo invariants**
 - **Tier A — per-push** (`harness/run-config-gate.sh`, invoked by `ci.yml` and as the local pre-flight): direct, real-repo invariant checks only. Fail-closed, first failing gate aborts, non-zero exit.
 - **Tier B — scheduled** (`.github/workflows/deep-validation.yml`, `config-regression-suites` job): the checker regression suites — negative fixtures plus sandboxed behavioral suites. Any suite failure fails the DV run; a RED DV on trunk pauses new dispatches (MADR-0028, fail-closed).
 
-**Invariant (non-negotiable):** every real-repo check enforced per-push before #479 is still enforced per-push — re-expressed as a **direct checker invocation** where it used to run only inside a `test_*.py` suite (the #371 removal of the back-to-back standalone checker runs had made those reachable only through their suites). No gate was dropped; the mapping below accounts for all 22 pre-split gates.
+**Invariant (non-negotiable):** every real-repo check enforced per-push before #479 is still enforced per-push — re-expressed as a **direct checker invocation** where it used to run only inside a `test_*.py` suite (the #371 removal of the back-to-back standalone checker runs had made those reachable only through their suites). No gate was dropped; the mapping below accounts for all 22 pre-split gates plus the post-split gate appended by #481 (row 23).
 
-The split is machine-pinned by `harness/config-validation/test_config_gate_tiers.py` (Tier B): Tier A must invoke every mandated direct checker and no Tier B suite, the DV job must run every Tier B suite, and this table must keep covering gates 1–22.
+The split is machine-pinned by `harness/config-validation/test_config_gate_tiers.py` (Tier B): Tier A must invoke every mandated direct checker and no Tier B suite, the DV job must run every Tier B suite, and this table must keep covering gates 1–23.
 
 | Gate | Check | Tier A — per-push (`run-config-gate.sh`) | Tier B — scheduled DV |
 | :--- | :--- | :--- | :--- |
@@ -273,7 +273,8 @@ The split is machine-pinned by `harness/config-validation/test_config_gate_tiers
 | 20 | Installed-posture freshness (deny tail + ordered wrappers) | gate 14 — `check_installed_posture_freshness.py .` | `test_check_installed_posture_freshness.py` |
 | 21 | Architecture-coverage gate logic (#421) | `ci.yml` — `check_arch_coverage.sh` (unchanged) | `test_check_arch_coverage.py` |
 | 22 | Operator doctor orchestrator semantics | — | `test_doctor_script.py` |
+| 23 | DoD closeout signal workflow blast radius + verifier logic (#481) | gates 17-18 — `test_check_dod_closeout_workflow.py`, `test_dod_closeout_verifier.py` | — |
 
-Gates 8, 11, 12, 16 and 22 assert the behaviour of checkers and scripts against fixtures — they carry no real-repo invariant, so they are Tier B only. Gate 21 keeps its per-push enforcement in `ci.yml` (the script invocation, unchanged by #479) and only its suite moved.
+Gates 8, 11, 12, 16 and 22 assert the behaviour of checkers and scripts against fixtures — they carry no real-repo invariant, so they are Tier B only. Gate 21 keeps its per-push enforcement in `ci.yml` (the script invocation, unchanged by #479) and only its suite moved. Gate 23 is the #481-mandated exception: its two suites are wired into the per-push gate DIRECTLY (gate 17 = the blast-radius suite with negative fixtures + the real-repo positive control, gate 18 = the verifier tri-state suite) because "a suite executed by no gate is advisory only" (#481 AC11/R5-C12/R5-C13) — both stay under 0.3 s so the Tier A budget holds.
 
-**Runtime (AC4):** the per-push gate measures **0.43 s** after the split versus **9.9 s** before it (3-run median, VIDAR, same host), comfortably inside the < 5 s budget.
+**Runtime (AC4):** the per-push gate measures **0.43 s** after the split versus **9.9 s** before it (3-run median, VIDAR, same host); the #481 gate 17-18 additions measure **0.66 s** total — comfortably inside the < 5 s budget.

@@ -1,0 +1,87 @@
+name: DoD Closeout Signal
+
+# #481 (AC1-AC10; @cyber-security spec review R5-C1..C11): report-only
+# post-merge DoD closeout signal. On every squash merge into main (push to
+# main), the workflow verifies five machine-derivable DoD facts on the pushed
+# squash commit sha (github.sha — AC3, never the pre-squash PR head):
+#   1. squash merge into main (merged PR, base main, merge_commit_sha match,
+#      1-parent commit, exactly 1 pushed commit);
+#   2. CI green on the exact sha — computed ONLY over the CI Pipeline
+#      workflow's check runs, name-scoped to its single job "Quality Gate
+#      (native, zero Docker)" (AC4: the DV workflow's own check runs on the
+#      same sha are still pending at push time and are ignored; the
+#      workflow-runs API is unusable here because actions: read is
+#      deliberately excluded by the AC2 permission set);
+#   3. DV green on the exact sha — the durable deletion-evident
+#      `deep-validation` legacy commit status (#449 AC2b), re-evaluated over
+#      a bounded window (statuses: read, R5-C1); a not-yet-published status
+#      renders `pending`, never a failure (AC5, MADR-0028);
+#   4. formal APPROVE by login devfpittelo AND id 327061373 (identity parity
+#      with harness/probes/verify-github-identities.py, #423) and distinct
+#      from the PR author (AC6);
+#   5. issue<->PR traceability from GitHub's native closing-issue linkage
+#      only — zero or >1 candidates render unknown, no regex over the PR
+#      body or commit message (AC7).
+#
+# Strictly report-only (AC10): the workflow never closes an issue, never
+# writes status:: labels, never writes commit statuses or check runs, and
+# always exits 0. It is a SIGNAL, never a gate — it must NOT be added to
+# branch-protection required checks; @scrum-master remains the DoD authority
+# (home-governance §7; SoD: bot verifies, @scrum-master acts). A red DV on
+# trunk still pauses new dispatches via MADR-0028 semantics, independent of
+# this signal.
+#
+# Security posture (AC2, MADR-0026 pattern): job-level permissions EXACTLY
+# {contents: read, checks: read, statuses: read, pull-requests: read,
+# issues: write}; NO top-level permissions block; zero secrets.* references;
+# the built-in ${{ github.token }} is the only credential surface; every
+# checkout step sets persist-credentials: false. The whole verification and
+# comment logic lives in harness/dod_closeout_verify.py — the module pinned
+# by the Tier A verifier suite (AC12/R5-C13) — so the unittest-covered logic
+# is the executed logic. The workflow's blast radius is machine-pinned by
+# harness/config-validation/check_dod_closeout_workflow.py (Tier A gate 17,
+# AC11/R5-C12).
+#
+# Comment discipline (AC8/AC9): the comment body carries machine-derived
+# values only (sha, PR number, issue number, per-fact verdicts) — no free
+# text from the PR body, commit message or branch name is interpolated
+# (agents read issue threads over MCP; interpolated text is an indirect
+# prompt-injection surface). At most ONE signal comment per issue: hidden
+# marker, updated in place on re-verification; the concurrency group
+# serializes overlapping pushes (cancel-in-progress: false — a queued push
+# waits instead of dropping its verification).
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: dod-closeout
+  cancel-in-progress: false
+
+jobs:
+  closeout-signal:
+    name: DoD closeout verification (report-only signal)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+      statuses: read
+      pull-requests: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Verify DoD facts and post the closeout signal comment
+        # harness/dod_closeout_verify.py ALWAYS exits 0 (AC10): every API or
+        # parse failure maps to the unknown/pending tri-state and surfaces
+        # as a ::warning:: annotation, never a failed job — this workflow is
+        # never a required check.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          COMMITS_JSON: ${{ toJSON(github.event.commits) }}
+        run: python3 harness/dod_closeout_verify.py
