@@ -43,8 +43,12 @@ fi
 # Architecture-relevant trigger set; ^-anchored subtree prefixes + the exact
 # config file. `install.sh` intentionally absent (see header).
 TRIGGER_RE='^(agents/|\.github/workflows/|harness/|skills/|opencode\.jsonc$)'
-# The two accepted documentation paths (either satisfies the gate).
+# The two accepted documentation path families (either satisfies the gate).
+# `docs/adr/decision-log.md` (#480) is an accepted satisfier through the
+# `docs/adr/` prefix: a one-line entry is a legitimate architecture record for
+# reversible, low-blast-radius decisions (rubric: skills/madr-adr §1).
 DOC_RE='^(docs/adr/|docs/architecture/arc42/)'
+DECISION_LOG='docs/adr/decision-log.md'
 
 # Fail-closed on an uncomputable diff (review 5910441948): an empty CHANGED
 # list from a FAILED diff command would read as "nothing changed" — a
@@ -90,6 +94,9 @@ fi
 if [ -n "$DOCS" ]; then
   echo "PASS: architecture documentation present in the same diff (satisfying paths):"
   printf '%s\n' "$DOCS" | sed 's/^/  - /'
+  if printf '%s\n' "$DOCS" | grep -qxF "$DECISION_LOG"; then
+    echo "Accepted satisfier: $DECISION_LOG (one-line decision log, rubric: skills/madr-adr §1)."
+  fi
   echo "Architecture-relevant paths changed:"
   printf '%s\n' "$HITS" | sed 's/^/  - /'
   exit 0
@@ -102,6 +109,7 @@ echo "Trigger paths hit in this diff:"
 printf '%s\n' "$HITS" | sed 's/^/  - /'
 echo "Accepted documentation paths (add at least ONE of these to the same diff):"
 echo "  - docs/adr/**          (a new or updated ADR, MADR schema)"
+echo "  - docs/adr/decision-log.md    (a one-line decision-log entry — reversible, low-blast-radius classes)"
 echo "  - docs/architecture/arc42/**  (an arc42 documentation update)"
 echo "The install.sh path is deliberately excluded from the trigger set: mechanical pin bumps (e.g. #447) must not force ADRs."
 echo "Full changed-path list:"

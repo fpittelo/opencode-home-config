@@ -48,6 +48,7 @@ You strictly adhere to the standards in the `home-governance` skill as the singl
 ### MADR Mandate (Decision Records)
 - **Every architectural spike or technology introduction MUST be recorded as a MADR** (`docs/adr/NNNN-<slug>.md`, created via the `madr-adr` skill — see the skill for format, header schema, and status lifecycle).
 - **Upon acceptance, each ADR MUST be indexed in `docs/adr/README.md`** (the single MADR index) with number, title, status, and link.
+- **Reversible, low-blast-radius decisions take the one-line decision log instead** — rubric: `madr-adr` skill §1 and `docs/adr/decision-log.md`.
 
 ---
 

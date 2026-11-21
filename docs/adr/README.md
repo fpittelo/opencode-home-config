@@ -10,6 +10,17 @@ bash skills/madr-adr/scripts/new-adr.sh "<short imperative title>"
 
 This scaffolds the next sequential `NNNN-<slug>.md` from the template (refuses to overwrite existing files; exits non-zero on misuse). Fill every section, then follow the acceptance and indexing workflow in [`skills/madr-adr/SKILL.md`](../../skills/madr-adr/SKILL.md).
 
+## Decision log (one line, not a MADR)
+
+**Reversible, low-blast-radius decisions are logged in one line in [`decision-log.md`](decision-log.md)** — format: `YYYY-MM-DD — <title> — <one-sentence rationale> — <ref>`.
+
+| Class | Recorded where |
+| :--- | :--- |
+| Model roster assignment changes; permission-line tweaks without security impact; image/pin bumps; workflow-cosmetic changes; doc structure moves | **Decision log** — one line in [`decision-log.md`](decision-log.md) |
+| Hard to reverse, cross-repo, security impact (MADR-0008 routing: new MCP tools, API integrations, permission changes, auth flows), lifecycle/policy changes | **MADR** — unchanged bar, unchanged `madr-adr` workflow |
+
+The rubric is codified in [`skills/madr-adr/SKILL.md`](../../skills/madr-adr/SKILL.md) §1; it never weakens the MADR bar for security-impact classes (MADR-0008 routing untouched).
+
 ## Status legend
 
 | Status | Meaning |
