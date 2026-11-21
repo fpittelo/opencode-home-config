@@ -16,6 +16,15 @@ Create a MADR whenever a decision is:
 
 Do NOT create ADRs for: implementation details confined to one issue (the issue is the record), routine config chores, or reversible day-to-day tuning.
 
+### Decision-class rubric (MADR vs one-line decision log)
+
+| Class | Recorded where |
+| :--- | :--- |
+| Model roster assignment changes; permission-line tweaks without security impact; image/pin bumps; workflow-cosmetic changes; doc structure moves | **Decision log** — one line in [`docs/adr/decision-log.md`](../../docs/adr/decision-log.md): `YYYY-MM-DD — <title> — <one-sentence rationale> — <ref>` |
+| Hard to reverse, cross-repo, security impact (MADR-0008 routing: new MCP tools, API integrations, permission changes, auth flows), lifecycle/policy changes | **MADR** — unchanged bar, unchanged workflow |
+
+The log never weakens the MADR bar: security-impact decisions always take the MADR path (MADR-0008 routing untouched).
+
 ---
 
 ## 2. MADR Template

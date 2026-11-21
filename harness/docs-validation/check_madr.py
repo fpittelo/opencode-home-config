@@ -4,7 +4,8 @@
 Implements the machine-checkable schema of skills/madr-adr/SKILL.md §3 exactly:
 H1 header (number must equal the filename number), Status, Date and Deciders
 fields, the five mandatory H2 sections in order, the file-naming pattern, and
-unique gap-free sequence numbers from 0001. docs/adr/README.md is skipped.
+unique gap-free sequence numbers from 0001. docs/adr/README.md (the index) and
+docs/adr/decision-log.md (the one-line log, #480) are skipped.
 Secret scanning is owned by gitleaks in CI, not by this script.
 
 Usage: check_madr.py [REPO_ROOT]
@@ -17,6 +18,10 @@ from pathlib import Path
 
 ADR_DIR = "docs/adr"
 README = "README.md"
+# The one-line decision log (#480) lives beside the MADRs but is not an ADR:
+# it is the cheap record for reversible, low-blast-radius decisions (rubric:
+# skills/madr-adr §1). It is therefore skipped like the index README.
+DECISION_LOG = "decision-log.md"
 H1_RE = re.compile(r"^# MADR-(\d{4}): .+$")
 STATUS_RE = re.compile(
     r"^- \*\*Status:\*\* (proposed|accepted|superseded|deprecated"
@@ -93,7 +98,11 @@ def main(argv: list[str]) -> int:
     numbers: list[int] = []
     conforming = 0
     for entry in sorted(adr_dir.iterdir()):
-        if not entry.is_file() or entry.suffix != ".md" or entry.name == README:
+        if (
+            not entry.is_file()
+            or entry.suffix != ".md"
+            or entry.name in (README, DECISION_LOG)
+        ):
             continue
         m = NAME_RE.match(entry.name)
         if not m:

@@ -1,0 +1,20 @@
+# Decision Log
+
+One-line record for **reversible, low-blast-radius** decisions that do not warrant a MADR. The log right-sizes decision recording: it keeps the MADR index for decisions that are hard to reverse, cross-repo, or security-impacting, and gives everything else a cheap, greppable record.
+
+## Decision-class rubric
+
+| Class | Recorded where |
+| :--- | :--- |
+| Model roster assignment changes; permission-line tweaks without security impact; image/pin bumps; workflow-cosmetic changes; doc structure moves | **Decision log** — one line: `YYYY-MM-DD — <title> — <one-sentence rationale> — <ref>` |
+| Hard to reverse, cross-repo, security impact (MADR-0008 routing: new MCP tools, API integrations, permission changes, auth flows), lifecycle/policy changes | **MADR** — unchanged bar, unchanged `madr-adr` workflow |
+
+Security-impact decisions always take the MADR path (MADR-0008 routing unchanged): the log never weakens that bar.
+
+## Entry format
+
+`YYYY-MM-DD — <title> — <one-sentence rationale> — <ref>`
+
+## Entries
+
+- 2026-11-21 — Introduce the one-line decision log — Reversible documentation-structure change that right-sizes decision recording without touching the security-impact MADR bar — #480

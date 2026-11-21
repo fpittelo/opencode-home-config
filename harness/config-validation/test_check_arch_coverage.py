@@ -146,6 +146,11 @@ class NegativeControl(FixtureTestCase):
         )
         self.assert_fail(proc, "harness/run.sh", "skills/kis-yagni/SKILL.md")
 
+    def test_config_surface_with_neither_doc_nor_log_fails(self) -> None:
+        """#480 AC3: a config-surface diff with neither doc nor log still fails."""
+        proc = gate(("skills/madr-adr/SKILL.md", "y\n"))
+        self.assert_fail(proc, "skills/madr-adr/SKILL.md")
+
     def test_deleted_arch_file_fails(self) -> None:
         """Deletions are part of the diff surface (#405-adjacent honesty)."""
         repo, base, head = build_repo({})
@@ -191,6 +196,15 @@ class PositiveControl(FixtureTestCase):
                 ("docs/adr/0027-example.md", "adr\n"),
             )
         )
+
+    def test_config_surface_plus_decision_log_only_passes(self) -> None:
+        """#480 AC3: a one-line decision-log entry is an accepted satisfier."""
+        proc = gate(
+            ("opencode.jsonc", "{}"),
+            ("docs/adr/decision-log.md", "# Decision Log\n"),
+        )
+        self.assert_pass(proc)
+        self.assertIn("Accepted satisfier: docs/adr/decision-log.md", proc.stdout)
 
     def test_docs_only_diff_passes(self) -> None:
         self.assert_pass(
@@ -240,6 +254,11 @@ class MessageQuality(FixtureTestCase):
         self.assertIn("docs/adr/", proc.stdout)
         self.assertIn("docs/architecture/arc42/", proc.stdout)
         self.assertIn("install.sh", proc.stdout)  # exclusion rationale visible
+
+    def test_failure_names_the_decision_log_satisfier(self) -> None:
+        """#480 AC3: the guidance names the one-line decision log explicitly."""
+        proc = gate(("agents/devops.md", "x\n"))
+        self.assertIn("docs/adr/decision-log.md", proc.stdout)
 
     def test_pass_names_the_satisfying_doc_paths(self) -> None:
         proc = gate(
