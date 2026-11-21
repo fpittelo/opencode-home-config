@@ -17,6 +17,14 @@ deny entry the validated tree has. Requirement source: ``BASELINE_DENY_TAIL``
 from ``check_bash_permission_tiers.py`` (gate 14's pinned tail) — the deny
 tail is single-sourced, never duplicated here.
 
+MADR-0029 C3 (#475): membership alone is insufficient. The installed rules
+are an ORDERED last-match-wins list, so a posture can carry every wrapper
+deny entry and still resolve them to ``allow`` when the ``"*": allow`` head
+sits after them (stale copy, hand edit, drifted merge). Gate 20 therefore
+also resolves the shared ``WRAPPER_ORDERED_PROBES`` (``xargs pip install …``,
+``timeout 5 curl``, ``env gh api``, compound ``true && xargs curl``) against
+the ordered installed rules with gate 14's resolver and requires ``deny``.
+
 Scope decisions (fail-closed where it matters):
 
 - **Installed file missing AND no install artifacts** → explicit SKIP
@@ -42,20 +50,29 @@ import json
 import sys
 from pathlib import Path
 
-from check_bash_permission_tiers import BASELINE_DENY_TAIL
+from check_bash_permission_tiers import (
+    BASELINE_DENY_TAIL,
+    WRAPPER_ORDERED_PROBES,
+    resolve_command,
+)
 from jsonc_utils import strip_jsonc
 
 INSTALLED_REL = Path(".config/opencode/opencode.jsonc")
 PROFILES_REL = Path(".config/opencode/profiles.sh")
 
 
-def bash_denies(text: str) -> set[str]:
-    """The deny-keyed patterns of a config's root permission.bash block."""
+def bash_rules(text: str) -> list[tuple[str, str]]:
+    """The ORDERED (pattern, tier) rules of a config's root permission.bash."""
     data = json.loads(strip_jsonc(text))
     bash = data.get("permission", {}).get("bash")
     if not isinstance(bash, dict):
         raise ValueError("missing root permission.bash object")
-    return {str(pattern) for pattern, tier in bash.items() if tier == "deny"}
+    return [(str(pattern), str(tier)) for pattern, tier in bash.items()]
+
+
+def bash_denies(text: str) -> set[str]:
+    """The deny-keyed patterns of a config's root permission.bash block."""
+    return {pattern for pattern, tier in bash_rules(text) if tier == "deny"}
 
 
 def skip_reason(root: Path, home: Path) -> str | None:
@@ -118,6 +135,7 @@ def check_repo(root: Path, home: Path) -> list[str]:
 
     try:
         installed_denies = bash_denies(installed_text)
+        installed_rules = bash_rules(installed_text)
     except (json.JSONDecodeError, ValueError) as exc:
         findings.append(
             f"installed config {installed} unparsable ({exc}) — cannot verify "
@@ -134,6 +152,20 @@ def check_repo(root: Path, home: Path) -> list[str]:
             "replaced symlink, or drifted copy; #449 AC2a). Re-run "
             "install.sh to re-provision"
         )
+
+    # MADR-0029 C3 (#475): resolve, do not just count. Order is semantic —
+    # an installed file can carry every wrapper deny and still resolve them
+    # to `allow` when the "*": allow head sits after them.
+    for command in WRAPPER_ORDERED_PROBES:
+        verdict = resolve_command(installed_rules, command)
+        if verdict != "deny":
+            findings.append(
+                f"installed config {installed} resolves the wrapper command "
+                f"{command!r} to {verdict!r}, expected 'deny' — the ordered "
+                "rule list defeats the MADR-0029 wrapper tail (deny entry "
+                "misplaced or shadowed; #449/gate 20, MADR-0029 C3). Re-run "
+                "install.sh to re-provision"
+            )
     return findings
 
 
@@ -161,8 +193,9 @@ def main(argv: list[str]) -> int:
     print(
         "PASS check_installed_posture_freshness: installed config "
         f"{home / INSTALLED_REL} carries every deny entry of the pinned "
-        f"root deny tail ({len(BASELINE_DENY_TAIL)} entries) — posture "
-        "fresh (#449 gate 20)"
+        f"root deny tail ({len(BASELINE_DENY_TAIL)} entries) and resolves "
+        f"{len(WRAPPER_ORDERED_PROBES)} representative wrapper commands to "
+        "deny in order — posture fresh (#449 gate 20, MADR-0029 C3)"
     )
     return 0
 

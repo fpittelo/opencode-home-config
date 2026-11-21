@@ -443,7 +443,34 @@
       // ask-tier.
       "kill 0*": "deny",
       "kill -1*": "deny",
-      "kill * -1*": "deny"
+      "kill * -1*": "deny",
+      // MADR-0029 (#475, resolves #468 — C1): the curated bash wrapper/
+      // executor family. The scanner resolves each subcommand's own raw text
+      // and the list is last-match-wins, so a wrapper prefix used to catch the
+      // "*": allow head before any ask/deny pattern matched — live-verified on
+      // opencode v2.3.2 (`xargs curl`, `xargs printenv` and `xargs rm -rf /`
+      // all executed). Upstream designates wrapper-scoped denies as the
+      // sanctioned workaround (anomalyco/opencode#54008/#58775/#62513); the
+      // engine is unpinned, so the mitigation is config-side. Additions only.
+      // Patterns are BARE-PREFIX (path-insensitive, reviewed with accepted
+      // false positives); path-qualified wrapper/direct spellings and env-var
+      // assignment prefixes are the recorded residual (MADR-0029, arc42 §3).
+      // The dispositioned remainder of the executor inventory (ionice, chrt,
+      // taskset, flock, unshare, nsenter, setpriv, bwrap, script, unbuffer,
+      // parallel) is recorded in MADR-0029. NO agent-level wrapper carve-out.
+      "command *": "deny",
+      "env *": "deny",
+      "eval *": "deny",
+      "exec *": "deny",
+      "find * -exec*": "deny",
+      "nice *": "deny",
+      "nohup *": "deny",
+      "setsid *": "deny",
+      "stdbuf *": "deny",
+      "time *": "deny",
+      "timeout *": "deny",
+      "watch *": "deny",
+      "xargs *": "deny"
     }
   },
   "compaction": {

@@ -519,18 +519,25 @@ class PodmanRuntimeReconciliationTests(unittest.TestCase):
 
     def test_deny_tail_entries_are_appended_last(self) -> None:
         # Order is semantic (deny rules LAST, MADR-0004): the tail's final
-        # rules are the MADR-0027 kill-broadcast entries (appended after the
-        # MADR-0024 podman entries, verdict C3 — additions only).
+        # rules are the MADR-0029 wrapper-family denies (appended last by
+        # #475). This is a DELIBERATE tail-order re-pin, not a reordering:
+        # nothing moved — the MADR-0024 podman entries and the MADR-0027
+        # kill-broadcast entries keep their positions and now sit 13 slots
+        # further from the end.
         self.assertEqual(
-            CHECKER.BASELINE_DENY_TAIL[-5:-3], self.PODMAN_DENIES
+            CHECKER.BASELINE_DENY_TAIL[-18:-16], self.PODMAN_DENIES
         )
         self.assertEqual(
-            CHECKER.BASELINE_DENY_TAIL[-3:],
+            CHECKER.BASELINE_DENY_TAIL[-16:-13],
             ("kill 0*", "kill -1*", "kill * -1*"),
         )
         self.assertEqual(
-            [pattern for pattern, _ in CHECKER.BASELINE_ROOT_RULES][-3:],
-            ["kill 0*", "kill -1*", "kill * -1*"],
+            CHECKER.BASELINE_DENY_TAIL[-13:],
+            CHECKER.WRAPPER_DENY_PATTERNS,
+        )
+        self.assertEqual(
+            [pattern for pattern, _ in CHECKER.BASELINE_ROOT_RULES][-13:],
+            list(CHECKER.WRAPPER_DENY_PATTERNS),
         )
 
     def test_system_service_and_machine_are_denied(self) -> None:
@@ -915,6 +922,154 @@ class RmCarveoutPlacementTests(unittest.TestCase):
     @staticmethod
     def _run(root: Path) -> subprocess.CompletedProcess[str]:
         return run_checker(root)
+
+
+class WrapperDenyFamilyTests(unittest.TestCase):
+    """MADR-0029 (#475, resolves #468): the curated wrapper family is denied.
+
+    C1 — the 13 wrapper/executor patterns are root deny-tail entries appended
+    after every existing entry (tail 73 -> 86), so a wrapper prefix can no
+    longer catch the ``"*": allow`` head. C2 — bare-prefix patterns are
+    path-insensitive by construction: path-qualified wrapper and direct-command
+    spellings stay a RECORDED residual (pinned as explicit allows). C4 — the
+    canary rejects any agent allow/ask rule whose executable head is a denied
+    wrapper, including narrow and path-qualified variants. C5 — truth-table
+    rows cover every newly admitted head plus a compound form.
+    """
+
+    WRAPPER_COMMANDS = (
+        "xargs pip install pkg",
+        "env pip install pkg",
+        "timeout 5 pip install pkg",
+        "xargs rm -rf /",
+        "xargs curl --version",
+        "xargs printenv --version",
+        "exec curl --version",
+        "time curl --version",
+        "eval curl --version",
+        "find . -exec curl --version",
+        "nohup curl --version",
+        "setsid curl --version",
+        "stdbuf -oL curl --version",
+        "nice -n 5 curl --version",
+        "watch -n 1 curl --version",
+        "command curl --version",
+    )
+
+    def assert_gate_fails(
+        self, proc: subprocess.CompletedProcess[str], *fragments: str
+    ) -> None:
+        output = proc.stdout + proc.stderr
+        self.assertEqual(
+            proc.returncode,
+            1,
+            f"expected exit 1, got {proc.returncode}:\n{output}",
+        )
+        for fragment in fragments:
+            self.assertIn(fragment, output)
+
+    def test_wrapper_denies_are_tail_appended_last(self) -> None:
+        self.assertEqual(len(CHECKER.WRAPPER_DENY_PATTERNS), 13)
+        self.assertEqual(
+            CHECKER.BASELINE_DENY_TAIL[-13:], CHECKER.WRAPPER_DENY_PATTERNS
+        )
+        for pattern in CHECKER.WRAPPER_DENY_PATTERNS:
+            self.assertIn(pattern, CHECKER.BASELINE_DENY_TAIL)
+
+    def test_every_wrapper_command_resolves_deny(self) -> None:
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in self.WRAPPER_COMMANDS:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    CHECKER.resolve(merged, command),
+                    "deny",
+                    f"{command!r} must be root-denied (MADR-0029 C1)",
+                )
+
+    def test_compound_wrapper_form_is_denied(self) -> None:
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in (
+            "true && xargs curl --version",
+            "echo ok && timeout 5 printenv --version",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(
+                    CHECKER.resolve_command(merged, command), "deny"
+                )
+
+    def test_wrapper_truth_table_rows_present(self) -> None:
+        table = dict(CHECKER.TRUTH_TABLE)
+        for command in self.WRAPPER_COMMANDS:
+            self.assertEqual(table.get(command), "deny", command)
+        compound = dict(CHECKER.COMPOUND_TRUTH_TABLE)
+        self.assertEqual(compound.get("true && xargs curl --version"), "deny")
+
+    def test_path_qualified_spellings_are_the_recorded_residual(self) -> None:
+        # C2: bare-prefix patterns are path-insensitive, so the path-qualified
+        # wrapper AND direct-command spellings are NOT matched. Pinned as
+        # explicit allows so the residual is legible, never a silent widening.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in (
+            "/usr/bin/xargs curl --version",
+            "/usr/bin/timeout 5 curl --version",
+            "/usr/bin/curl --version",
+            "/bin/sh -c 'curl --version'",
+        ):
+            with self.subTest(command=command):
+                self.assertEqual(CHECKER.resolve(merged, command), "allow")
+
+    def test_root_baseline_pin_fails_without_a_wrapper_deny(self) -> None:
+        drifted = remove_rule(KNOWN_GOOD_RULES, "xargs *")
+        proc = run_checker(build_repo(root_rules=drifted))
+        self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
+
+    def test_canary_rejects_narrow_agent_wrapper_allow(self) -> None:
+        agent_bash = {"cyber-security": (("xargs rm*", "allow"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(
+            proc, "agents/cyber-security.md", "denied wrapper"
+        )
+
+    def test_canary_rejects_path_qualified_agent_wrapper_allow(self) -> None:
+        agent_bash = {"architect": (("/usr/bin/xargs *", "allow"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/architect.md", "denied wrapper")
+
+    def test_canary_rejects_ask_tier_wrapper_rule(self) -> None:
+        agent_bash = {"developer": (("env *", "ask"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/developer.md", "denied wrapper")
+
+    def test_canary_rejects_find_exec_readmission(self) -> None:
+        # `find` itself stays allowed; only its `-exec*` form is denied, so an
+        # agent rule re-admitting that form is the same carve-out defect.
+        agent_bash = {"architect": (("find * -exec*", "allow"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/architect.md", "denied wrapper")
+
+    def test_canary_covers_non_inheritance_agents(self) -> None:
+        widened = SCRUM_MASTER_EXPECTED + (("timeout *", "allow"),)
+        proc = run_checker(build_repo(agent_bash={"scrum-master": widened}))
+        self.assert_gate_fails(proc, "agents/scrum-master.md", "denied wrapper")
+
+    def test_real_repo_canary_passes(self) -> None:
+        proc = run_checker(REPO_ROOT)
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"expected exit 0, got {proc.returncode}:\n{proc.stdout}{proc.stderr}",
+        )
+
+    def test_ordered_gate20_probes_are_denied(self) -> None:
+        # C3 shared with gate 20: the representative probes (incl. the compound
+        # form) resolve deny against the ORDERED root rules.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        self.assertIn("timeout 5 curl", CHECKER.WRAPPER_ORDERED_PROBES)
+        for command in CHECKER.WRAPPER_ORDERED_PROBES:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    CHECKER.resolve_command(merged, command), "deny"
+                )
 
 
 if __name__ == "__main__":
