@@ -19,3 +19,4 @@ Security-impact decisions always take the MADR path (MADR-0008 routing unchanged
 
 - 2026-11-21 — Introduce the one-line decision log — Reversible documentation-structure change that right-sizes decision recording without touching the security-impact MADR bar — #480
 - 2026-11-22 — Bump Rust harness runner to rust:1.100.0-slim-bookworm and pin cargo-audit@0.23.0 / cargo-deny@0.22.0 — Resolves cargo-deny 0.22.0 MSRV >= 1.95.0 build failure and eliminates unpinned crates.io drift in Dockerfile.rust — #477
+- 2026-11-22 — Bump pinned github-mcp-server native binary v2.1.0 -> v2.2.0 — Adopts upstream v2.2.0 (completion/validation bugfixes and secret-scanning hide_secret option; opt-in skills and copilot_automations remain inactive) under MADR-0002 D3 / MADR-0026 — #495
