@@ -21,7 +21,7 @@
 #     ghcr.io/fpittelo/harness-runner-rust:dev \
 #     bash -c "cargo fmt --check && cargo clippy -- -D warnings && cargo test"
 
-ARG RUST_VERSION=1.88.0
+ARG RUST_VERSION=1.100.0
 ARG DEBIAN_VERSION=bookworm
 
 # -----------------------------------------------------------------------------
@@ -38,9 +38,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install supply-chain security plugins with BuildKit cache mounts.
 # --locked uses the upstream Cargo.lock so dependency MSRVs stay compatible.
+# Crate versions are pinned: upstream crates.io publishes must not break
+# reproducible image builds mid-sprint (#477).
+ARG CARGO_AUDIT_VERSION=0.23.0
+ARG CARGO_DENY_VERSION=0.22.0
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    cargo install --locked cargo-audit cargo-deny
+    cargo install --locked cargo-audit@${CARGO_AUDIT_VERSION} cargo-deny@${CARGO_DENY_VERSION}
 
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime image
