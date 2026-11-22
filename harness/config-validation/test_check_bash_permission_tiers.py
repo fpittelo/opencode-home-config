@@ -521,15 +521,17 @@ class PodmanRuntimeReconciliationTests(unittest.TestCase):
         # Order is semantic (deny rules LAST, MADR-0004): the tail's final
         # rules are the MADR-0029 wrapper-family denies (appended last by
         # #475). This is a DELIBERATE tail-order re-pin, not a reordering:
-        # nothing moved — the MADR-0024 podman entries and the MADR-0027
-        # kill-broadcast entries keep their positions and now sit 13 slots
-        # further from the end.
+        # nothing moved — the MADR-0024 podman entries keep their position
+        # and now sit 10 slots further from the end (the kill block grew
+        # 3 -> 10 target-classified entries, MADR-0032/#485).
+        kill_len = len(CHECKER.KILL_DENY_PATTERNS)
         self.assertEqual(
-            CHECKER.BASELINE_DENY_TAIL[-18:-16], self.PODMAN_DENIES
+            CHECKER.BASELINE_DENY_TAIL[-(13 + kill_len + 2) : -(13 + kill_len)],
+            self.PODMAN_DENIES,
         )
         self.assertEqual(
-            CHECKER.BASELINE_DENY_TAIL[-16:-13],
-            ("kill 0*", "kill -1*", "kill * -1*"),
+            CHECKER.BASELINE_DENY_TAIL[-(13 + kill_len) : -13],
+            CHECKER.KILL_DENY_PATTERNS,
         )
         self.assertEqual(
             CHECKER.BASELINE_DENY_TAIL[-13:],
@@ -1070,6 +1072,231 @@ class WrapperDenyFamilyTests(unittest.TestCase):
                 self.assertEqual(
                     CHECKER.resolve_command(merged, command), "deny"
                 )
+
+
+class KillFamilyPostureTests(unittest.TestCase):
+    """MADR-0032 (#485): target-classified kill denies, path-general, no carve-out.
+
+    R-1 (severity::medium, #482 audit) — the ``kill*`` ask checkpoint was
+    path-bypassable: ``/usr/bin/kill 754`` and ``/bin/kill -9 1234`` resolved
+    ALLOW under the bare-prefix pattern set. The path-general deny
+    ``*/kill *`` (whole-value wildcard, ``*`` includes ``/``) closes the
+    direct path-qualified spelling while bare ``kill <pid>`` stays ask.
+
+    R-2 (severity::low) — the three MADR-0027 broadcast patterns were
+    SIGNAL-prefix classified, so ``kill -1*`` matched ``kill -15 <pid>`` and
+    ``kill * -1*`` matched ``kill <pid> -15``: SIGTERM-by-number was hard
+    DENIED while plain ``kill <pid>`` was only ask. They are replaced by
+    TARGET-classified forms (C2 corpus below): target ``0`` / target ``-1``
+    / negative process-group targets stay DENY, single-PID signal forms stay
+    ASK.
+
+    Scope boundary (C1): direct path-qualified kill only. Wrapper-to-kill
+    (``/usr/bin/env kill 754``), assignment prefixes and the unpinned engine
+    remain the recorded residual — this class pins them as such rather than
+    claiming closure.
+    """
+
+    # AC2 must-remain-DENY corpus, verbatim (target 0, target -1, negative
+    # process-group targets, multi-target permutations) plus the R-1
+    # path-qualified controls.
+    KILL_DENY_COMMANDS = (
+        # target 0 (own process group)
+        "kill 0",
+        "kill 0 1234",
+        "kill 1234 0",
+        "kill -TERM 0",
+        "kill -s TERM 0",
+        "kill --signal TERM 0",
+        "kill -- 0",
+        # target -1 (every process of the user)
+        "kill -1",
+        "kill -1 -1",
+        "kill -TERM -1",
+        "kill -s TERM -1",
+        "kill --signal TERM -1",
+        "kill -- -1",
+        "kill 1234 -1",
+        # other negative process-group targets
+        "kill -TERM -12345",
+        "kill -- -12345",
+        # multi-target permutations containing 0 or -1
+        "kill 0 1234 -15",
+        "kill -s TERM 0 1234",
+        "kill 1234 0 5678",
+        "kill -1 1234",
+        "kill 5678 -1",
+        "kill 1234 -1 5678",
+        "kill -TERM 0 1234",
+        # R-1: path-qualified direct kills (`*` includes `/`)
+        "/usr/bin/kill 754",
+        "/bin/kill -9 1234",
+    )
+
+    # AC2 must-resolve-ASK corpus, verbatim: single-PID forms, signal 1 to a
+    # single PID (SIGHUP), signal-number spellings, and the signal-0 probe
+    # (`kill -0 <pid>` is not termination and is not target 0).
+    KILL_ASK_COMMANDS = (
+        "kill 1234",
+        "kill -15 1234",
+        "kill 1234 -15",
+        "kill -s TERM 1234",
+        "kill --signal 1 1234",
+        "kill -0 1234",
+    )
+
+    def assert_gate_fails(
+        self, proc: subprocess.CompletedProcess[str], *fragments: str
+    ) -> None:
+        output = proc.stdout + proc.stderr
+        self.assertEqual(
+            proc.returncode,
+            1,
+            f"expected exit 1, got {proc.returncode}:\n{output}",
+        )
+        for fragment in fragments:
+            self.assertIn(fragment, output)
+
+    def test_c2_deny_corpus_resolves_deny(self) -> None:
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in self.KILL_DENY_COMMANDS:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    CHECKER.resolve(merged, command),
+                    "deny",
+                    f"{command!r} must be root-denied (MADR-0032 AC2)",
+                )
+
+    def test_c2_ask_corpus_resolves_ask(self) -> None:
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in self.KILL_ASK_COMMANDS:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    CHECKER.resolve(merged, command),
+                    "ask",
+                    f"{command!r} must stay ASK (MADR-0032 AC2 — the R-2 "
+                    f"signal-prefix false positives)",
+                )
+
+    def test_over_broad_signal_prefix_patterns_are_gone(self) -> None:
+        tail = CHECKER.BASELINE_DENY_TAIL
+        for pattern in ("kill 0*", "kill -1*", "kill * -1*"):
+            with self.subTest(pattern=pattern):
+                self.assertNotIn(
+                    pattern,
+                    tail,
+                    "the signal-prefix kill patterns are replaced by "
+                    "target-classified forms (MADR-0032 C2/R-2)",
+                )
+        self.assertEqual(
+            len(CHECKER.KILL_DENY_PATTERNS), 10, "kill deny block size pin"
+        )
+        for pattern in CHECKER.KILL_DENY_PATTERNS:
+            self.assertIn(pattern, tail)
+        self.assertIn("*/kill *", CHECKER.KILL_DENY_PATTERNS)
+
+    def test_truth_table_pins_the_whole_corpus(self) -> None:
+        table = dict(CHECKER.TRUTH_TABLE)
+        for command in self.KILL_DENY_COMMANDS:
+            with self.subTest(command=command):
+                self.assertEqual(table.get(command), "deny", command)
+        for command in self.KILL_ASK_COMMANDS:
+            with self.subTest(command=command):
+                self.assertEqual(table.get(command), "ask", command)
+
+    def test_compound_controls(self) -> None:
+        # AC3 compound controls: the path-qualified deny survives a compound
+        # line, and the R-2 fix means a signal-number segment no longer
+        # hard-denies the whole line.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        self.assertEqual(
+            CHECKER.resolve_command(merged, "true && /usr/bin/kill 754"), "deny"
+        )
+        self.assertEqual(
+            CHECKER.resolve_command(merged, "true && kill -15 1234"), "ask"
+        )
+        compound = dict(CHECKER.COMPOUND_TRUTH_TABLE)
+        self.assertEqual(compound.get("true && /usr/bin/kill 754"), "deny")
+        self.assertEqual(compound.get("true && kill -15 1234"), "ask")
+
+    def test_bare_kill_ask_checkpoint_preserved(self) -> None:
+        # AC6: no agent-level carve-out and no ask-tier change — the bare
+        # `kill*` checkpoint is untouched, and no agent registers a kill
+        # allow/ask deviation.
+        self.assertIn(("kill*", "ask"), CHECKER.BASELINE_ASK_TIER)
+        for name, patterns in CHECKER.AGENT_DEVIATIONS.items():
+            with self.subTest(agent=name):
+                self.assertFalse(
+                    [
+                        pattern
+                        for pattern in patterns
+                        if pattern.split() and pattern.split()[0].rsplit("/", 1)[-1] == "kill"
+                    ],
+                    f"{name} must register no kill pattern (MADR-0032 AC6)",
+                )
+
+    def test_canary_rejects_agent_level_kill_allow(self) -> None:
+        # AC3 canary: an agent rule appends AFTER the root deny tail
+        # (last-match-wins), so an agent-level kill allow/ask re-admits the
+        # closed surface for that role.
+        agent_bash = {"developer": (("kill 1234", "allow"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/developer.md", "kill carve-out")
+
+    def test_canary_rejects_agent_level_path_qualified_kill_allow(self) -> None:
+        agent_bash = {"architect": (("/usr/bin/kill *", "allow"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/architect.md", "kill carve-out")
+
+    def test_canary_rejects_agent_level_kill_ask(self) -> None:
+        agent_bash = {"cyber-security": (("kill *", "ask"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/cyber-security.md", "kill carve-out")
+
+    def test_canary_covers_non_inheritance_agents(self) -> None:
+        widened = SCRUM_MASTER_EXPECTED + (("kill *", "allow"),)
+        proc = run_checker(build_repo(agent_bash={"scrum-master": widened}))
+        self.assert_gate_fails(proc, "agents/scrum-master.md", "kill carve-out")
+
+    def test_root_baseline_pin_fails_without_a_kill_deny(self) -> None:
+        for pattern in ("*/kill *", "kill -* -*", "kill * -1"):
+            with self.subTest(pattern=pattern):
+                drifted = remove_rule(KNOWN_GOOD_RULES, pattern)
+                proc = run_checker(build_repo(root_rules=drifted))
+                self.assert_gate_fails(proc, "opencode.jsonc", "deny tail")
+
+    def test_recorded_residuals(self) -> None:
+        # C1/C2 recorded limitations, pinned explicitly so the boundary stays
+        # legible instead of being claimed closed:
+        # (a) a negative numeric target written as the only hyphen token is
+        #     textually indistinguishable from a signal number without
+        #     regex/quantifier support (ambiguous parse -> ASK checkpoint,
+        #     never ALLOW);
+        # (b) path-qualified wrapper-to-kill and assignment prefixes stay in
+        #     the MADR-0029 residual set and resolve ALLOW.
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        self.assertEqual(CHECKER.resolve(merged, "kill 1234 -12345"), "ask")
+        self.assertEqual(CHECKER.resolve(merged, "kill -12345"), "ask")
+        self.assertEqual(CHECKER.resolve(merged, "/usr/bin/env kill 754"), "allow")
+        self.assertEqual(CHECKER.resolve(merged, "VAR=1 kill 754"), "allow")
+
+    def test_gate20_ordered_kill_probes(self) -> None:
+        # AC3: the kill probes are shared with gate 20 so the checker and the
+        # installed-posture gate cannot drift.
+        self.assertIn("/usr/bin/kill 754", CHECKER.KILL_ORDERED_PROBES)
+        self.assertIn("/bin/kill -9 1234", CHECKER.KILL_ORDERED_PROBES)
+        merged = list(CHECKER.BASELINE_ROOT_RULES)
+        for command in CHECKER.KILL_ORDERED_PROBES:
+            with self.subTest(command=command):
+                self.assertEqual(CHECKER.resolve_command(merged, command), "deny")
+
+    def test_real_repo_satisfies_the_kill_posture(self) -> None:
+        proc = run_checker(REPO_ROOT)
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"expected exit 0, got {proc.returncode}:\n{proc.stdout}{proc.stderr}",
+        )
 
 
 if __name__ == "__main__":

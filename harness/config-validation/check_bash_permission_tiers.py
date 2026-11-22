@@ -67,6 +67,19 @@ Consequences enforced below:
       path-insensitive by construction: path-qualified spellings are the
       recorded residual (AC2/C2).
 
+  6. KILL-FAMILY POSTURE (MADR-0032, #485) — the kill deny block is
+      TARGET-classified and path-general: ``*/kill *`` closes the R-1
+      path-qualified DIRECT kill that used to resolve allow under the
+      bare-prefix ask line (``/usr/bin/kill 754``), and the target-``0`` /
+      target-``-1`` / negative-process-group forms replace the MADR-0027
+      signal-prefix patterns that hard-denied ``kill -15 <pid>`` /
+      ``kill <pid> -15`` (R-2). A canary rejects any agent allow/ask rule
+      whose executable head is ``kill`` (no carve-out of any kind), the
+      gate-20 ordered-resolution probes are shared from here, and the
+      residual set (path-qualified wrapper-to-kill, assignment prefixes,
+      non-enumerated executors, the unpinned engine) stays recorded —
+      the kill checkpoint is NARROWED, never widened.
+
 Usage: check_bash_permission_tiers.py [REPO_ROOT]
 """
 from __future__ import annotations
@@ -144,6 +157,64 @@ WRAPPER_ORDERED_PROBES: tuple[str, ...] = (
     "timeout 5 curl",
     "env gh api",
     "true && xargs curl",
+)
+
+# MADR-0032 (#485): the target-classified kill deny block. MADR-0027 shipped
+# three SIGNAL-prefix patterns (`kill 0*`, `kill -1*`, `kill * -1*`); the
+# #482 AC7 audit found two defects and this block replaces them:
+#
+#   * R-1 (medium) — the `kill*` ask checkpoint was PATH-BYPASSABLE:
+#     `/usr/bin/kill 754` and `/bin/kill -9 1234` resolved ALLOW under the
+#     bare-prefix ask line. `*/kill *` is path-general (whole-value wildcard;
+#     `*` includes `/`), so the direct path-qualified spelling now denies
+#     while bare `kill <pid>` still resolves ask via the ask tier.
+#   * R-2 (low) — signal-prefix classification over-matched: `kill -1*`
+#     matched `kill -15 <pid>` and `kill * -1*` matched `kill <pid> -15`, so
+#     SIGTERM-by-number was hard-DENIED while plain `kill <pid>` only asked.
+#     The block is now TARGET-classified: target `0` (own process group),
+#     target `-1` (every process of the user) and negative process-group
+#     targets stay denied; single-PID signal forms stay ask.
+#
+# `kill -* -*` is the negative-process-group classifier: a target below the
+# signal range can only be spelled with an explicit signal option
+# (`kill -TERM -12345`) or the `--` separator (`kill -- -12345`), both of
+# which carry a second hyphen token, whereas the must-ask single-PID forms
+# (`kill -15 <pid>`, `kill <pid> -15`, `kill -s TERM <pid>`,
+# `kill --signal 1 <pid>`, `kill -0 <pid>`) carry exactly one. Recorded
+# limitations (deny-only narrowing, never a capability increase):
+# (a) a negative numeric target written as the ONLY hyphen token
+#     (`kill 1234 -12345`) is textually indistinguishable from a signal
+#     number without regex/quantifier support — it resolves ASK (the
+#     checkpoint), never ALLOW;
+# (b) path-qualified wrapper-to-kill (`/usr/bin/env kill 754`) and env-var
+#     assignment prefixes (`VAR=1 kill 754`) stay in the MADR-0029 residual
+#     set (arc42 §3) — R-1 is closed for the DIRECT path-qualified form only.
+# Deny-only, so the residual false positives fall in the safe direction.
+KILL_DENY_PATTERNS: tuple[str, ...] = (
+    # target 0 (own process group)
+    "kill 0",
+    "kill 0 *",
+    "kill * 0",
+    "kill * 0 *",
+    # target -1 (every process of the user)
+    "kill -1",
+    "kill -1 *",
+    "kill * -1",
+    "kill * -1 *",
+    # other negative process-group targets
+    "kill -* -*",
+    # R-1: path-qualified direct kill (path-general whole-value wildcard)
+    "*/kill *",
+)
+
+# MADR-0032 C3 (#485): representative kill commands gate 20 must resolve to
+# DENY against the ORDERED installed rule list — the R-1 bypass is invisible
+# to deny-set membership, and last-match-wins makes order semantic.
+KILL_ORDERED_PROBES: tuple[str, ...] = (
+    "/usr/bin/kill 754",
+    "/bin/kill -9 1234",
+    "kill 0",
+    "kill -TERM -12345",
 )
 
 # Deny-tail baseline captured from origin/dev HEAD before the #320 Slice B
@@ -246,15 +317,16 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # D3, arc42 §3).
     "podman system service*",
     "podman machine*",
-    # MADR-0027 (#463, AC0 verdict C3): kill broadcast forms are
-    # control-plane-DoS primitives — `kill 0` (own process group), `kill -1`
-    # (every process of the user), `kill <pid> -1` (pid + broadcast;
-    # empirically grounded by the pre-review probe). Additions only
-    # (tightening): the per-pid kill ALLOW is DEFERRED (C4(b) — no per-case
-    # AC1 evidence), so plain `kill <pid>` stays ask.
-    "kill 0*",
-    "kill -1*",
-    "kill * -1*",
+    # MADR-0027 (#463, AC0 verdict C3) → MADR-0032 (#485): kill broadcast
+    # forms are control-plane-DoS primitives — `kill 0` (own process group),
+    # `kill -1` (every process of the user), `kill <pid> -1` (pid +
+    # broadcast; empirically grounded by the pre-review probe). MADR-0032
+    # REPLACES the three signal-prefix patterns with the target-classified
+    # block above: the broadcast denies are preserved (plus negative
+    # process-group targets), the R-2 signal-number false positives are
+    # removed, and `*/kill *` closes the R-1 path-qualified direct form.
+    # No kill allow is introduced: plain `kill <pid>` stays ask (C4(b)).
+    *KILL_DENY_PATTERNS,
     # MADR-0029 (#475, resolves #468 — C1): tail append — the curated wrapper/
     # executor family. Additions only (tightening): a wrapper prefix can no
     # longer reach the `"*": allow` head before the ask tier / deny tail
@@ -525,12 +597,57 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("rm -rf /tmp/opencode/cache", "deny"),
     ("pip install -r creds.env", "deny"),
     ("pip install evil", "ask"),
+    # MADR-0032 (#485): the AC2 target-classified kill corpus, verbatim.
+    # target 0 (own process group) — the control-plane DoS shape.
     ("kill 0", "deny"),
+    ("kill 0 1234", "deny"),
+    ("kill 1234 0", "deny"),
+    ("kill -TERM 0", "deny"),
+    ("kill -s TERM 0", "deny"),
+    ("kill --signal TERM 0", "deny"),
+    ("kill -- 0", "deny"),
+    # target -1 (every process of the user).
     ("kill -1", "deny"),
-    ("kill 1234 -1", "deny"),
+    ("kill -1 -1", "deny"),
+    ("kill -TERM -1", "deny"),
+    ("kill -s TERM -1", "deny"),
+    ("kill --signal TERM -1", "deny"),
     ("kill -- -1", "deny"),
+    ("kill 1234 -1", "deny"),
+    # other negative process-group targets (two hyphen tokens).
+    ("kill -TERM -12345", "deny"),
+    ("kill -- -12345", "deny"),
+    # multi-target permutations containing 0 or -1.
+    ("kill 0 1234 -15", "deny"),
+    ("kill -s TERM 0 1234", "deny"),
+    ("kill 1234 0 5678", "deny"),
+    ("kill -1 1234", "deny"),
+    ("kill 5678 -1", "deny"),
+    ("kill 1234 -1 5678", "deny"),
+    ("kill -TERM 0 1234", "deny"),
+    # R-1: path-qualified DIRECT kill — `*/kill *` is path-general.
+    ("/usr/bin/kill 754", "deny"),
+    ("/bin/kill -9 1234", "deny"),
+    # must-ASK: single-PID forms. The R-2 fix — SIGTERM-by-number (signal
+    # `-15` at either position) is a checkpoint, not a hard deny; `-0` is the
+    # signal-0 probe (not target 0) and `--signal 1 <pid>` is single-PID
+    # SIGHUP.
     ("kill 1234", "ask"),
     ("kill -9 1234", "ask"),
+    ("kill -15 1234", "ask"),
+    ("kill 1234 -15", "ask"),
+    ("kill -s TERM 1234", "ask"),
+    ("kill --signal 1 1234", "ask"),
+    ("kill -0 1234", "ask"),
+    # Recorded limitations (MADR-0032 C2, arc42 §3): a negative numeric
+    # target written as the only hyphen token is textually ambiguous with a
+    # signal number and stays ASK (the checkpoint) — never ALLOW; and the
+    # path-qualified wrapper-to-kill / assignment-prefix classes remain the
+    # MADR-0029 residual (pinned as explicit allows for legibility).
+    ("kill 1234 -12345", "ask"),
+    ("kill -12345", "ask"),
+    ("/usr/bin/env kill 754", "allow"),
+    ("VAR=1 kill 754", "allow"),
     # MADR-0029 (#475, resolves #468 — C5): the wrapper family resolves DENY
     # at the root tail. Before this delta every one of these commands fell
     # through to the `"*": allow` head (live-verified on v2.3.2); the rows
@@ -584,6 +701,11 @@ COMPOUND_TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     # launder `xargs curl` / `timeout 5 printenv`.
     ("true && xargs curl --version", "deny"),
     ("echo ok && timeout 5 printenv --version", "deny"),
+    # MADR-0032 C3 (#485) compound controls: the path-qualified kill deny
+    # survives the compound form, and the R-2 fix means a numbered-signal
+    # segment ASKS instead of hard-denying the whole line.
+    ("true && /usr/bin/kill 754", "deny"),
+    ("true && kill -15 1234", "ask"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
@@ -937,6 +1059,38 @@ def check_wrapper_carveout_canary(root: Path, failures: list[str]) -> None:
                 )
 
 
+def check_kill_carveout_canary(root: Path, failures: list[str]) -> None:
+    """MADR-0032 C4 canary (#485): no agent may re-admit the kill family.
+
+    Agent rules append AFTER the root deny tail (last-match-wins, #350), so an
+    agent-level allow/ask for `kill` silently defeats the target-classified
+    kill denies for that role. The canary inspects EVERY agent spec —
+    allow-default (inheritance) and non-inheritance alike — and rejects any
+    allow/ask rule whose executable head is `kill`, including narrow
+    (`kill 1234`) and path-qualified (`/usr/bin/kill *`) variants. The kill
+    checkpoint has NO agent-level carve-out of any kind (AC6), and the bare
+    `kill*` ask line in the root ask tier is the only kill checkpoint.
+    """
+    for agent in sorted((root / "agents").glob("*.md")):
+        present, agent_rules = agent_bash(root, agent, failures)
+        if not present:
+            continue
+        rel = agent.relative_to(root)
+        for pattern, tier in agent_rules:
+            if tier not in ("allow", "ask"):
+                continue
+            tokens = pattern.split()
+            head = tokens[0].rsplit("/", 1)[-1] if tokens else ""
+            if head == "kill":
+                failures.append(
+                    f"{rel}: bash rule {pattern!r} ({tier}) is an agent-level "
+                    "kill carve-out (MADR-0032 C4) — agent rules append after "
+                    "the root deny tail, so this defeats the target-classified "
+                    "kill denies for this role; kill has NO agent carve-out of "
+                    "any kind"
+                )
+
+
 def main(argv: list[str]) -> int:
     root = (
         Path(argv[1]).resolve()
@@ -956,6 +1110,7 @@ def main(argv: list[str]) -> int:
     check_non_inheritance_agents(root, failures)
     check_rm_carveout_placement(root, failures)
     check_wrapper_carveout_canary(root, failures)
+    check_kill_carveout_canary(root, failures)
     if failures:
         print("FAIL check_bash_permission_tiers: bash tier invariant violated:")
         for failure in failures:
@@ -973,7 +1128,10 @@ def main(argv: list[str]) -> int:
         f"shapes incl. the scrum-master trailing secret-file denies "
         f"(#340, #350; opencode 1.19.0 verified); {len(WRAPPER_DENY_PATTERNS)}-"
         f"pattern wrapper-family deny with zero agent re-admission "
-        f"(MADR-0029, #475)"
+        f"(MADR-0029, #475); {len(KILL_DENY_PATTERNS)}-pattern "
+        f"target-classified kill deny (broadcast + negative process-group + "
+        f"path-qualified direct kill) with zero agent re-admission "
+        f"(MADR-0032, #485)"
     )
     return 0
 
