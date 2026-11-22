@@ -1,7 +1,7 @@
 ---
 description: "Architect — Technical Lead & Solution Architect"
 mode: primary
-model: "openrouter/z-ai/glm-5.3-flash"
+model: "openrouter/google/gemini-4-carbon"
 temperature: 0.2
 permission:
   # 340: bash inherits the root permission.bash baseline (opencode.jsonc) —

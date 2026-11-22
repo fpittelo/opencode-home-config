@@ -32,7 +32,11 @@
         "deepseek/deepseek-v4.1-flash-1017": { "name": "DeepSeek V4.1 Flash 1017" },
         "z-ai/glm-5.3": { "name": "GLM 5.3" },
         "z-ai/glm-5.3-flash": { "name": "GLM 5.3 Flash" },
-        "minimax/minimax-m3.1-flash": { "name": "MiniMax M3.1 Flash" }
+        "minimax/minimax-m3.1-flash": { "name": "MiniMax M3.1 Flash" },
+        "google/gemini-4-carbon": { "name": "Gemini 4 Carbon" },
+        "mistralai/mistral-large-4-0": { "name": "Mistral Large 4.0" },
+        "moonshotai/kimi-k3.1-pro": { "name": "Kimi K3.1 Pro" },
+        "typesafe/jev-router": { "name": "Jev Router" }
       }
     }
   },
