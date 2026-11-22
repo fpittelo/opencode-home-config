@@ -52,6 +52,7 @@ from pathlib import Path
 
 from check_bash_permission_tiers import (
     BASELINE_DENY_TAIL,
+    KILL_ORDERED_PROBES,
     WRAPPER_ORDERED_PROBES,
     resolve_command,
 )
@@ -162,6 +163,21 @@ def check_repo(root: Path, home: Path) -> list[str]:
                 "misplaced or shadowed; #449/gate 20, MADR-0029 C3). Re-run "
                 "install.sh to re-provision"
             )
+
+    # MADR-0032 C3 (#485): the same ordered-resolution requirement for the
+    # kill posture — the R-1 path-qualified direct kill is invisible to
+    # deny-set membership alone (`/usr/bin/kill 754` resolves allow when the
+    # `*/kill *` deny sits before the "*": allow head).
+    for command in KILL_ORDERED_PROBES:
+        verdict = resolve_command(installed_rules, command)
+        if verdict != "deny":
+            findings.append(
+                f"installed config {installed} resolves the kill command "
+                f"{command!r} to {verdict!r}, expected 'deny' — the installed "
+                "posture loses the target-classified kill deny or its order "
+                "defeats it (#449/gate 20, MADR-0032 C3). Re-run install.sh "
+                "to re-provision"
+            )
     return findings
 
 
@@ -190,8 +206,9 @@ def main(argv: list[str]) -> int:
         "PASS check_installed_posture_freshness: installed config "
         f"{home / INSTALLED_REL} carries every deny entry of the pinned "
         f"root deny tail ({len(BASELINE_DENY_TAIL)} entries) and resolves "
-        f"{len(WRAPPER_ORDERED_PROBES)} representative wrapper commands to "
-        "deny in order — posture fresh (#449 gate 20, MADR-0029 C3)"
+        f"{len(WRAPPER_ORDERED_PROBES)} representative wrapper commands plus "
+        f"{len(KILL_ORDERED_PROBES)} kill commands to deny in order — "
+        "posture fresh (#449 gate 20, MADR-0029 C3, MADR-0032 C3)"
     )
     return 0
 

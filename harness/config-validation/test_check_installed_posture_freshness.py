@@ -167,15 +167,21 @@ class StaleInstalledPosture(FixtureTestCase):
         # kill-broadcast entries (70 -> 73), no removals, no reordering —
         # verdict §4.8. MADR-0029 (#475) parity canary: the tail then grew by
         # EXACTLY the 13 curated wrapper-family denies (73 -> 86), additions
-        # only, no removals, no reordering. A future tail edit must update
-        # this pin deliberately.
-        self.assertEqual(len(tiers.BASELINE_DENY_TAIL), 86)
-        for entry in ("kill 0*", "kill -1*", "kill * -1*"):
+        # only, no removals, no reordering. MADR-0032 (#485) parity canary:
+        # the three over-broad kill-broadcast patterns are REPLACED by 10
+        # target-classified deny forms (86 -> 93) — the only reordering-free
+        # removal in the tail's history, narrowing the signal-prefix false
+        # positives while every destructive target form stays denied. A
+        # future tail edit must update this pin deliberately.
+        self.assertEqual(len(tiers.BASELINE_DENY_TAIL), 93)
+        for entry in tiers.KILL_DENY_PATTERNS:
             self.assertIn(entry, tiers.BASELINE_DENY_TAIL)
         for entry in ("xargs *", "env *", "timeout *", "find * -exec*"):
             self.assertIn(entry, tiers.BASELINE_DENY_TAIL)
         for entry in ("rm -rf /*", "*.env*", "*.key*", "gh api *"):
             self.assertIn(entry, tiers.BASELINE_DENY_TAIL)  # no removals
+        for removed in ("kill 0*", "kill -1*", "kill * -1*"):
+            self.assertNotIn(removed, tiers.BASELINE_DENY_TAIL)  # R-2 fix
 
 
 class OrderedWrapperResolution(FixtureTestCase):
@@ -206,6 +212,47 @@ class OrderedWrapperResolution(FixtureTestCase):
         self.assertIn("timeout 5 curl", probes)
         self.assertIn("env gh api", probes)
         self.assertIn("true && xargs curl", probes)
+
+
+class OrderedKillResolution(FixtureTestCase):
+    """MADR-0032 C3 (#485): gate 20 also resolves the kill posture in order.
+
+    The R-1 path-qualified bypass is invisible to deny-set membership: an
+    installed posture can carry ``*/kill *`` and still resolve it to allow
+    when the ``"*": allow`` head sits after it. Gate 20 therefore resolves the
+    shared ``KILL_ORDERED_PROBES`` (including ``/usr/bin/kill 754``) against
+    the ordered installed rules and requires ``deny``.
+    """
+
+    def test_kill_ordered_probes_are_shared_and_denied(self) -> None:
+        probes = checker.KILL_ORDERED_PROBES
+        self.assertIn("/usr/bin/kill 754", probes)
+        self.assertIn("/bin/kill -9 1234", probes)
+        installed = checker.bash_rules(REAL_SOURCE)
+        for command in probes:
+            with self.subTest(command=command):
+                self.assertEqual(
+                    checker.resolve_command(installed, command), "deny"
+                )
+
+    def test_missing_path_general_deny_fails(self) -> None:
+        stale = REAL_SOURCE.replace('      "*/kill *": "deny",\n', "")
+        self.assertNotEqual(stale, REAL_SOURCE)
+        self.assert_finding(
+            checker.check_repo(REPO_ROOT, build_home(installed=stale)),
+            "/usr/bin/kill 754",
+        )
+
+    def test_kill_deny_after_the_allow_head_fails(self) -> None:
+        moved = REAL_SOURCE.replace('      "*": "allow",\n', "", 1)
+        moved = moved.replace(
+            '      "*/kill *": "deny",\n',
+            '      "*/kill *": "deny",\n      "*": "allow",\n',
+            1,
+        )
+        self.assertNotEqual(moved, REAL_SOURCE)
+        findings = checker.check_repo(REPO_ROOT, build_home(installed=moved))
+        self.assert_finding(findings, "/usr/bin/kill 754", "deny")
 
 
 class UnreadableInstalledPosture(FixtureTestCase):

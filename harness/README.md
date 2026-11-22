@@ -270,7 +270,7 @@ The split is machine-pinned by `harness/config-validation/test_config_gate_tiers
 | 17 | External-prerequisite inventory | gate 13 — `check_external_prerequisites.py .` | `test_check_external_prerequisites.py` |
 | 18 | Gitleaks allowlist + tracked runtime artifacts | gate 12 — `check_gitleaks_allowlist.py .` | `test_check_gitleaks_allowlist.py` |
 | 19 | Pin-freshness workflow blast radius (MADR-0026 C6) | gate 15 — `check_pin_freshness_workflow.py .` | `test_check_pin_freshness_workflow.py` |
-| 20 | Installed-posture freshness (deny tail + ordered wrappers) | gate 14 — `check_installed_posture_freshness.py .` | `test_check_installed_posture_freshness.py` |
+| 20 | Installed-posture freshness (deny tail + ordered wrappers/kill) | gate 14 — `check_installed_posture_freshness.py .` | `test_check_installed_posture_freshness.py` |
 | 21 | Architecture-coverage gate logic (#421) | `ci.yml` — `check_arch_coverage.sh` (unchanged) | `test_check_arch_coverage.py` |
 | 22 | Operator doctor orchestrator semantics | — | `test_doctor_script.py` |
 | 23 | DoD closeout signal workflow blast radius + verifier logic (#481) | gates 17-18 — `test_check_dod_closeout_workflow.py`, `test_dod_closeout_verifier.py` | — |

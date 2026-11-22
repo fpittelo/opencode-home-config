@@ -50,9 +50,12 @@ Consequences enforced below:
      rules append after the root deny tail, so without them an allow
      like ``gh pr *`` re-enables credential-file commands (e.g.
      ``gh pr edit 1 --body-file foo.env``). Every agent spec — including
-     the four allow-default ones — is parsed in block form AND flow
-     style (scalar ``bash: deny`` / flow mapping ``bash: {"*": deny}``);
-     a flow-style header is no longer silently blessed.
+     the four allow-default ones — is parsed STRUCTURALLY as YAML (PyYAML,
+     duplicate keys rejected; #350, C3 fix-up of PR #492), so the block
+     mapping, the flow mapping (``bash: {"*": deny}``), the scalar
+     (``bash: deny``) and every key spelling (double-quoted, single-quoted,
+     unquoted) are seen — the former double-quote-only regexes silently
+     skipped an unquoted ``kill*: allow`` and hid it from every check.
 
   5. WRAPPER-FAMILY DENY (MADR-0029, #475 resolves #468) — the curated
       bash wrapper/executor family (``xargs``, ``env``, ``timeout``,
@@ -67,6 +70,19 @@ Consequences enforced below:
       path-insensitive by construction: path-qualified spellings are the
       recorded residual (AC2/C2).
 
+  6. KILL-FAMILY POSTURE (MADR-0032, #485) — the kill deny block is
+      TARGET-classified and path-general: ``*/kill *`` closes the R-1
+      path-qualified DIRECT kill that used to resolve allow under the
+      bare-prefix ask line (``/usr/bin/kill 754``), and the target-``0`` /
+      target-``-1`` / negative-process-group forms replace the MADR-0027
+      signal-prefix patterns that hard-denied ``kill -15 <pid>`` /
+      ``kill <pid> -15`` (R-2). A canary rejects any agent allow/ask rule
+      whose executable head is ``kill`` (no carve-out of any kind), the
+      gate-20 ordered-resolution probes are shared from here, and the
+      residual set (path-qualified wrapper-to-kill, assignment prefixes,
+      non-enumerated executors, the unpinned engine) stays recorded —
+      the kill checkpoint is NARROWED, never widened.
+
 Usage: check_bash_permission_tiers.py [REPO_ROOT]
 """
 from __future__ import annotations
@@ -76,6 +92,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+import yaml
 
 from jsonc_utils import strip_jsonc
 
@@ -144,6 +162,64 @@ WRAPPER_ORDERED_PROBES: tuple[str, ...] = (
     "timeout 5 curl",
     "env gh api",
     "true && xargs curl",
+)
+
+# MADR-0032 (#485): the target-classified kill deny block. MADR-0027 shipped
+# three SIGNAL-prefix patterns (`kill 0*`, `kill -1*`, `kill * -1*`); the
+# #482 AC7 audit found two defects and this block replaces them:
+#
+#   * R-1 (medium) — the `kill*` ask checkpoint was PATH-BYPASSABLE:
+#     `/usr/bin/kill 754` and `/bin/kill -9 1234` resolved ALLOW under the
+#     bare-prefix ask line. `*/kill *` is path-general (whole-value wildcard;
+#     `*` includes `/`), so the direct path-qualified spelling now denies
+#     while bare `kill <pid>` still resolves ask via the ask tier.
+#   * R-2 (low) — signal-prefix classification over-matched: `kill -1*`
+#     matched `kill -15 <pid>` and `kill * -1*` matched `kill <pid> -15`, so
+#     SIGTERM-by-number was hard-DENIED while plain `kill <pid>` only asked.
+#     The block is now TARGET-classified: target `0` (own process group),
+#     target `-1` (every process of the user) and negative process-group
+#     targets stay denied; single-PID signal forms stay ask.
+#
+# `kill -* -*` is the negative-process-group classifier: a target below the
+# signal range can only be spelled with an explicit signal option
+# (`kill -TERM -12345`) or the `--` separator (`kill -- -12345`), both of
+# which carry a second hyphen token, whereas the must-ask single-PID forms
+# (`kill -15 <pid>`, `kill <pid> -15`, `kill -s TERM <pid>`,
+# `kill --signal 1 <pid>`, `kill -0 <pid>`) carry exactly one. Recorded
+# limitations (deny-only narrowing, never a capability increase):
+# (a) a negative numeric target written as the ONLY hyphen token
+#     (`kill 1234 -12345`) is textually indistinguishable from a signal
+#     number without regex/quantifier support — it resolves ASK (the
+#     checkpoint), never ALLOW;
+# (b) path-qualified wrapper-to-kill (`/usr/bin/env kill 754`) and env-var
+#     assignment prefixes (`VAR=1 kill 754`) stay in the MADR-0029 residual
+#     set (arc42 §3) — R-1 is closed for the DIRECT path-qualified form only.
+# Deny-only, so the residual false positives fall in the safe direction.
+KILL_DENY_PATTERNS: tuple[str, ...] = (
+    # target 0 (own process group)
+    "kill 0",
+    "kill 0 *",
+    "kill * 0",
+    "kill * 0 *",
+    # target -1 (every process of the user)
+    "kill -1",
+    "kill -1 *",
+    "kill * -1",
+    "kill * -1 *",
+    # other negative process-group targets
+    "kill -* -*",
+    # R-1: path-qualified direct kill (path-general whole-value wildcard)
+    "*/kill *",
+)
+
+# MADR-0032 C3 (#485): representative kill commands gate 20 must resolve to
+# DENY against the ORDERED installed rule list — the R-1 bypass is invisible
+# to deny-set membership, and last-match-wins makes order semantic.
+KILL_ORDERED_PROBES: tuple[str, ...] = (
+    "/usr/bin/kill 754",
+    "/bin/kill -9 1234",
+    "kill 0",
+    "kill -TERM -12345",
 )
 
 # Deny-tail baseline captured from origin/dev HEAD before the #320 Slice B
@@ -246,15 +322,16 @@ BASELINE_DENY_TAIL: tuple[str, ...] = (
     # D3, arc42 §3).
     "podman system service*",
     "podman machine*",
-    # MADR-0027 (#463, AC0 verdict C3): kill broadcast forms are
-    # control-plane-DoS primitives — `kill 0` (own process group), `kill -1`
-    # (every process of the user), `kill <pid> -1` (pid + broadcast;
-    # empirically grounded by the pre-review probe). Additions only
-    # (tightening): the per-pid kill ALLOW is DEFERRED (C4(b) — no per-case
-    # AC1 evidence), so plain `kill <pid>` stays ask.
-    "kill 0*",
-    "kill -1*",
-    "kill * -1*",
+    # MADR-0027 (#463, AC0 verdict C3) → MADR-0032 (#485): kill broadcast
+    # forms are control-plane-DoS primitives — `kill 0` (own process group),
+    # `kill -1` (every process of the user), `kill <pid> -1` (pid +
+    # broadcast; empirically grounded by the pre-review probe). MADR-0032
+    # REPLACES the three signal-prefix patterns with the target-classified
+    # block above: the broadcast denies are preserved (plus negative
+    # process-group targets), the R-2 signal-number false positives are
+    # removed, and `*/kill *` closes the R-1 path-qualified direct form.
+    # No kill allow is introduced: plain `kill <pid>` stays ask (C4(b)).
+    *KILL_DENY_PATTERNS,
     # MADR-0029 (#475, resolves #468 — C1): tail append — the curated wrapper/
     # executor family. Additions only (tightening): a wrapper prefix can no
     # longer reach the `"*": allow` head before the ask tier / deny tail
@@ -525,12 +602,57 @@ TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     ("rm -rf /tmp/opencode/cache", "deny"),
     ("pip install -r creds.env", "deny"),
     ("pip install evil", "ask"),
+    # MADR-0032 (#485): the AC2 target-classified kill corpus, verbatim.
+    # target 0 (own process group) — the control-plane DoS shape.
     ("kill 0", "deny"),
+    ("kill 0 1234", "deny"),
+    ("kill 1234 0", "deny"),
+    ("kill -TERM 0", "deny"),
+    ("kill -s TERM 0", "deny"),
+    ("kill --signal TERM 0", "deny"),
+    ("kill -- 0", "deny"),
+    # target -1 (every process of the user).
     ("kill -1", "deny"),
-    ("kill 1234 -1", "deny"),
+    ("kill -1 -1", "deny"),
+    ("kill -TERM -1", "deny"),
+    ("kill -s TERM -1", "deny"),
+    ("kill --signal TERM -1", "deny"),
     ("kill -- -1", "deny"),
+    ("kill 1234 -1", "deny"),
+    # other negative process-group targets (two hyphen tokens).
+    ("kill -TERM -12345", "deny"),
+    ("kill -- -12345", "deny"),
+    # multi-target permutations containing 0 or -1.
+    ("kill 0 1234 -15", "deny"),
+    ("kill -s TERM 0 1234", "deny"),
+    ("kill 1234 0 5678", "deny"),
+    ("kill -1 1234", "deny"),
+    ("kill 5678 -1", "deny"),
+    ("kill 1234 -1 5678", "deny"),
+    ("kill -TERM 0 1234", "deny"),
+    # R-1: path-qualified DIRECT kill — `*/kill *` is path-general.
+    ("/usr/bin/kill 754", "deny"),
+    ("/bin/kill -9 1234", "deny"),
+    # must-ASK: single-PID forms. The R-2 fix — SIGTERM-by-number (signal
+    # `-15` at either position) is a checkpoint, not a hard deny; `-0` is the
+    # signal-0 probe (not target 0) and `--signal 1 <pid>` is single-PID
+    # SIGHUP.
     ("kill 1234", "ask"),
     ("kill -9 1234", "ask"),
+    ("kill -15 1234", "ask"),
+    ("kill 1234 -15", "ask"),
+    ("kill -s TERM 1234", "ask"),
+    ("kill --signal 1 1234", "ask"),
+    ("kill -0 1234", "ask"),
+    # Recorded limitations (MADR-0032 C2, arc42 §3): a negative numeric
+    # target written as the only hyphen token is textually ambiguous with a
+    # signal number and stays ASK (the checkpoint) — never ALLOW; and the
+    # path-qualified wrapper-to-kill / assignment-prefix classes remain the
+    # MADR-0029 residual (pinned as explicit allows for legibility).
+    ("kill 1234 -12345", "ask"),
+    ("kill -12345", "ask"),
+    ("/usr/bin/env kill 754", "allow"),
+    ("VAR=1 kill 754", "allow"),
     # MADR-0029 (#475, resolves #468 — C5): the wrapper family resolves DENY
     # at the root tail. Before this delta every one of these commands fell
     # through to the `"*": allow` head (live-verified on v2.3.2); the rows
@@ -584,16 +706,39 @@ COMPOUND_TRUTH_TABLE: tuple[tuple[str, str], ...] = (
     # launder `xargs curl` / `timeout 5 printenv`.
     ("true && xargs curl --version", "deny"),
     ("echo ok && timeout 5 printenv --version", "deny"),
+    # MADR-0032 C3 (#485) compound controls: the path-qualified kill deny
+    # survives the compound form, and the R-2 fix means a numbered-signal
+    # segment ASKS instead of hard-denying the whole line.
+    ("true && /usr/bin/kill 754", "deny"),
+    ("true && kill -15 1234", "ask"),
 )
 
 FRONT_MATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
-# bash: with an empty inline = block form; a non-empty inline = flow style
-# (scalar tier or flow mapping) — both parsed since #350.
-BASH_HEADER_RE = re.compile(r"^  bash:(?P<inline>.*)$")
-NEXT_KEY_RE = re.compile(r"^  \S")
-RULE_RE = re.compile(r'^\s*"([^"]+)":\s*(allow|ask|deny)\s*$')
-FLOW_PAIR_RE = re.compile(r'"([^"]+)"\s*:\s*(allow|ask|deny)')
 SCALAR_TIERS = frozenset({"allow", "ask", "deny"})
+
+
+class _DuplicateKeyLoader(yaml.SafeLoader):
+    """SafeLoader that rejects duplicate mapping keys with their line number.
+
+    PyYAML silently keeps the last duplicate, which would let a second
+    ``kill*``-style rule hide behind the first inside an agent bash block
+    (C3 fix-up, PR #492 review). Same loader contract as gate 8
+    (``check_agent_frontmatter.py``).
+    """
+
+    def construct_mapping(
+        self, node: yaml.MappingNode, deep: bool = False
+    ) -> dict[object, object]:
+        seen: set[object] = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise yaml.YAMLError(
+                    f"duplicate key {key!r} at line {key_node.start_mark.line + 1}"
+                )
+            seen.add(key)
+        mapping: dict[object, object] = super().construct_mapping(node, deep=deep)
+        return mapping
 
 
 def root_rules(root: Path, failures: list[str]) -> list[tuple[str, str]] | None:
@@ -616,23 +761,44 @@ def root_rules(root: Path, failures: list[str]) -> list[tuple[str, str]] | None:
     return [(str(pattern), str(tier)) for pattern, tier in bash.items()]
 
 
-def parse_inline_bash(
-    inline: str, rel: str, failures: list[str]
+def parse_bash_value(
+    value: object, rel: str, failures: list[str]
 ) -> list[tuple[str, str]]:
-    """Normalize a flow-style bash value (#350): scalar or flow mapping.
+    """Normalize a parsed ``permission.bash`` YAML value (#350, C3 fix-up).
 
-    ``deny``/``allow``/``ask`` normalize to the equivalent single
-    catch-all rule (opencode scalar semantics); ``{"*": deny}``-style
-    flow mappings parse pair-wise. Anything else fails closed.
+    Three spellings are accepted, all STRUCTURALLY parsed (the former
+    double-quote-only regexes silently skipped unquoted/single-quoted keys,
+    hiding a rule from every downstream check — PR #492 review C3):
+
+      * scalar tier (``bash: deny``) → the single catch-all rule
+        ``[("*", tier)]`` (opencode scalar semantics);
+      * mapping (block or flow, ``bash: {"*": deny}``) → the ordered
+        (pattern, tier) pairs, YAML key order preserved;
+      * anything else fails closed.
     """
-    if inline in SCALAR_TIERS:
-        return [("*", inline)]
-    pairs = FLOW_PAIR_RE.findall(inline)
-    if pairs and inline.startswith("{") and inline.endswith("}"):
-        return [(pattern, tier) for pattern, tier in pairs]
+    if isinstance(value, str):
+        if value in SCALAR_TIERS:
+            return [("*", value)]
+        failures.append(
+            f"{rel}: unparseable bash value {value!r} — use a scalar "
+            f"allow/ask/deny or a mapping (#350)"
+        )
+        return []
+    if isinstance(value, dict):
+        rules: list[tuple[str, str]] = []
+        for pattern, tier in value.items():
+            pattern_text, tier_text = str(pattern), str(tier)
+            if tier_text not in SCALAR_TIERS:
+                failures.append(
+                    f"{rel}: bash rule {pattern_text!r} has invalid tier "
+                    f"{tier_text!r} — must be allow, ask or deny (#350)"
+                )
+                continue
+            rules.append((pattern_text, tier_text))
+        return rules
     failures.append(
-        f"{rel}: unparseable flow-style bash value {inline!r} — use the "
-        f"block form, a scalar allow/ask/deny, or a flow mapping (#350)"
+        f"{rel}: bash value must be a scalar tier or a mapping, found "
+        f"{type(value).__name__} (#350)"
     )
     return []
 
@@ -643,11 +809,11 @@ def agent_bash(
     """(present, rules) of an agent spec's bash posture.
 
     present=False means the agent omits the bash key entirely — the
-    legitimate inherited posture (#340). All three YAML spellings are
-    parsed (#350): the block form (``bash:`` + indented rules), the flow
-    mapping (``bash: {"*": deny}``) and the scalar (``bash: deny``).
-    Parse/read problems are recorded as failures; comments and blank
-    lines inside a block are skipped.
+    legitimate inherited posture (#340). The YAML front-matter is parsed
+    STRUCTURALLY (PyYAML, duplicate keys rejected), so every key spelling —
+    double-quoted, single-quoted, unquoted — and all three bash forms (block
+    mapping, flow mapping, scalar tier) are seen (#350; C3 fix-up of PR
+    #492). Parse/read problems are recorded as failures and fail closed.
     """
     rel = agent.relative_to(root)
     try:
@@ -659,26 +825,21 @@ def agent_bash(
     if not match:
         failures.append(f"{rel}: no YAML front-matter found")
         return False, []
-    lines = match.group(1).splitlines()
-    start = next(
-        (i for i, line in enumerate(lines) if BASH_HEADER_RE.match(line)), None
-    )
-    if start is None:
-        return False, []  # inherited posture — no bash key at all
-    header = BASH_HEADER_RE.match(lines[start])
-    if header is None:  # narrowed by the `start` search above (mypy safety)
+    try:
+        data = yaml.load(match.group(1), Loader=_DuplicateKeyLoader)
+    except yaml.YAMLError as exc:
+        failures.append(f"{rel}: front-matter is not valid YAML ({exc})")
         return False, []
-    inline = header.group("inline").strip()
-    if inline:
-        return True, parse_inline_bash(inline, str(rel), failures)
-    rules: list[tuple[str, str]] = []
-    for line in lines[start + 1 :]:
-        if NEXT_KEY_RE.match(line):
-            break  # the next permission key (read/edit/GITHUB_*) — block end
-        rule = RULE_RE.match(line)
-        if rule:
-            rules.append((rule.group(1), rule.group(2)))
-    return True, rules
+    if not isinstance(data, dict):
+        failures.append(f"{rel}: front-matter is not a YAML mapping")
+        return False, []
+    permission = data.get("permission")
+    if not isinstance(permission, dict):
+        failures.append(f"{rel}: front-matter 'permission' is not a mapping")
+        return False, []
+    if "bash" not in permission:
+        return False, []  # inherited posture — no bash key at all
+    return True, parse_bash_value(permission["bash"], str(rel), failures)
 
 
 def check_root_baseline(
@@ -937,6 +1098,41 @@ def check_wrapper_carveout_canary(root: Path, failures: list[str]) -> None:
                 )
 
 
+def check_kill_carveout_canary(root: Path, failures: list[str]) -> None:
+    """MADR-0032 C4 canary (#485): no agent may re-admit the kill family.
+
+    Agent rules append AFTER the root deny tail (last-match-wins, #350), so an
+    agent-level allow/ask for `kill` silently defeats the target-classified
+    kill denies for that role. The canary inspects EVERY agent spec —
+    allow-default (inheritance) and non-inheritance alike — and rejects any
+    allow/ask rule whose executable head is `kill`, including narrow
+    (`kill 1234`), globbed (`kill*`, `/usr/bin/kill*`, `*/kill*`, `*kill*`)
+    and path-qualified (`/usr/bin/kill *`) variants: the head check strips
+    `*` from the basename, so any head whose core is `kill` is caught while
+    unrelated words (`pkill`, `killall`) are not (C3 fix-up, PR #492). The
+    kill checkpoint has NO agent-level carve-out of any kind (AC6), and the
+    bare `kill*` ask line in the root ask tier is the only kill checkpoint.
+    """
+    for agent in sorted((root / "agents").glob("*.md")):
+        present, agent_rules = agent_bash(root, agent, failures)
+        if not present:
+            continue
+        rel = agent.relative_to(root)
+        for pattern, tier in agent_rules:
+            if tier not in ("allow", "ask"):
+                continue
+            tokens = pattern.split()
+            head = tokens[0].rsplit("/", 1)[-1] if tokens else ""
+            if head.strip("*") == "kill":
+                failures.append(
+                    f"{rel}: bash rule {pattern!r} ({tier}) is an agent-level "
+                    "kill carve-out (MADR-0032 C4) — agent rules append after "
+                    "the root deny tail, so this defeats the target-classified "
+                    "kill denies for this role; kill has NO agent carve-out of "
+                    "any kind"
+                )
+
+
 def main(argv: list[str]) -> int:
     root = (
         Path(argv[1]).resolve()
@@ -956,6 +1152,7 @@ def main(argv: list[str]) -> int:
     check_non_inheritance_agents(root, failures)
     check_rm_carveout_placement(root, failures)
     check_wrapper_carveout_canary(root, failures)
+    check_kill_carveout_canary(root, failures)
     if failures:
         print("FAIL check_bash_permission_tiers: bash tier invariant violated:")
         for failure in failures:
@@ -973,7 +1170,10 @@ def main(argv: list[str]) -> int:
         f"shapes incl. the scrum-master trailing secret-file denies "
         f"(#340, #350; opencode 1.19.0 verified); {len(WRAPPER_DENY_PATTERNS)}-"
         f"pattern wrapper-family deny with zero agent re-admission "
-        f"(MADR-0029, #475)"
+        f"(MADR-0029, #475); {len(KILL_DENY_PATTERNS)}-pattern "
+        f"target-classified kill deny (broadcast + negative process-group + "
+        f"path-qualified direct kill) with zero agent re-admission "
+        f"(MADR-0032, #485)"
     )
     return 0
 

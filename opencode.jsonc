@@ -438,16 +438,30 @@
       // allow set, which tightens nothing under the "*": allow head (C3).
       "podman system service*": "deny",
       "podman machine*": "deny",
-      // MADR-0027 (#463, AC0 verdict C3): kill broadcast forms are
-      // control-plane-DoS primitives — `kill 0` (own process group),
+      // MADR-0032 (#485) — narrows MADR-0027's kill block: the kill broadcast
+      // forms are control-plane-DoS primitives — `kill 0` (own process group),
       // `kill -1` (every process of the user), `kill <pid> -1` (pid +
-      // broadcast; empirically grounded by the pre-review probe).
-      // Additions only (tightening): the per-pid kill ALLOW is DEFERRED
-      // (C4(b) — no per-case AC1 evidence), so plain `kill <pid>` stays
-      // ask-tier.
-      "kill 0*": "deny",
-      "kill -1*": "deny",
-      "kill * -1*": "deny",
+      // broadcast; empirically grounded by the pre-review probe). The block is
+      // now TARGET-classified (R-2 fix): the old signal-prefix patterns
+      // (`kill 0*`, `kill -1*`, `kill * -1*`) also matched `kill -15 <pid>` and
+      // `kill <pid> -15`, hard-denying SIGTERM-by-number while plain
+      // `kill <pid>` only asked. Every broadcast / negative-process-group
+      // target stays denied; single-PID signal forms stay ask. `*/kill *`
+      // (R-1 fix) is path-general (whole-value wildcard, `*` includes `/`) so
+      // path-qualified DIRECT kills deny; path-qualified wrapper-to-kill and
+      // assignment prefixes remain the MADR-0029 residual. Deny-only, no kill
+      // allow: plain `kill <pid>` stays ask (MADR-0027 C4(b)), no agent
+      // carve-out (gate-14 canary).
+      "kill 0": "deny",
+      "kill 0 *": "deny",
+      "kill * 0": "deny",
+      "kill * 0 *": "deny",
+      "kill -1": "deny",
+      "kill -1 *": "deny",
+      "kill * -1": "deny",
+      "kill * -1 *": "deny",
+      "kill -* -*": "deny",
+      "*/kill *": "deny",
       // MADR-0029 (#475, resolves #468 — C1): the curated bash wrapper/
       // executor family. The scanner resolves each subcommand's own raw text
       // and the list is last-match-wins, so a wrapper prefix used to catch the
