@@ -71,7 +71,7 @@ GUARD_PATH_TOOLS = (
 # Pinned-artifact values from install.sh the stubs must satisfy so the
 # sandboxed runs take the "already installed / verified" skip paths instead
 # of touching the network.
-GITHUB_MCP_VERSION = "2.1.0"
+GITHUB_MCP_VERSION = "2.2.0"
 HERDR_VERSION = "0.9.5"
 PLAYWRIGHT_MCP_DIGEST = "oNcl+Ae2/IAjhfPeP46BfIkSakfmprY+aOtkv5MjrQ4lPav4/yNtPhL0iq8SlIM90oApWgBDUxaNKvktazUKOg=="
 
