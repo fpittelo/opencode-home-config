@@ -1258,6 +1258,108 @@ class KillFamilyPostureTests(unittest.TestCase):
         proc = run_checker(build_repo(agent_bash={"scrum-master": widened}))
         self.assert_gate_fails(proc, "agents/scrum-master.md", "kill carve-out")
 
+    def test_canary_rejects_globbed_kill_heads(self) -> None:
+        # C3 fix-up (PR #492 security review): the head check must catch a
+        # globbed head whose `*`-stripped core is `kill`, not only the exact
+        # token `kill` — otherwise `kill*`, `/usr/bin/kill*` and `*/kill*`
+        # re-admit the family while slipping past the canary.
+        for pattern in (
+            "kill*",
+            "/usr/bin/kill*",
+            "*/kill*",
+            "*kill*",
+        ):
+            with self.subTest(pattern=pattern):
+                agent_bash = {"developer": ((pattern, "allow"),)}
+                proc = run_checker(build_repo(agent_bash=agent_bash))
+                self.assert_gate_fails(
+                    proc, "agents/developer.md", "kill carve-out"
+                )
+                agent_bash = {"architect": ((pattern, "ask"),)}
+                proc = run_checker(build_repo(agent_bash=agent_bash))
+                self.assert_gate_fails(
+                    proc, "agents/architect.md", "kill carve-out"
+                )
+
+    def test_canary_rejects_unquoted_yaml_kill_allow(self) -> None:
+        # C3 fix-up: the front-matter must be parsed STRUCTURALLY — an
+        # unquoted (or single-quoted) YAML key inside `permission.bash` used
+        # to be silently skipped by the double-quote-only regexes, which hid
+        # the rule from every downstream check including this canary.
+        for key in ("kill*", "'kill*'"):
+            with self.subTest(key=key):
+                root = build_repo()
+                (root / "agents" / "developer.md").write_text(
+                    "---\n"
+                    'description: "developer raw"\n'
+                    "mode: subagent\n"
+                    "permission:\n"
+                    "  bash:\n"
+                    f"    {key}: allow\n"
+                    "  GITHUB_*: allow\n"
+                    "---\n\n"
+                    "developer test body.\n",
+                    encoding="utf-8",
+                )
+                proc = run_checker(root)
+                self.assert_gate_fails(
+                    proc, "agents/developer.md", "kill carve-out"
+                )
+
+    def test_unquoted_undocumented_rule_is_parsed(self) -> None:
+        # C3 fix-up: the same structural-parsing gap hid ANY unquoted rule
+        # from the duplicate-root / undocumented-deviation checks. An
+        # unquoted undocumented rule must now be seen and rejected.
+        root = build_repo()
+        (root / "agents" / "devops.md").write_text(
+            "---\n"
+            'description: "devops raw"\n'
+            "mode: subagent\n"
+            "permission:\n"
+            "  bash:\n"
+            "    terraform *: allow\n"
+            "  GITHUB_*: allow\n"
+            "---\n\n"
+            "devops test body.\n",
+            encoding="utf-8",
+        )
+        proc = run_checker(root)
+        self.assert_gate_fails(
+            proc, "agents/devops.md", "not a documented role deviation"
+        )
+
+    def test_unquoted_documented_rule_is_parsed_and_accepted(self) -> None:
+        # Structural parsing must not turn a legitimate documented deviation
+        # into a failure: the same rule quoted and unquoted is equivalent.
+        root = build_repo()
+        (root / "agents" / "developer.md").write_text(
+            "---\n"
+            'description: "developer raw"\n'
+            "mode: subagent\n"
+            "permission:\n"
+            "  bash:\n"
+            "    gh run list*: allow\n"
+            "    gh run view*: allow\n"
+            "    gh run watch*: allow\n"
+            "  GITHUB_*: allow\n"
+            "---\n\n"
+            "developer test body.\n",
+            encoding="utf-8",
+        )
+        proc = run_checker(root)
+        self.assertEqual(
+            proc.returncode,
+            0,
+            f"expected exit 0, got {proc.returncode}:\n{proc.stdout}{proc.stderr}",
+        )
+
+    def test_invalid_tier_value_fails_closed(self) -> None:
+        # C3 fix-up: an invalid tier inside a structurally parsed block is a
+        # failure (never silently dropped).
+        agent_bash = {"developer": (("*", "permit"),)}
+        proc = run_checker(build_repo(agent_bash=agent_bash))
+        self.assert_gate_fails(proc, "agents/developer.md", "invalid tier")
+
     def test_root_baseline_pin_fails_without_a_kill_deny(self) -> None:
         for pattern in ("*/kill *", "kill -* -*", "kill * -1"):
             with self.subTest(pattern=pattern):
